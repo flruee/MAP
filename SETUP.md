@@ -14,7 +14,22 @@ Where version is replaced by latest version (v0.9.16, as of 08.02.2022)
 Make it executable  
 ```sudo chmod +x polkadot```
 
-Run it
+Run it  
 ```./polkadot --name "Your Node's Name"```
 
-You should either daemonize it via systemctl/supervisorctl or use the screen command to detach it from the current terminal
+You should either daemonize it via systemctl/supervisorctl or use the screen command to detach it from the current terminal.  
+
+## Setup Kafka
+[Web instructions](https://kafka.apache.org/quickstart)  
+Download kafka (maybe change version) 
+```wget https://dlcdn.apache.org/kafka/3.1.0/kafka_2.13-3.1.0.tgz```
+
+unzip it  
+```tar -xzf kafka_2.13-3.1.0.tgz```  
+```cd kafka_2.13-3.1.0```  
+  
+  start the services
+  ```bin/zookeeper-server-start.sh config/zookeeper.properties```
+
+In another terminal  
+```bin/kafka-server-start.sh config/server.properties```
