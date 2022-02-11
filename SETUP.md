@@ -28,8 +28,16 @@ unzip it
 ```tar -xzf kafka_2.13-3.1.0.tgz```  
 ```cd kafka_2.13-3.1.0```  
   
-  start the services
+start the services  
   ```bin/zookeeper-server-start.sh config/zookeeper.properties```
 
 In another terminal  
 ```bin/kafka-server-start.sh config/server.properties```
+
+Create a topic  
+```bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic polkadotBlockData```
+
+Read topic  
+```bin/kafka-console-consumer.sh --topic polkadotBlockData --from-beginning --bootstrap-server localhost:9092```
+## Setup producer module
+See README in it's folder.
