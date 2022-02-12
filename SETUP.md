@@ -39,5 +39,10 @@ Create a topic
 
 Read topic  
 ```bin/kafka-console-consumer.sh --topic polkadotBlockData --from-beginning --bootstrap-server localhost:9092```
+
+
+
+
+
 ## Setup producer module
 See README in it's folder.
