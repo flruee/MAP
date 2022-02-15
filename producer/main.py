@@ -13,7 +13,7 @@ def handle_block_data(block_dict, kafka=True):
             f.write(json.dumps(block_dict, indent=4))
 
 
-def get_header(obj):
+def jsonize_header(obj):
     """
     The header is encoded in rust like syntax, and there seems to be no serialization method.
     Each log is wrapped with '<scale_info::13(value={RELEVANT_DATA}>', which python and JSON can't handle.
@@ -27,7 +27,7 @@ def get_header(obj):
         obj["header"]["digest"]["logs"][i] = json.loads(mod_log)
     return obj
 
-def get_extrinsic(block_hash):
+def jsonize_extrinsic(block_hash):
     """
     The extrinsic part is implemented via classes and not dicts
     Fortunately a serialization method is available.
@@ -50,20 +50,42 @@ def get_extrinsic(block_hash):
 
     return extrinsics
 
+def jsonize_events(block_hash):
+    events = substrate.get_events(block_hash)
+    events_jsonized = []
+    count = 0
+    for event in events:
+        event_jsonized = str(event)
+        event_jsonized = event_jsonized.replace("'",'"').replace("(","[").replace(")","]")
+        
+        try:
+            json.dumps(event_jsonized, indent=4)
+            events_jsonized.append(json.loads(event_jsonized))
+        except TypeError:
+            logging.error(f"Error {e} in block {block_hash}. JSON serialization failed for event #{count}")
+            logging.debug(f"Event content:\n{event_jsonized}")
+
+        count+=1
+
+    return events_jsonized
+        
+
 def subscription_handler(obj, update_nr, subscription_id):
 
     logging.info(f"New block #{obj['header']['number']} produced by {obj['author']}")
 
     block_number = obj["header"]["number"]
     block_hash = substrate.get_block_hash(block_number)
-    header = get_header(obj)
-    extrinsics = get_extrinsic(block_hash)
+    header = jsonize_header(obj)
+    extrinsics = jsonize_extrinsic(block_hash)
+    events = jsonize_events(block_hash)
     #setup json dict
     block_dict = {
         "number": block_number,
         "hash": block_hash,
         "header": header,
-        "extrinsics": extrinsics
+        "extrinsics": extrinsics,
+        "events": events
     }
 
     handle_block_data(block_dict)
