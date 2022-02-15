@@ -6,7 +6,7 @@ from kafka import KafkaProducer
 
 def handle_block_data(block_dict, kafka=True):
     if kafka:
-        producer.send(kafka_config["topic"],value=block_dict,key=bytes(block_dict["number"]))
+        producer.send(kafka_config["topic"],value=block_dict)
 
     if producer_config["logLevel"] <= 10:
         with open("block.json", "w+") as f:
@@ -88,8 +88,11 @@ if __name__ == "__main__":
         type_registry_preset=polkadot_config["type_registry_preset"]
     )
 
-    producer = KafkaProducer(bootstrap_servers=kafka_config["bootstrap_servers"],
-                         value_serializer=lambda x: 
-                            json.dumps(x).encode('utf-8'))
+    producer = KafkaProducer(
+        bootstrap_servers=kafka_config["bootstrap_servers"],
+        max_request_size=317344026,
+        value_serializer=lambda x: 
+            json.dumps(x).encode('utf-8')
+    )
 
     result = substrate.subscribe_block_headers(subscription_handler, include_author=True, finalized_only=True)
