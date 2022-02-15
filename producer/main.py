@@ -4,6 +4,10 @@ import json
 import logging
 from kafka import KafkaProducer
 
+def string_replacer(data):
+    return data.replace("'",'"').replace("(","[").replace(")","]").replace("None","null")
+
+
 def handle_block_data(block_dict, kafka=True):
     if kafka:
         producer.send(kafka_config["topic"],value=block_dict)
@@ -22,7 +26,7 @@ def jsonize_header(obj):
     logs = obj["header"]["digest"]["logs"]
     for i in range(len(logs)):
         mod_log = str(logs[i])
-        mod_log = mod_log.replace("'",'"').replace("(","[").replace(")","]")
+        mod_log = string_replacer(mod_log)
         
         obj["header"]["digest"]["logs"][i] = json.loads(mod_log)
     return obj
@@ -56,12 +60,12 @@ def jsonize_events(block_hash):
     count = 0
     for event in events:
         event_jsonized = str(event)
-        event_jsonized = event_jsonized.replace("'",'"').replace("(","[").replace(")","]")
+        event_jsonized = string_replacer(event_jsonized)
         
         try:
             json.dumps(event_jsonized, indent=4)
             events_jsonized.append(json.loads(event_jsonized))
-        except TypeError:
+        except TypeError or json.decoder.JSONDecoder:
             logging.error(f"Error {e} in block {block_hash}. JSON serialization failed for event #{count}")
             logging.debug(f"Event content:\n{event_jsonized}")
 
@@ -89,8 +93,8 @@ def subscription_handler(obj, update_nr, subscription_id):
     }
 
     handle_block_data(block_dict)
- 
-    return {'message': 'Subscription will cancel when a value is returned', 'updates_processed': update_nr}
+    if producer_config["one_block"]:
+        return {'message': 'Subscription will cancel when a value is returned', 'updates_processed': update_nr}
 
 
 if __name__ == "__main__":
