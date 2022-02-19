@@ -1,59 +1,10 @@
-from mongoengine import Document
-from mongoengine.fields import IntField, StringField, DictField, ReferenceField, ListField, DateTimeField, BooleanField,DynamicField
-from mongoengine import connect
-import json
 from typing import List
 import datetime
 
-class Header(Document):
-    number = IntField()
-    extrinsicsRoot = StringField()
-    parentHash = StringField()
-    stateRoot = StringField()
-    digest = DictField()
-    author = StringField()
-    """
-    @staticmethod
-    def create(json: dict) -> Header:
-        return Header(*json) 
-    """
-class Event(Document):
+from models import Block,Header,Extrinsic,Event
 
-    event_order_id = IntField() #denotes in which order the events happened. given n events the first event in block has 0 last event has n-1
-    phase = StringField()
-    extrinsic_idx = IntField()
-    event_id = IntField()
-    event_index = IntField()
-    module_id = StringField()
-    event_id = StringField()
-    attributes = DynamicField()
-    topics = ListField()
-    
-
-class Extrinsic(Document):
-    extrinsic_hash = StringField()
-    extrinsic_length = IntField()
-    address = StringField()
-    signature = DictField()
-    era = ListField()
-    nonce = IntField()
-    tip = IntField()
-    call = DictField()
-    events = ListField(ReferenceField(Event))
-    was_successfull = BooleanField()
-
-
-class Block(Document):
-    number = IntField(required=True, unique=True)
-    hash = StringField()
-    timestamp = DateTimeField(required=True)
-    header = ReferenceField(Header)
-    extrinsics = ListField(ReferenceField(Extrinsic))
-    
 
 def handle_full_block(data):
-    with open("block_data/9038779.json", "r") as f:
-        data = json.loads(f.read())
 
     header = insert_header(data["header"])
     extrinsics = handle_extrinsics_and_events(data)
@@ -71,6 +22,7 @@ def handle_full_block(data):
         timestamp=timestamp
     )
     block.save()
+    print(block)
 
 
 def insert_header(header_data) -> Header:
@@ -99,8 +51,6 @@ def handle_extrinsics_and_events(data) -> List[Extrinsic]:
         # an extrinsic_hash of None indicates ParaInherent transactions or Timestamp transactions
         # timestamp is already handled above
         current_events = handle_events(events_data, i)
-        print(type(current_events))
-        print(type(current_events[0]))
         #last event denotes if ectrinsic was successfull
         was_successfull = current_events[-1].event_id == "ExtrinsicSuccess"        
         extrinsic = Extrinsic(**extrinsic_data, events=current_events, was_successfull=was_successfull)
@@ -146,11 +96,3 @@ def insert_event(event_data):
     return event
 
 
-
-
-
-if __name__ == "__main__":
-    db_connection = connect("example", host="mongomock://localhost", alias="default")
-    with open("block_data/9038779.json", "r") as f:
-        data = json.loads(f.read())    
-    handle_full_block(data)
