@@ -8,13 +8,14 @@ def jsonize_events(block_hash):
     count = 0
     for event in events:
         print(event)
+        substrate.serialize_module_event(ev)
         event_jsonized = str(event)
         event_jsonized = event_jsonized.replace("'",'"').replace("(","[").replace(")","]").replace("None","null")
         print(event_jsonized[140:160])
         
         try:
             events_jsonized.append(json.loads(event_jsonized))
-        except TypeError or json.decoder.JSONDecoder:
+        except TypeError or json.decoder.JSONDecoder as e:
             logging.error(f"Error {e} in block {block_hash}. JSON serialization failed for event #{count}")
             logging.debug(f"Event content:\n{event_jsonized}")
 
