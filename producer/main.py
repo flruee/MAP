@@ -3,7 +3,7 @@ from substrateinterface import SubstrateInterface
 import json
 import logging
 from kafka import KafkaProducer
-
+import ssl
 def string_replacer(data):
     return data.replace("'",'"').replace("(","[").replace(")","]").replace("None","null")
 
@@ -107,11 +107,18 @@ if __name__ == "__main__":
     producer_config = config["producer"]
 
     logging.basicConfig(filename='producer.log', level=producer_config["logLevel"])
-    
+    sslopt = {
+        "sslopt": {
+            "cert_reqs": ssl.CERT_NONE
+            }
+    }
+
     substrate = SubstrateInterface(
         url=polkadot_config["url"],
         ss58_format=polkadot_config["ss58_format"],
-        type_registry_preset=polkadot_config["type_registry_preset"]
+        type_registry_preset=polkadot_config["type_registry_preset"],
+        
+        ws_options=sslopt
     )
 
     producer = KafkaProducer(
