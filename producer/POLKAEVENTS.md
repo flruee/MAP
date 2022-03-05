@@ -2,6 +2,39 @@
 
 ## [Polkadot lightpaper](https://polkadot.network/Polkadot-lightpaper.pdf)
 
+A block is produced every 6 seconds.
+
+tx_fee model:
+
+- Weight fee
+	- base weight accounts for the overhead of inclusion (e.g. signature verification)
+	- call weight accounts for the time to execute the transaction
+- length fee
+- tip
+
+The inclusion fee is deducted from the sender's account before transaction execution. A portion of the fee will go to the block author, and the remainder will go to the Treasury. This is 20% and 80%, respectively.
+
+Block Limits and Transaction Priority
+Blocks in Polkadot have both a maximum length (in bytes) and a maximum weight. Block producers will fill blocks with transactions up to these limits. A portion of each block - currently 25% - is reserved for critical transactions that are related to the chain's operation. Block producers will only fill up to 75% of a block with normal transactions. Some examples of operational transactions:
+
+- Misbehavior reports
+- Council operations
+- Member operations in an election (e.g. renouncing candidacy)
+Block producers prioritize transactions based on each transaction's total fee. Since a portion of the fee will go to the block producer, producers will include the transactions with the highest fees to maximize their reward.
+
+
+## [PolkadotEvents](https://polkadot.js.org/docs/substrate/events/)
+
+Extrinsics
+= pieces of info that come from outside of chain. three categories:
+-signed tx
+signed transactions come from an account that has funds, and therefore Polkadot can charge a transaction fee as a way to prevent spam.
+-unsigned tx
+Unsigned transactions are for special cases where a user needs to submit an extrinsic from a key pair that does not control funds. For example, when users claim their DOT tokens after genesis, their DOT address doesn't have any funds yet, so that uses an unsigned transaction. Validators also submit unsigned transactions in the form of "heartbeat" messages to indicate that they are online. These heartbeats must be signed by one of the validator's session keys. Session keys never control funds. Unsigned transactions are only used in special cases because, since Polkadot cannot charge a fee for them, each one needs its own, custom validation logic.
+-inherents.
+inherents are pieces of information that are not signed or included in the transaction queue. As such, only the block author can add inherents to a block. Inherents are assumed to be "true" simply because a sufficiently large number of validators have agreed on them being reasonable. For example, Polkadot blocks include a timestamp inherent. There is no way to prove that a timestamp is true the way one proves the desire to send funds with a signature. Rather, validators accept or reject the block based on how reasonable they find the timestamp. In Polkadot, it must be within some acceptable range of their own system clocks.
+
+
 Relay Chain:
 The heart of Polkadot,
 responsible for the
@@ -43,6 +76,10 @@ Nominators:
 Secure the Relay Chain by selecting
 trustworthy validators and staking
 DOTs.
+can nominate themselves as validator or someone else. However if nominated node misbehaves,
+they lose dot aswell. One can un-nominate at any time. Unbonding period of 28 days on main, 7 days on kusama. Every era may be assigned different active nomination amongst validators you,
+select. Validators can currently only have 256 nominators. Others will not receive rewards. Mapping computed offchain (& has to fit on single block). Rewards are "lazy" - i.e. one must actively claim rewards.
+
 
 Fishermen:
 Monitor the network and report bad
@@ -93,6 +130,14 @@ A notable advantage, however, is that Moonriver / Moonbeam is still a Substrate 
 
 
 ## [Polkadot Consensus](https://wiki.polkadot.network/docs/learn-consensus)
+
+
+Voting on a referendum
+To vote, a voter generally must lock their tokens up for at least the enactment delay period beyond the end of the referendum. This is in order to ensure that some minimal economic buy-in to the result is needed and to dissuade vote selling.
+
+It is possible to vote without locking at all, but your vote is worth a small fraction of a normal vote, given your stake. At the same time, holding only a small amount of tokens does not mean that the holder cannot influence the referendum result, thanks to time-locking. 
+
+
 
 ## [Tool for decoding method data/hex-encoded call](https://polkadot.js.org/apps/#/extrinsics/decode)
 
