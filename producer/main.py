@@ -9,8 +9,10 @@ def string_replacer(data):
 
 
 def handle_block_data(block_dict, kafka=True):
+    key = bytes(str(block_dict["number"]),"utf-8")
+
     if kafka:
-        producer.send(kafka_config["topic"],value=block_dict)
+        producer.send(kafka_config["topic"],value=block_dict, key=key)
 
     if producer_config["logLevel"] <= 10:
         with open("block.json", "w+") as f:
@@ -107,6 +109,8 @@ if __name__ == "__main__":
     producer_config = config["producer"]
 
     logging.basicConfig(filename='producer.log', level=producer_config["logLevel"])
+
+    #needed for self signed certificate
     sslopt = {
         "sslopt": {
             "cert_reqs": ssl.CERT_NONE
