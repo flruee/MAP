@@ -43,7 +43,7 @@ def handle_block(block):
         return {'message': 'Subscription will cancel when a value is returned', 'updates_processed': update_nr}
 
 def string_replacer(data):
-    return data.replace("'",'"').replace("(","[").replace(")","]").replace("None","null")
+    return data.replace("'",'"').replace("(","[").replace(")","]").replace("None","null").replace("True", "true").replace("False", "false")
 
 def safe_open_w(path):
     ''' Open "path" for writing, creating any parent directories as needed.
@@ -104,7 +104,7 @@ def jsonize_events(block_hash):
         try:
             json.dumps(event_jsonized, indent=4)
             events_jsonized.append(json.loads(event_jsonized))
-        except TypeError or json.decoder.JSONDecoder:
+        except (TypeError,json.decoder.JSONDecodeError) as e:
             logging.error(f"Error {e} in block {block_hash}. JSON serialization failed for event #{count}")
             logging.debug(f"Event content:\n{event_jsonized}")
 
