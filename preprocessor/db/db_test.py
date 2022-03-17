@@ -17,7 +17,7 @@ if __name__ == "__main__":
     query = """
         query {
             blocks {
-                number
+                header
             }
         }
     """
