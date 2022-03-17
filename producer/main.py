@@ -3,14 +3,16 @@ from substrateinterface import SubstrateInterface
 import json
 import logging
 from kafka import KafkaProducer
-
+import ssl
 def string_replacer(data):
     return data.replace("'",'"').replace("(","[").replace(")","]").replace("None","null")
 
 
 def handle_block_data(block_dict, kafka=True):
+    key = bytes(str(block_dict["number"]),"utf-8")
+
     if kafka:
-        producer.send(kafka_config["topic"],value=block_dict)
+        producer.send(kafka_config["topic"],value=block_dict, key=key)
 
     if producer_config["logLevel"] <= 10:
         with open("block.json", "w+") as f:
@@ -107,11 +109,20 @@ if __name__ == "__main__":
     producer_config = config["producer"]
 
     logging.basicConfig(filename='producer.log', level=producer_config["logLevel"])
-    
+
+    #needed for self signed certificate
+    sslopt = {
+        "sslopt": {
+            "cert_reqs": ssl.CERT_NONE
+            }
+    }
+
     substrate = SubstrateInterface(
         url=polkadot_config["url"],
         ss58_format=polkadot_config["ss58_format"],
-        type_registry_preset=polkadot_config["type_registry_preset"]
+        type_registry_preset=polkadot_config["type_registry_preset"],
+        
+        ws_options=sslopt
     )
 
     producer = KafkaProducer(

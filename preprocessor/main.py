@@ -1,18 +1,9 @@
-from asyncore import write
 import json
 import logging
-from kafka import KafkaConsumer, ConsumerRebalanceListener
+from kafka import KafkaConsumer
 
 
-#class Listener(ConsumerRebalanceListener)
-def handle_event(data,*args, **kwargs):
-    print(data)
-    print()
-    print(args)
-    print()
-    print(kwargs)
-    print()
-    exit()
+
 if __name__ == "__main__":
 
     with open("config.json","r") as f:
@@ -33,21 +24,10 @@ if __name__ == "__main__":
     for message in consumer:
         # message value and key are raw bytes -- decode if necessary!
         # e.g., for unicode: `message.value.decode('utf-8')`
-        print("topic")
-        print(message.topic)
-        print()
-        print("partition")
-        print(message.partition)
-        print()
-        print("offset")
-        print(message.offset)
-        print()
-        print("kex")
-        print(message.key)
-        print()
-        print("value")
+
+        x = message.key.decode("utf-8").replace("b","")
+        print(f"received block {message.key.decode('utf-8')}")
         data = json.loads(message.value)
-        print(data)
         with open(f"block_data/{data['number']}.json", "w+") as f:
             f.write(json.dumps(data,indent=4))
         #print ("%s:%d:%d: key=%s value=%s" % (message.topic, message.partition,

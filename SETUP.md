@@ -15,7 +15,7 @@ Make it executable
 ```sudo chmod +x polkadot```
 
 Run it  
-```./polkadot --name "Your Node's Name"```
+```./polkadot --name "polkaDotMapNode" --rpc-cors all --pruning=archive --wasm-execution Compiled"```
 
 You should either daemonize it via systemctl/supervisorctl or use the screen command to detach it from the current terminal.  
 
