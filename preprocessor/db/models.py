@@ -1,8 +1,12 @@
 from mongoengine import Document
-from mongoengine.fields import IntField, StringField, DictField, ReferenceField, ListField, DateTimeField, BooleanField,DynamicField
+from mongoengine.fields import IntField, StringField, DictField, ReferenceField, ListField, DateTimeField, \
+    BooleanField, DynamicField, FloatField
+
+"""
+BlockHeader Model
+"""
 
 class Header(Document):
-    number = IntField()
     extrinsicsRoot = StringField()
     parentHash = StringField()
     stateRoot = StringField()
@@ -36,7 +40,7 @@ class Extrinsic(Document):
     tip = IntField()
     call = DictField()
     events = ListField(ReferenceField(Event))
-    was_successfull = BooleanField()
+    was_successful = BooleanField()
 
 
 class Block(Document):
@@ -45,4 +49,173 @@ class Block(Document):
     timestamp = DateTimeField(required=True)
     header = ReferenceField(Header)
     extrinsics = ListField(ReferenceField(Extrinsic))
-    
+
+
+"""
+Transfer Model
+"""
+
+
+class Transfer(Document):
+    extrinsic_id = StringField()
+    block = IntField()
+    time = DateTimeField()
+    from_address = StringField()
+    to_address = StringField()
+    value = FloatField()
+    fee = FloatField()
+    result = BooleanField()
+    hash = StringField()
+
+
+"""
+Vote Model
+"""
+
+
+class Vote(Document):
+    validator = StringField()
+    validator_bonded = FloatField()
+    total_bonded = FloatField()
+    nominator = IntField()
+    commission = FloatField()
+    my_share = FloatField()
+
+
+"""
+reward&slashed Model
+"""
+
+
+class RewardSlash(Document):
+    event_id = StringField()
+    action = StringField()
+    validator = StringField()
+    era = IntField()
+    value = IntField()
+    time = DateTimeField()
+
+
+"""
+Account Model
+"""
+
+
+class Validator(Document):
+    address = StringField()
+    commission = FloatField()
+    grandpa_vote = IntField()
+    reward_point = IntField()
+    latest_mining = IntField()
+    nominator = IntField()
+
+
+
+class Locked(Document):
+    bonded = IntField()
+    unbonding = IntField()
+    democracy = IntField()
+    election = IntField()
+    vesting = IntField()
+
+
+class Balance(Document):
+    transferable = IntField
+    reserved = IntField()
+    locked = ListField(ReferenceField(Locked))
+
+
+class BasicInfo(Document):
+    account_index = IntField()
+    nonce = IntField()
+    role = StringField()
+
+
+class Account(Document):
+    address = StringField(required=True, unique=True)
+    balance = ListField(ReferenceField(Balance))
+    basic_info = ListField(ReferenceField(BasicInfo))
+    extrinsics = ListField(ReferenceField(Extrinsic))
+    transfers = ListField(ReferenceField(Transfer))
+    vote = ListField(ReferenceField(Vote))
+    reward_slash = ListField(ReferenceField(RewardSlash))
+
+
+"""
+Crowdloan Model
+"""
+
+
+class Crowdloan(Document):
+    status = StringField() # selection of [active, completed, retired]
+    para_id = IntField()
+    project = StringField()
+    owner = StringField()
+    lease_period = StringField()
+    fund_raised = IntField()
+    fund_cap = IntField()
+    countdown = DateTimeField() # example : 96 days 5 hrs
+    contributor = IntField()
+
+
+"""
+Bid Model
+"""
+
+
+class Bid(Document):
+    auction_index = IntField()
+    lease_period = StringField()
+    best_bid = FloatField()
+    campaign_status = BooleanField() # maybe its string
+
+
+
+"""
+Auction Model
+"""
+
+class Auction(Document):
+    auction_index = IntField()
+    lease_period = StringField()
+    winner = StringField()
+    status = StringField()
+    start_block = IntField()
+    ending_period_starts = IntField()
+    end_block = IntField()
+    retroactive_ending_block = IntField()
+
+
+
+"""
+Parachain Model
+"""
+
+
+class Parachain(Document):
+    para_id = StringField(required=True)
+    project_name = StringField()
+    fund_id = StringField()
+    fund_account = StringField()
+    sovereign_account = StringField()
+    lease_period = StringField()
+    owner = StringField()
+    parachain_total_slot = IntField()
+    parathread = IntField()
+    auction = ListField(ReferenceField(Auction))
+    current_lease = IntField()
+    register_status = StringField()
+    register_extrinsic = StringField()
+    slot_type = StringField()
+
+
+"""
+Chain Model
+"""
+
+class Chain(Document):
+    consensus = StringField()
+    blocks = ListField(ReferenceField(Block))
+    accounts = ListField(ReferenceField(Account))
+    parachains = ListField(ReferenceField(Parachain))
+

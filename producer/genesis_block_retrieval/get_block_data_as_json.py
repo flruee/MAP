@@ -93,6 +93,7 @@ def jsonize_extrinsic(block_hash):
 
     return extrinsics
 
+
 def jsonize_events(block_hash):
     events = substrate.get_events(block_hash)
     events_jsonized = []
@@ -108,18 +109,14 @@ def jsonize_events(block_hash):
             logging.error(f"Error {e} in block {block_hash}. JSON serialization failed for event #{count}")
             logging.debug(f"Event content:\n{event_jsonized}")
 
-        count+=1
-
+        count += 1
     return events_jsonized
         
-
-
 
 if __name__ == "__main__":
     from_block = int(sys.argv[1])
     to_block = int(sys.argv[2])
-
-    with open("config.json","r") as f:
+    with open("config.json", "r") as f:
         config = json.loads(f.read())
 
     polkadot_config = config["node"]
