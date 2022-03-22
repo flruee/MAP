@@ -7,6 +7,8 @@ BlockHeader Model
 """
 
 class Header(Document):
+    meta = {'collection': 'header'}
+
     extrinsicsRoot = StringField()
     parentHash = StringField()
     stateRoot = StringField()
@@ -44,6 +46,8 @@ class Extrinsic(Document):
 
 
 class Block(Document):
+    meta = {'collection': 'block'}
+
     number = IntField(required=True, unique=True)
     hash = StringField()
     timestamp = DateTimeField(required=True)

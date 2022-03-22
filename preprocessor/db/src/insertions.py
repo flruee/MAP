@@ -1,7 +1,16 @@
 from typing import List
 import datetime
+import json
+from src.models.models import Block,Header,Extrinsic,Event
 
-from models import Block,Header,Extrinsic,Event
+
+def handle_blocks(start, end):
+    for i in range(start, end+1):
+        with open(f"small_block_dataset/{i}.json", "r") as f:
+            data = json.loads(f.read())  
+
+        handle_full_block(data)
+
 
 
 def handle_full_block(data):
@@ -22,10 +31,14 @@ def handle_full_block(data):
         timestamp=timestamp
     )
     block.save()
-    print(block)
 
 
 def insert_header(header_data) -> Header:
+    """
+    Removes unnecessary fields from header data, then creates a Header object, stores it and returns it 
+    """
+    header_data["header"].pop("number")
+    header_data["header"].pop("hash")
     header = Header(**header_data["header"], author=header_data["author"])
     header.save()
     return header
