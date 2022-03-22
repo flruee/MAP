@@ -15,6 +15,10 @@ if __name__ == "__main__":
             block {
                 hash
                 number
+                header 
+                { 
+                extrinsicsRoot
+                }
             }
             }
     """
