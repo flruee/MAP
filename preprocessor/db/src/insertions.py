@@ -65,8 +65,8 @@ def handle_extrinsics_and_events(data) -> List[Extrinsic]:
         # timestamp is already handled above
         current_events = handle_events(events_data, i)
         #last event denotes if ectrinsic was successfull
-        was_successfull = current_events[-1].event_id == "ExtrinsicSuccess"        
-        extrinsic = Extrinsic(**extrinsic_data, events=current_events, was_successfull=was_successfull)
+        was_successful = current_events[-1].event_id == "ExtrinsicSuccess"
+        extrinsic = Extrinsic(**extrinsic_data, events=current_events, was_successful=was_successful)
         extrinsic.save()
 
         extrinsics.append(extrinsic)

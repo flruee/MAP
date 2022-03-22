@@ -47,7 +47,6 @@ class Extrinsic(Document):
 
 class Block(Document):
     meta = {'collection': 'block'}
-
     number = IntField(required=True, unique=True)
     hash = StringField()
     timestamp = DateTimeField(required=True)
