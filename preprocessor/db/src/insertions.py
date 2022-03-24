@@ -1,7 +1,10 @@
 from typing import List
 import datetime
 import json
-from src.models.models import Block,Header,Extrinsic,Event
+from src.models import Block,Header,Extrinsic,Event, Account
+from src.event_handlers import SystemEventHandler, BalancesEventHandler
+
+
 
 
 def handle_blocks(start, end):
@@ -14,7 +17,6 @@ def handle_blocks(start, end):
 
 
 def handle_full_block(data):
-
     header = insert_header(data["header"])
     extrinsics = handle_extrinsics_and_events(data)
 
@@ -31,6 +33,8 @@ def handle_full_block(data):
         timestamp=timestamp
     )
     block.save()
+
+    special_event(block)
 
 
 def insert_header(header_data) -> Header:
@@ -66,6 +70,15 @@ def handle_extrinsics_and_events(data) -> List[Extrinsic]:
         current_events = handle_events(events_data, i)
         #last event denotes if ectrinsic was successfull
         was_successful = current_events[-1].event_id == "ExtrinsicSuccess"
+
+
+        # if no era create an empty list
+        if not "era" in extrinsic_data.keys():
+            extrinsic_data["era"] = [None]
+        # change immortal transactions "00" to -1
+        if extrinsic_data["era"] == "00":
+            extrinsic_data["era"] = [-1]
+        
         extrinsic = Extrinsic(**extrinsic_data, events=current_events, was_successful=was_successful)
         extrinsic.save()
 
@@ -73,7 +86,8 @@ def handle_extrinsics_and_events(data) -> List[Extrinsic]:
         
 
 
-        
+    #if len(extrinsics)> 0:
+    #    return extrinsics[0]
     return extrinsics
 
 def handle_events(events, extrinsic_idx) -> List[Event]:
@@ -107,5 +121,28 @@ def insert_event(event_data):
     event.save()
 
     return event
+
+
+def special_event(block):
+    """
+    Each event has some implications on the overall data model. This function here differentiates between
+    the different modules and then uses a event handler class to handle the specific event.
+    e.g. the event "NewAccount" of the "Systems" module means that we have to create a new Account entry.
+
+    Since not all data relevant for us is contained in the event data (sometimes we additionally need to know the blocknumber or time)
+    we use the whole block.
+    """
+
+    for extrinsic in block.extrinsics:
+
+        for event in extrinsic.events:
+            print(f"{event.module_id}: {event.event_id}")
+
+            if event.module_id == "System":
+                SystemEventHandler.handle_event(block, extrinsic, event)
+
+            elif event.module_id == "Balances":
+                BalancesEventHandler.handle_event(block, extrinsic, event)
+
 
 
