@@ -5,6 +5,16 @@ from src.models import Block, Extrinsic, Event
 import logging
 
 def decorator_factory(decorator):
+    """
+    Meta decorator
+    Is used to decorate other decorators such that they can have passed an argument
+    e.g. 
+    @decorator(argument)
+    would not work if decorator isn't decorated with this decorator
+    It is used mostly for the event_error_handling such that we can decorate a function with an exception and
+    log it if something bad happened
+    """
+
     def layer(error,*args, **kwargs):
 
         def repl(f,*args, **kwargs):
@@ -16,10 +26,13 @@ def decorator_factory(decorator):
 @decorator_factory
 def event_error_handling(function, error, *args, **kwargs):
     """
-    This decorator extracts the username from an request, then uses the username and network
-    to find the specific Sender for that network. It finally calls the given function with the given
-    data and appends the sender object to it.
-    If no sender is found it will redirect to the sendersfunnel signup instead.
+    This decorator is used for error handling and logging
+
+    Usage:
+    @event_error_handling(LikelyExceptionThatShouldBeLogged)
+    def foo(bar):
+        ...
+    
     """
     def wrapper( block, extrinsic, event,*args, **kwargs):
 
