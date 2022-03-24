@@ -19,9 +19,13 @@ if __name__ == "__main__":
             {
             account {
                 address
+                balance {
+                    transferable,
+                    reserved,
+                    
+                }
             }
             }
     """
-    print(Account.objects.all()[0].address)
     result = schema.execute(query)
     print(result)

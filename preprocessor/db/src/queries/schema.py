@@ -1,7 +1,17 @@
 import graphene
 from graphene.relay import Node
+from graphene.types.scalars import BigInt
 from graphene_mongo import MongoengineObjectType
-from src.models import Block as BlockModel, Extrinsic as ExtrinsicModel, Header as HeaderModel, Account as AccountModel
+from src.models import (
+    Block as BlockModel,
+    Extrinsic as ExtrinsicModel,
+    Header as HeaderModel,
+    Account as AccountModel,
+    Balance as BalanceModel,
+    Locked as LockedModel
+
+)
+
 
 
 class BlockType(MongoengineObjectType):
@@ -24,13 +34,21 @@ class AccountType(MongoengineObjectType):
     class Meta:
         model = AccountModel
 
+
+class BalanceType(MongoengineObjectType):
+    class Meta:
+        model = BalanceModel
+
+class LockedType(MongoengineObjectType):
+    class Meta:
+        model = LockedModel
 class Query(graphene.ObjectType):
     node = Node.Field()
     block = graphene.List(BlockType)
     header = graphene.List(HeaderType)
     extrinsic = graphene.List(ExtrinsicType)
     account = graphene.List(AccountType)
-
+    transferable = BigInt()
 
     def resolve_block(self, info):
         return BlockModel.objects.all()
@@ -44,5 +62,15 @@ class Query(graphene.ObjectType):
     def resolve_account(self, info):
         return AccountModel.objects.all()
 
+    def resolve_balance(self, info):
+        return BalanceModel.objects.all()
+
+    def resolve_locked(self, info):
+        return LockedModel.objects.all()
+
+    def resolve_transferable(*args, **kwargs):
+        print("oi")
+        print(args)
+        print(kwargs)
 
 schema = graphene.Schema(query=Query)

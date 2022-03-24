@@ -1,6 +1,6 @@
 from mongoengine import Document
 from mongoengine.fields import IntField, StringField, DictField, ReferenceField, ListField, DateTimeField, \
-    BooleanField, DynamicField, FloatField
+    BooleanField, DynamicField, FloatField,LongField
 
 """
 BlockHeader Model
@@ -123,7 +123,9 @@ class Locked(Document):
 
 
 class Balance(Document):
-    transferable = IntField
+    # Values are bigger than 32bit int can handle, therefore used float as a workaround
+    #TODO find another field type
+    transferable = FloatField()
     reserved = IntField()
     locked = ListField(ReferenceField(Locked))
 
