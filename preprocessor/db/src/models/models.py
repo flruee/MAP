@@ -1,6 +1,8 @@
 from mongoengine import Document
 from mongoengine.fields import IntField, StringField, DictField, ReferenceField, ListField, DateTimeField, \
     BooleanField, DynamicField, FloatField,LongField
+import copy
+
 
 """
 BlockHeader Model
@@ -53,6 +55,8 @@ class Block(Document):
     timestamp = DateTimeField(required=True)
     header = ReferenceField(Header)
     extrinsics = ListField(ReferenceField(Extrinsic))
+
+
 
 
 """
@@ -127,6 +131,16 @@ class Balance(Document):
     reserved = IntField()
     locked = ListField(ReferenceField(Locked))
     block_number = IntField()
+
+    def copy(self):
+        return Balance(
+            transferable=self.transferable,
+            reserved=self.reserved,
+            locked=self.locked,
+            block_number=self.block_number
+        )
+
+
 
 
 

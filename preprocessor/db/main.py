@@ -30,3 +30,7 @@ if __name__ == "__main__":
     """
     result = schema.execute(query)
     print(result)
+    x = Account.objects.all()
+    for i in x:
+        for b in i.balances:
+            print(b.transferable)

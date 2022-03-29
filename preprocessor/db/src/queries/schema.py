@@ -48,7 +48,6 @@ class Query(graphene.ObjectType):
     header = graphene.List(HeaderType)
     extrinsic = graphene.List(ExtrinsicType)
     account = graphene.List(AccountType)
-    transferable = BigInt()
 
     def resolve_block(self, info):
         return BlockModel.objects.all()
@@ -67,10 +66,5 @@ class Query(graphene.ObjectType):
 
     def resolve_locked(self, info):
         return LockedModel.objects.all()
-
-    def resolve_transferable(*args, **kwargs):
-        print("oi")
-        print(args)
-        print(kwargs)
 
 schema = graphene.Schema(query=Query)
