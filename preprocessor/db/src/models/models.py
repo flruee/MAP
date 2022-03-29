@@ -43,6 +43,7 @@ class Extrinsic(Document):
     call = DictField()
     events = ListField(ReferenceField(Event))
     was_successful = BooleanField()
+    fee = FloatField()
 
 
 class Block(Document):
@@ -66,9 +67,7 @@ class Transfer(Document):
     from_address = StringField()
     to_address = StringField()
     value = FloatField()
-    fee = FloatField()
-    result = BooleanField()
-    hash = StringField()
+    extrinsic = ReferenceField(Extrinsic)
 
 
 """
@@ -130,20 +129,17 @@ class Balance(Document):
     locked = ListField(ReferenceField(Locked))
 
 
-class BasicInfo(Document):
-    account_index = IntField()
-    nonce = IntField()
-    role = StringField()
-
 
 class Account(Document):
     address = StringField(required=True, unique=True)
     balance = ListField(ReferenceField(Balance))
-    basic_info = ListField(ReferenceField(BasicInfo))
     extrinsics = ListField(ReferenceField(Extrinsic))
     transfers = ListField(ReferenceField(Transfer))
     vote = ListField(ReferenceField(Vote))
     reward_slash = ListField(ReferenceField(RewardSlash))
+    account_index = IntField()
+    nonce = IntField()
+    role = StringField()
 
 
 """
