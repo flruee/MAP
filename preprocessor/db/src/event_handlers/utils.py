@@ -40,6 +40,6 @@ def event_error_handling(function, error, *args, **kwargs):
             return function(block, extrinsic, event,*args, **kwargs)
         except error as e:
             
-            logging.error(f"{error.__name__}: {e}\t {function.__name__} failed at block {block.number} in extrinsic {extrinsic.extrinsic_hash} in event {event.extrinsic_idx}, {event.module_id}: {event.event_id}")
+            logging.error(f"{error.__name__}: {e}\t {function.__name__} failed at block {block.number} in extrinsic {extrinsic.extrinsic_hash} in event {event.extrinsic_idx}, {event.module_id}: {event.event_id}, {event.attributes[0]['value']}")
 
     return wrapper

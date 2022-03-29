@@ -1,6 +1,8 @@
+import logging
 from typing import List
 import datetime
 import json
+from src.event_handlers.utils import event_error_handling
 from src.models import Block,Header,Extrinsic,Event, Account
 from src.event_handlers import SystemEventHandler, BalancesEventHandler
 
@@ -122,7 +124,6 @@ def insert_event(event_data):
 
     return event
 
-
 def special_event(block):
     """
     Each event has some implications on the overall data model. This function here differentiates between
@@ -136,12 +137,13 @@ def special_event(block):
 
         for event in extrinsic.events:
             print(f"{event.module_id}: {event.event_id}")
+            try:
+                if event.module_id == "System":
+                    SystemEventHandler.handle_event(block, extrinsic, event)
 
-            if event.module_id == "System":
-                SystemEventHandler.handle_event(block, extrinsic, event)
-
-            elif event.module_id == "Balances":
-                BalancesEventHandler.handle_event(block, extrinsic, event)
-
+                elif event.module_id == "Balances":
+                    BalancesEventHandler.handle_event(block, extrinsic, event)
+            except Exception as e:
+                logging.error
 
 

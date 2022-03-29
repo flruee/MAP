@@ -2,7 +2,7 @@
 
 
 from src.models.models import Account, Block, Extrinsic, Event, Balance
-
+from src.event_handlers.utils import event_error_handling
 
 
 class SystemEventHandler():
@@ -13,6 +13,7 @@ class SystemEventHandler():
             SystemEventHandler.__handle_newAccount(block, extrinsic, event)
 
     @staticmethod
+    @event_error_handling(Exception)
     def __handle_newAccount(block: Block, extrinsic: Extrinsic, event: Event):
 
         balance = Balance(
@@ -22,7 +23,7 @@ class SystemEventHandler():
             block_number=block.number
         )
         balance.save()
-
+        
         account = Account(
             address=event.attributes[0]["value"],
             balances=[balance],
@@ -34,5 +35,8 @@ class SystemEventHandler():
             nonce=None,
             role=None  # Todo: check if List
         )
-
+        if account.address == "12SqZEsjmK83VmxEQsuLChWACxMXEnoQTfJyK5XqHVtAmy29":
+            print("oh no")
+            print(block.number)
         account.save()
+

@@ -26,11 +26,7 @@ class BalancesEventHandler():
     def __get_account(address: str, block_number: int):
         try:
             account = Account.objects.get(address=address)
-            print("not fail")
-            print(account.balances)
         except DoesNotExist:
-            print("fail")
-            print(address)
             balance = Balance(
                 transferable=0,
                 reserved=0,
@@ -60,6 +56,7 @@ class BalancesEventHandler():
         pass
 
     @staticmethod
+    @event_error_handling(Exception)
     def __handle_transfer(block: Block, extrinsic: Extrinsic, event: Event):
 
 

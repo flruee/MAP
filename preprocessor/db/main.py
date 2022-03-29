@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     db_connection = connect("example", host="mongomock://localhost", alias="default")
 
-    handle_blocks(4710600, 4710601)
+    handle_blocks(4710600, 4711601)
     query = """
             {
             account {
@@ -28,9 +28,10 @@ if __name__ == "__main__":
             }
             }
     """
-    result = schema.execute(query)
-    print(result)
-    x = Account.objects.all()
-    for i in x:
-        for b in i.balances:
-            print(b.transferable)
+    #result = schema.execute(query)
+    result = Account.objects.get(address="12vT2aGAtnqBHopieTcj7ETpsLm9YkXkcK41BAjFcfwxabHJ")
+    
+    print(len(result.balances))
+
+    for i in result.balances:
+        print(i.block_number, i.transferable)
