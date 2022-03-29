@@ -65,12 +65,12 @@ Transfer Model
 
 
 class Transfer(Document):
-    extrinsic_id = StringField()
     block_number = IntField()
     from_address = StringField()
     to_address = StringField()
     value = FloatField()
     extrinsic = ReferenceField(Extrinsic)
+    type = StringField()
 
 
 """

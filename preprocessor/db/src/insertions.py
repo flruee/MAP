@@ -2,6 +2,7 @@ import logging
 from typing import List
 import datetime
 import json
+from src.event_handlers.staking_events import StakingEventHandler
 from src.event_handlers.utils import event_error_handling
 from src.models import Block,Header,Extrinsic,Event, Account
 from src.event_handlers import SystemEventHandler, BalancesEventHandler
@@ -13,7 +14,6 @@ def handle_blocks(start, end):
     for i in range(start, end+1):
         with open(f"small_block_dataset/{i}.json", "r") as f:
             data = json.loads(f.read())  
-
         handle_full_block(data)
 
 
@@ -53,7 +53,7 @@ def handle_extrinsics_and_events(data) -> List[Extrinsic]:
     events_data = data["events"]
 
     extrinsics = []
-    for i in range(2,len(data["extrinsics"])):
+    for i in range(1,len(data["extrinsics"])):
         """
         #index 0 is reserved for the timestamp transaction in extrinsics.
         
@@ -66,6 +66,7 @@ def handle_extrinsics_and_events(data) -> List[Extrinsic]:
         if i == 1:
             continue
         """
+        #TODO make a parainherent check here
         extrinsic_data = data["extrinsics"][i]
         # an extrinsic_hash of None indicates ParaInherent transactions or Timestamp transactions
         # timestamp is already handled above
@@ -134,16 +135,15 @@ def special_event(block):
     we use the whole block.
     """
     for extrinsic in block.extrinsics:
-
         for event in extrinsic.events:
             print(f"{event.module_id}: {event.event_id}")
-            try:
-                if event.module_id == "System":
-                    SystemEventHandler.handle_event(block, extrinsic, event)
+            if event.module_id == "System":
+                SystemEventHandler.handle_event(block, extrinsic, event)
 
-                elif event.module_id == "Balances":
-                    BalancesEventHandler.handle_event(block, extrinsic, event)
-            except Exception as e:
-                logging.error
+            elif event.module_id == "Balances":
+                BalancesEventHandler.handle_event(block, extrinsic, event)
+            elif event.module_id == "Staking":
+                StakingEventHandler.handle_event(block, extrinsic, event)
+          
 
 

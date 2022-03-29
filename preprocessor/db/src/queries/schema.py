@@ -8,7 +8,8 @@ from src.models import (
     Header as HeaderModel,
     Account as AccountModel,
     Balance as BalanceModel,
-    Locked as LockedModel
+    Locked as LockedModel,
+    Transfer as TransferModel
 
 )
 
@@ -42,12 +43,17 @@ class BalanceType(MongoengineObjectType):
 class LockedType(MongoengineObjectType):
     class Meta:
         model = LockedModel
+
+class TransferType(MongoengineObjectType):
+    class Meta:
+        model = TransferModel
 class Query(graphene.ObjectType):
     node = Node.Field()
     block = graphene.List(BlockType)
     header = graphene.List(HeaderType)
     extrinsic = graphene.List(ExtrinsicType)
     account = graphene.List(AccountType)
+    transfer = graphene.List(TransferType)
 
     def resolve_block(self, info):
         return BlockModel.objects.all()
@@ -66,5 +72,9 @@ class Query(graphene.ObjectType):
 
     def resolve_locked(self, info):
         return LockedModel.objects.all()
+
+    def resolve_transfer(self, info):
+        print("ho")
+        return TransferModel.objects.all()
 
 schema = graphene.Schema(query=Query)

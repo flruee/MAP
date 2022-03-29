@@ -80,7 +80,8 @@ class BalancesEventHandler():
             from_address=from_account.address,
             to_address=to_account.address,
             value=event.attributes[2]["value"],
-            extrinsic=extrinsic
+            extrinsic=extrinsic,
+            type="Transfer"
         )
         transfer.save()
 
