@@ -132,7 +132,6 @@ def special_event(block):
     Since not all data relevant for us is contained in the event data (sometimes we additionally need to know the blocknumber or time)
     we use the whole block.
     """
-
     for extrinsic in block.extrinsics:
 
         for event in extrinsic.events:

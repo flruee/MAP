@@ -62,8 +62,7 @@ Transfer Model
 
 class Transfer(Document):
     extrinsic_id = StringField()
-    block = IntField()
-    time = DateTimeField()
+    block_number = IntField()
     from_address = StringField()
     to_address = StringField()
     value = FloatField()
@@ -127,12 +126,13 @@ class Balance(Document):
     transferable = FloatField()
     reserved = IntField()
     locked = ListField(ReferenceField(Locked))
+    block_number = IntField()
 
 
 
 class Account(Document):
     address = StringField(required=True, unique=True)
-    balance = ListField(ReferenceField(Balance))
+    balances = ListField(ReferenceField(Balance))
     extrinsics = ListField(ReferenceField(Extrinsic))
     transfers = ListField(ReferenceField(Transfer))
     vote = ListField(ReferenceField(Vote))

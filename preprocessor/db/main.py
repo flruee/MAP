@@ -19,9 +19,10 @@ if __name__ == "__main__":
             {
             account {
                 address
-                balance {
+                balances {
                     transferable,
                     reserved,
+                    blockNumber
                     
                 }
             }
