@@ -1,6 +1,7 @@
 from src.event_handlers.utils import event_error_handling, get_account
 from src.models import Account, Block, Extrinsic, Event, Balance, Transfer
 from mongoengine.errors import DoesNotExist
+from src.event_handlers.utils import transfer
 import logging
 from copy import deepcopy
 
@@ -28,22 +29,14 @@ class BalancesEventHandler:
         pass
 
     @staticmethod
-    @event_error_handling(Exception)
+    #@event_error_handling(Exception)
     def __handle_transfer(block: Block, extrinsic: Extrinsic, event: Event):
 
         from_account = get_account(event.attributes[0]["value"], block.block_number)
         to_account = get_account(event.attributes[1]["value"], block.block_number)
-        from_account_balance = deepcopy(from_account.balances[-1])
-        to_account_balance = deepcopy(to_account.balances[-1])
-        
-        from_account_balance.id = None
-        to_account_balance.id = None
-        # todo: refactor with transfer func from utils
-        from_account_balance.transferable -= event.attributes[2]["value"]  # Subtract Balance from from_account
-        to_account_balance.transferable += event.attributes[2]["value"]    # Add Balance to to_account
-
-        from_account.balances.append(from_account_balance)
-        to_account.balances.append(to_account_balance)
+        subbalance = "transferable"
+        from_account, to_account = transfer(from_account, to_account, event.attributes[2]["value"],
+                                            subbalance, subbalance)
 
         transfer = Transfer(
             block_number=block.block_number,
@@ -54,9 +47,6 @@ class BalancesEventHandler:
             type="Transfer"
         )
         transfer.save()
-
-        from_account_balance.save()
-        to_account_balance.save()
 
         from_account.transfers.append(transfer)
         to_account.transfers.append(transfer)

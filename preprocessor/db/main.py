@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     db_connection = connect("example", host="mongomock://localhost", alias="default")
 
-    handle_blocks(4712248, 4712249)
+    handle_blocks(4721594, 4721595)
     query = """
             {
             account {
@@ -24,8 +24,10 @@ if __name__ == "__main__":
                     bonded,
                     unbonding,
                     blockNumber
-                    
                 }
+            transfers{
+            value
+            }
             }
             }
     """
