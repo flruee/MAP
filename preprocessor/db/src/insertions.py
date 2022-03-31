@@ -8,14 +8,11 @@ from src.models import Block,Header,Extrinsic,Event, Account
 from src.event_handlers import SystemEventHandler, BalancesEventHandler
 
 
-
-
 def handle_blocks(start, end):
     for i in range(start, end+1):
         with open(f"small_block_dataset/{i}.json", "r") as f:
             data = json.loads(f.read())  
         handle_full_block(data)
-
 
 
 def handle_full_block(data):
@@ -25,13 +22,13 @@ def handle_full_block(data):
     #first extrinsic contains the timestamp
     #datetime.fromtimestamp doesn't handle milliseconds
     timestamp = data["extrinsics"][0]["call"]["call_args"][0]["value"]
-    timestamp = datetime.datetime(1970,1,1) + datetime.timedelta(milliseconds=timestamp)
+    timestamp = datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=timestamp)
 
     block = Block(
-        number = data["number"],
-        hash = data["hash"],
-        header = header,
-        extrinsics = extrinsics,
+        block_number=data["number"],
+        hash=data["hash"],
+        header=header,
+        extrinsics=extrinsics,
         timestamp=timestamp
     )
     block.save()
@@ -48,6 +45,7 @@ def insert_header(header_data) -> Header:
     header = Header(**header_data["header"], author=header_data["author"])
     header.save()
     return header
+
 
 def handle_extrinsics_and_events(data) -> List[Extrinsic]:
     events_data = data["events"]
@@ -93,6 +91,7 @@ def handle_extrinsics_and_events(data) -> List[Extrinsic]:
     #    return extrinsics[0]
     return extrinsics
 
+
 def handle_events(events, extrinsic_idx) -> List[Event]:
     """
         Iterates through events, selects those that have the same extrinsic_idx as the given one
@@ -125,6 +124,7 @@ def insert_event(event_data):
 
     return event
 
+
 def special_event(block):
     """
     Each event has some implications on the overall data model. This function here differentiates between
@@ -139,7 +139,6 @@ def special_event(block):
             print(f"{event.module_id}: {event.event_id}")
             if event.module_id == "System":
                 SystemEventHandler.handle_event(block, extrinsic, event)
-
             elif event.module_id == "Balances":
                 BalancesEventHandler.handle_event(block, extrinsic, event)
             elif event.module_id == "Staking":

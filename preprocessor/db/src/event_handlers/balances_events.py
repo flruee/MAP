@@ -1,10 +1,11 @@
-from src.event_handlers.utils import event_error_handling
+from src.event_handlers.utils import event_error_handling, get_account
 from src.models import Account, Block, Extrinsic, Event, Balance, Transfer
 from mongoengine.errors import DoesNotExist
 import logging
 from copy import deepcopy
 
-class BalancesEventHandler():
+
+class BalancesEventHandler:
 
     @staticmethod
     def handle_event(block: Block, extrinsic: Extrinsic, event: Event):
@@ -21,35 +22,6 @@ class BalancesEventHandler():
         """
         pass
 
-
-    @staticmethod
-    def __get_account(address: str, block_number: int):
-        try:
-            account = Account.objects.get(address=address)
-        except DoesNotExist:
-            balance = Balance(
-                transferable=0,
-                reserved=0,
-                locked=[],
-                block_number=block_number
-            )
-            balance.save()
-            account = Account(
-                address=address,
-                balances=[balance],
-                extrinsics=[],
-                transfers=[],
-                vote=[],
-                reward_slash=[],
-                account_index=None,
-                nonce=None,
-                role=None)
-
-            account.save()
-
-        return account
-
-
     @staticmethod
     def __get_balance():
 
@@ -59,16 +31,14 @@ class BalancesEventHandler():
     @event_error_handling(Exception)
     def __handle_transfer(block: Block, extrinsic: Extrinsic, event: Event):
 
-
-
-        from_account = BalancesEventHandler.__get_account(event.attributes[0]["value"], block.number)
-        to_account = BalancesEventHandler.__get_account(event.attributes[1]["value"], block.number)
+        from_account = get_account(event.attributes[0]["value"], block.block_number)
+        to_account = get_account(event.attributes[1]["value"], block.block_number)
         from_account_balance = deepcopy(from_account.balances[-1])
         to_account_balance = deepcopy(to_account.balances[-1])
         
         from_account_balance.id = None
         to_account_balance.id = None
-
+        # todo: refactor with transfer func from utils
         from_account_balance.transferable -= event.attributes[2]["value"]  # Subtract Balance from from_account
         to_account_balance.transferable += event.attributes[2]["value"]    # Add Balance to to_account
 
@@ -76,7 +46,7 @@ class BalancesEventHandler():
         to_account.balances.append(to_account_balance)
 
         transfer = Transfer(
-            block_number=block.number,
+            block_number=block.block_number,
             from_address=from_account.address,
             to_address=to_account.address,
             value=event.attributes[2]["value"],

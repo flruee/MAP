@@ -50,7 +50,7 @@ class Extrinsic(Document):
 
 class Block(Document):
     meta = {'collection': 'block'}
-    number = IntField(required=True, unique=True)
+    block_number = IntField(required=True, unique=True)
     hash = StringField()
     timestamp = DateTimeField(required=True)
     header = ReferenceField(Header)
@@ -115,21 +115,13 @@ class Validator(Document):
     nominator = IntField()
 
 
-
-class Locked(Document):
-    bonded = IntField()
-    unbonding = IntField()
-    democracy = IntField()
-    election = IntField()
-    vesting = IntField()
-
-
 class Balance(Document):
     # Values are bigger than 32bit int can handle, therefore used float as a workaround
     #TODO find another field type
     transferable = FloatField()
-    reserved = IntField()
-    locked = ListField(ReferenceField(Locked))
+    reserved = FloatField()
+    bonded = FloatField()
+    unbonding = FloatField()
     block_number = IntField()
 
     def copy(self):

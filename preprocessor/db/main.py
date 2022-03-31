@@ -14,20 +14,17 @@ if __name__ == "__main__":
 
     db_connection = connect("example", host="mongomock://localhost", alias="default")
 
-    handle_blocks(4716583, 4716584)
+    handle_blocks(4712248, 4712249)
     query = """
             {
             account {
                 address
                 balances {
                     transferable,
-                    reserved,
+                    bonded,
+                    unbonding,
                     blockNumber
                     
-                }
-                transfers {
-                    value,
-                    type
                 }
             }
             }

@@ -1,26 +1,22 @@
-
-
-
 from src.models.models import Account, Block, Extrinsic, Event, Balance
 from src.event_handlers.utils import event_error_handling
 
 
-class SystemEventHandler():
+class SystemEventHandler:
 
     @staticmethod
     def handle_event(block: Block, extrinsic: Extrinsic, event: Event):
         if event.event_id == "NewAccount":
-            SystemEventHandler.__handle_newAccount(block, extrinsic, event)
+            SystemEventHandler.__handle_new_account(block, extrinsic, event)
 
     @staticmethod
     @event_error_handling(Exception)
-    def __handle_newAccount(block: Block, extrinsic: Extrinsic, event: Event):
-
+    def __handle_new_account(block: Block, extrinsic: Extrinsic, event: Event):
         balance = Balance(
             transferable=0,
             reserved=0,
-            locked=[],
-            block_number=block.number
+            bonded=0,
+            block_number=block.block_number
         )
         balance.save()
         
@@ -35,8 +31,5 @@ class SystemEventHandler():
             nonce=None,
             role=None  # Todo: check if List
         )
-        if account.address == "12SqZEsjmK83VmxEQsuLChWACxMXEnoQTfJyK5XqHVtAmy29":
-            print("oh no")
-            print(block.number)
         account.save()
 
