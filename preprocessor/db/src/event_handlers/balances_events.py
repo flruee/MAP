@@ -38,7 +38,7 @@ class BalancesEventHandler:
         from_account, to_account = transfer(from_account, to_account, event.attributes[2]["value"],
                                             subbalance, subbalance)
 
-        transfer = Transfer(
+        transferObj = Transfer(
             block_number=block.block_number,
             from_address=from_account.address,
             to_address=to_account.address,
@@ -46,10 +46,10 @@ class BalancesEventHandler:
             extrinsic=extrinsic,
             type="Transfer"
         )
-        transfer.save()
+        transferObj.save()
 
-        from_account.transfers.append(transfer)
-        to_account.transfers.append(transfer)
+        from_account.transfers.append(transferObj)
+        to_account.transfers.append(transferObj)
 
         from_account.save()
         to_account.save()
