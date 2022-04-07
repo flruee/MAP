@@ -21,14 +21,14 @@ if __name__ == "__main__":
                 unbonding,
                 blockNumber
             }
-        transfers{
-        value,
-        type
-        }
+            transfers {
+                value,
+                type 
+            }
         }
         }
     """
     start = time.time()
     result = schema.execute(query)
-    print(time.time()-start)
     print(result)
+    print(time.time()-start)

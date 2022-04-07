@@ -29,7 +29,9 @@ class AccountType(MongoengineObjectType):
     class Meta:
         model = AccountModel
 
-
+    def resolve_transfer(self, info):
+        print("miau")
+        return TransferModel.objects.all()
 class BalanceType(MongoengineObjectType):
     class Meta:
         model = BalanceModel
@@ -57,12 +59,14 @@ class Query(graphene.ObjectType):
         return ExtrinsicModel.objects.all()
 
     def resolve_account(self, info):
+        print("yeee")
         return AccountModel.objects.all()
 
     def resolve_balance(self, info):
         return BalanceModel.objects.all()
 
     def resolve_transfer(self, info):
+        print("eyy")
         return TransferModel.objects.all()
 
 

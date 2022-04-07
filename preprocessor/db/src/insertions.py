@@ -6,7 +6,7 @@ from src.event_handlers.staking_events import StakingEventHandler
 from src.event_handlers.utils import event_error_handling
 from src.models import Block,Header,Extrinsic,Event, Account
 from src.event_handlers import SystemEventHandler, BalancesEventHandler
-
+from mongoengine.errors import NotUniqueError
 
 def handle_blocks(start, end):
     for i in range(start, end+1):
@@ -32,7 +32,10 @@ def handle_full_block(data):
         extrinsics=extrinsics,
         timestamp=timestamp
     )
-    block.save()
+    try:
+        block.save()
+    except NotUniqueError:
+        pass
 
     special_event(block)
 
@@ -85,11 +88,25 @@ def handle_extrinsics_and_events(data) -> List[Extrinsic]:
             extrinsic = Extrinsic(**extrinsic_data, events=current_events, was_successful=was_successful)
             extrinsic.save()
         except OverflowError:
+            print(extrinsic_data["call"].keys())
+            print(f"{extrinsic_data['call']['call_module']}: {extrinsic_data['call']['call_function']}")
+            #if(extrinsic_data)
             #TODO handle better
-            for i in range(len(extrinsic_data["call"]["call_args"][2]["value"])):
-                extrinsic_data["call"]["call_args"][2]["value"][i] = str(extrinsic_data["call"]["call_args"][2]["value"][i])
-            extrinsic = Extrinsic(**extrinsic_data, events=current_events, was_successful=was_successful)
-            extrinsic.save()
+
+            module = extrinsic_data['call']['call_module']
+            function = extrinsic_data['call']['call_function']
+
+            if module ==  "Staking" and function == "submit_election_solution_unsigned":
+                for i in range(len(extrinsic_data["call"]["call_args"][2]["value"])):
+                    extrinsic_data["call"]["call_args"][2]["value"][i] = str(extrinsic_data["call"]["call_args"][2]["value"][i])
+                extrinsic = Extrinsic(**extrinsic_data, events=current_events, was_successful=was_successful)
+                extrinsic.save()
+            
+            elif module == "ElectionProviderMultiPhase" and function == "submit_unsigned":
+                for i in range(len(extrinsic_data["call"]["call_args"][0]["value"]["score"])):
+                    extrinsic_data["call"]["call_args"][0]["value"]["score"][i] = str(extrinsic_data["call"]["call_args"][0]["value"]["score"][i])
+                extrinsic = Extrinsic(**extrinsic_data, events=current_events, was_successful=was_successful)
+                extrinsic.save()
 
         extrinsics.append(extrinsic)
         

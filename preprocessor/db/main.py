@@ -15,9 +15,9 @@ if __name__ == "__main__":
 
     db_connection = connect("example", host="mongodb://127.0.0.1:27017/map", alias="default")
     start = time.time()
-    handle_blocks(4710599, 4721600)
+    handle_blocks(4714883, 4721600)
     end = time.time()
-    #handle_blocks(4714817,4714818)
+    #handle_blocks(4714883,4714884)
     print(end-start)
     exit()
     query = """
