@@ -1,3 +1,4 @@
+import time
 from mongoengine import connect
 from src.models.models import Account
 from src.insertions import handle_blocks
@@ -12,9 +13,13 @@ if __name__ == "__main__":
 
 
 
-    db_connection = connect("example", host="mongomock://localhost", alias="default")
-
-    handle_blocks(4721594, 4721595)
+    db_connection = connect("example", host="mongodb://127.0.0.1:27017/map", alias="default")
+    start = time.time()
+    handle_blocks(4710599, 4721600)
+    end = time.time()
+    #handle_blocks(4714817,4714818)
+    print(end-start)
+    exit()
     query = """
             {
             account {

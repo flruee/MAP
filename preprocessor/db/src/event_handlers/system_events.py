@@ -16,6 +16,7 @@ class SystemEventHandler:
             transferable=0,
             reserved=0,
             bonded=0,
+            unbonding=0,
             block_number=block.block_number
         )
         balance.save()

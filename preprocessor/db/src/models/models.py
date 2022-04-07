@@ -1,3 +1,4 @@
+from email.policy import default
 from mongoengine import Document
 from mongoengine.fields import IntField, StringField, DictField, ReferenceField, ListField, DateTimeField, \
     BooleanField, DynamicField, FloatField,LongField
@@ -121,7 +122,7 @@ class Balance(Document):
     transferable = FloatField()
     reserved = FloatField()
     bonded = FloatField()
-    unbonding = FloatField()
+    unbonding = FloatField(default=0)
     block_number = IntField()
 
     def copy(self):

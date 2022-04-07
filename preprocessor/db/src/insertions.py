@@ -13,6 +13,7 @@ def handle_blocks(start, end):
         with open(f"small_block_dataset/{i}.json", "r") as f:
             data = json.loads(f.read())  
         handle_full_block(data)
+        print(data["number"])
 
 
 def handle_full_block(data):
@@ -80,8 +81,15 @@ def handle_extrinsics_and_events(data) -> List[Extrinsic]:
         if extrinsic_data["era"] == "00":
             extrinsic_data["era"] = [-1]
         
-        extrinsic = Extrinsic(**extrinsic_data, events=current_events, was_successful=was_successful)
-        extrinsic.save()
+        try:
+            extrinsic = Extrinsic(**extrinsic_data, events=current_events, was_successful=was_successful)
+            extrinsic.save()
+        except OverflowError:
+            #TODO handle better
+            for i in range(len(extrinsic_data["call"]["call_args"][2]["value"])):
+                extrinsic_data["call"]["call_args"][2]["value"][i] = str(extrinsic_data["call"]["call_args"][2]["value"][i])
+            extrinsic = Extrinsic(**extrinsic_data, events=current_events, was_successful=was_successful)
+            extrinsic.save()
 
         extrinsics.append(extrinsic)
         
@@ -136,7 +144,7 @@ def special_event(block):
     """
     for extrinsic in block.extrinsics:
         for event in extrinsic.events:
-            print(f"{event.module_id}: {event.event_id}")
+            #print(f"{event.module_id}: {event.event_id}")
             if event.module_id == "System":
                 SystemEventHandler.handle_event(block, extrinsic, event)
             elif event.module_id == "Balances":
