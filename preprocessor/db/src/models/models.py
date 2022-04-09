@@ -99,7 +99,7 @@ class RewardSlash(Document):
     validator = StringField()
     era = IntField()
     value = IntField()
-    time = DateTimeField()
+    block_number = IntField()
 
 
 """

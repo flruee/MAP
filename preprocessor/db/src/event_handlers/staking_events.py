@@ -1,4 +1,4 @@
-from src.models.models import Account, Block, Extrinsic, Event, Balance, Transfer
+from src.models.models import Account, Block, Extrinsic, Event, Balance, Transfer, RewardSlash
 from src.event_handlers.utils import event_error_handling, get_account, transfer
 
 
@@ -12,7 +12,7 @@ class StakingEventHandler:
             StakingEventHandler.__handle_era_paid(block, extrinsic, event)
         elif event.event_id == "Reward":
             StakingEventHandler.__handle_rewarded(block, extrinsic, event)
-        elif event.event_id == "Slashed":  # todo: no slashed in small block dataset
+        elif event.event_id == "Slash":  # todo: no slashed in small block dataset
             StakingEventHandler.__handle_slashed(block, extrinsic, event)
         elif event.event_id == "Unbonded":
             StakingEventHandler.__handle_unbonded(block, extrinsic, event)
@@ -65,7 +65,33 @@ class StakingEventHandler:
 
     @staticmethod
     def __handle_slashed(block: Block, extrinsic: Extrinsic, event: Event):
-        pass
+        account = get_account(event.attributes[0]['value'], block.block_number)
+        value = event.attributes[1]['value']
+
+        treasury_account_address = '0xTreasury'
+        treasury_account = get_account(treasury_account_address, block.block_number)
+
+        subbalance = "transferable"
+        from_account, to_account = transfer(account, treasury_account, value, subbalance, subbalance)
+
+        transfer_obj = Transfer(
+            block_number=block.block_number,
+            from_address=from_account.address,
+            to_address=treasury_account.address,  # todo: find treasury address
+            value=value,
+            extrinsic=extrinsic,
+            type="Slash",
+        )
+
+        transfer_obj.save()
+        from_account.transfers.append(transfer_obj)
+        to_account.transfers.append(transfer_obj)
+        from_account.save()
+        to_account.save()
+
+
+
+
 
     @staticmethod
     #@event_error_handling(Exception)
@@ -97,7 +123,6 @@ class StakingEventHandler:
 
         from_account.save()
 
-        pass
 
 
 

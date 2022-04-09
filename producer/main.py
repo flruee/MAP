@@ -108,7 +108,8 @@ if __name__ == "__main__":
     kafka_config = config["kafka"]
     producer_config = config["producer"]
 
-    logging.basicConfig(filename='producer.log', level=producer_config["logLevel"])
+    logging.basicConfig(filename='producer.log', level=producer_config["logLevel"],
+                        format='%(asctime)s,%(levelname)s :%(message)s')
 
     #needed for self signed certificate
     sslopt = {

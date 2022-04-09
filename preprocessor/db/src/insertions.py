@@ -10,7 +10,7 @@ from mongoengine.errors import NotUniqueError
 
 def handle_blocks(start, end):
     for i in range(start, end+1):
-        with open(f"small_block_dataset/{i}.json", "r") as f:
+        with open(f"../blocks_slashed/{i}.json", "r") as f:
             data = json.loads(f.read())  
         handle_full_block(data)
         print(data["number"])
@@ -55,7 +55,17 @@ def handle_extrinsics_and_events(data) -> List[Extrinsic]:
     events_data = data["events"]
 
     extrinsics = []
-    for i in range(1,len(data["extrinsics"])):
+
+
+    if len(data['extrinsics']) == 1: # Todo: handle differently,
+        """
+         This was done because some blocks contain 0 extrinsics, 
+         however they contain events that require handling
+        """
+        start = 0
+    else:
+        start = 1
+    for i in range(start, len(data["extrinsics"])):
         """
         #index 0 is reserved for the timestamp transaction in extrinsics.
         
@@ -131,6 +141,8 @@ def handle_events(events, extrinsic_idx) -> List[Event]:
     """
     current_events = []
     for event_data in events:
+        if extrinsic_idx == 0:
+            extrinsic_idx = None
         if event_data["extrinsic_idx"] == extrinsic_idx:
             current_events.append(insert_event(event_data))
 
@@ -161,7 +173,7 @@ def special_event(block):
     """
     for extrinsic in block.extrinsics:
         for event in extrinsic.events:
-            #print(f"{event.module_id}: {event.event_id}")
+            print(f"{event.module_id}: {event.event_id}")
             if event.module_id == "System":
                 SystemEventHandler.handle_event(block, extrinsic, event)
             elif event.module_id == "Balances":

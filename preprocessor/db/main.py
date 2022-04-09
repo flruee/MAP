@@ -15,24 +15,17 @@ if __name__ == "__main__":
 
     db_connection = connect("example", host="mongodb://127.0.0.1:27017/map", alias="default")
     start = time.time()
-    handle_blocks(4714883, 4721600)
+    handle_blocks(3182856, 3182857)
+    #handle_blocks(4710623, 4710624)
     end = time.time()
     #handle_blocks(4714883,4714884)
     print(end-start)
-    exit()
     query = """
             {
-            account {
-                address
-                balances {
-                    transferable,
-                    bonded,
-                    unbonding,
-                    blockNumber
-                }
-            transfers{
-            value
-            }
+            transfer{
+            value,
+            toAddress,
+            type
             }
             }
     """
