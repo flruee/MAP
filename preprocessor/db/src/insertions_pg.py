@@ -98,9 +98,12 @@ class PGBlockHandler:
             # change immortal transactions "00" to -1
             if extrinsic_data["era"] == "00":
                 extrinsic_data["era"] = [-1]
-            
+
+            for key in ["address", "signature", "nonce", "tip"]:
+                if not key in extrinsic_data.keys():
+                    extrinsic_data[key] = None
+     
             try:
-                print(extrinsic_data)
                 extrinsic = Extrinsic(
                     extrinsic_hash = extrinsic_data["extrinsic_hash"],
                     block_number = data["number"],
@@ -122,7 +125,7 @@ class PGBlockHandler:
                     self.session.commit()
                 except IntegrityError:
                     pass
-                print(extrinsic.id)
+
                 for event in current_events:
                     event.extrinsic = extrinsic.id
                     event.block_number = data["number"]
@@ -176,7 +179,6 @@ class PGBlockHandler:
         event_data.pop("event")
         
         event_data.pop("event_index")
-        print(event_data)
         event = Event(
             event_order_id = event_data["extrinsic_idx"], #denotes in which order the events happened. given n events the first event in block has 0 last event has n-1
             phase = event_data["phase"],
@@ -210,11 +212,11 @@ class PGBlockHandler:
                     handler = BalancesEventHandler(self.session)
                     handler.handle_event(block, extrinsic, event)
 
-                """
+                
                 elif event.module_name == "Staking":
                     handler = StakingEventHandler(self.session)
-                    StakingEventHandler.handle_event(block, extrinsic, event)
-                """
+                    handler.handle_event(block, extrinsic, event)
+                
                 
                 #handler.handle_event(block, extrinsic, event)
             

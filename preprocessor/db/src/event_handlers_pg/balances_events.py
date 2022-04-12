@@ -32,8 +32,7 @@ class BalancesEventHandler:
 
         from_account = get_account(event.attributes[0]["value"], block.block_number, self.session)
         to_account = get_account(event.attributes[1]["value"], block.block_number, self.session)
-        print(from_account)
-        print(to_account)
+
         subbalance = "transferable"
         from_account, to_account = transfer(from_account, to_account, event.attributes[2]["value"],
                                             subbalance, subbalance, self.session)

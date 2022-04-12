@@ -37,14 +37,15 @@ def event_error_handling(function, error, *args, **kwargs):
         ...
     
     """
-    def wrapper(block, extrinsic, event, *args, **kwargs):
+    def wrapper(cls,block, extrinsic, event, *args, **kwargs):
 
         try:
-            return function(block, extrinsic, event, *args, **kwargs)
+
+            return function(cls,block, extrinsic, event, *args, **kwargs)
         except error as e:
             logging.error(f"{error.__name__}: {e}\t {function.__name__} failed at block {block.block_number} in extrinsic "
-                          f"{extrinsic.extrinsic_hash} in event {event.extrinsic_idx}, "
-                          f"{event.module_id}: {event.event_id}, {event.attributes[0]['value']}")
+                          f"{extrinsic.extrinsic_hash} in event {event.event_order_id}, "
+                          f"{event.module_name}: {event.event_name}, {event.attributes[0]['value']}")
 
     return wrapper
 
@@ -79,18 +80,16 @@ def get_account(address: str, block_number: int,session):
 
 
 def transfer(from_account: Account, to_account: Account, value: int, from_subbalance: str, to_subbalance: str, session):
-
+    if from_account.address == to_account.address:
+        return internal_transfer(from_account, from_subbalance, to_subbalance, value,session)
     stmt = select(Balance).where(Balance.account == from_account.address)
     from_account_balance = deepcopy(list(session.execute(stmt))[-1])[0]
-    print("ey")
-    print(to_account)
     stmt = select(Balance).where(Balance.account == to_account.address)
     to_account_balance = deepcopy(list(session.execute(stmt))[-1])[0]
 
 
     #from_account_balance.id = None
     #to_account_balance.id = None
-    print(from_account_balance)
     from_updated_value = getattr(from_account_balance, from_subbalance) - value
     setattr(from_account_balance, from_subbalance, from_updated_value)
     to_updated_value = getattr(to_account_balance, to_subbalance) + value
@@ -100,3 +99,15 @@ def transfer(from_account: Account, to_account: Account, value: int, from_subbal
     session.add(to_account_balance)
     session.commit()
     return from_account, to_account
+
+def internal_transfer(account, from_subbalance, to_subbalance, value,session):
+    stmt = select(Balance).where(Balance.account == account.address)
+    account_balance = deepcopy(list(session.execute(stmt))[-1])[0]
+    updated_value = getattr(account_balance, from_subbalance) - value
+    setattr(account_balance, from_subbalance, updated_value)
+    to_updated_value = getattr(account_balance, to_subbalance) + value
+    setattr(account_balance, to_subbalance, to_updated_value)
+
+    session.add(account_balance)
+    session.commit()
+    return account, account

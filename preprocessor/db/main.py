@@ -19,11 +19,12 @@ if __name__ == "__main__":
     logging.basicConfig(filename='db.log', level=logging.INFO,format='%(asctime)s,%(levelname)s :%(message)s')
 
     if DB == "postgres":
-        engine = create_engine('postgresql://mapUser:mapmap@localhost/map', echo=True)
+        engine = create_engine('postgresql://mapUser:mapmap@localhost/map')
         with Session(engine) as session:
             block_handler = PGBlockHandler(session)
+            start = time.time()
             block_handler.handle_blocks(4710599, 4721600)
-
+            print(time.time()-start)
 
 
     else:
