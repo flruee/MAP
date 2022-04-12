@@ -7,10 +7,9 @@ from src.event_handlers.utils import event_error_handling
 from src.models import Block,Header,Extrinsic,Event, Account
 from src.event_handlers import SystemEventHandler, BalancesEventHandler
 from mongoengine.errors import NotUniqueError
-
 def handle_blocks(start, end):
     for i in range(start, end+1):
-        with open(f"../blocks_slashed/{i}.json", "r") as f:
+        with open(f"small_block_dataset/{i}.json", "r") as f:
             data = json.loads(f.read())  
         handle_full_block(data)
         print(data["number"])
@@ -57,12 +56,13 @@ def handle_extrinsics_and_events(data) -> List[Extrinsic]:
     extrinsics = []
 
 
-    if len(data['extrinsics']) == 1: # Todo: handle differently,
+    if len(data['extrinsics']) == 1 and len(events_data) > 2: # Todo: handle differently,
         """
          This was done because some blocks contain 0 extrinsics, 
          however they contain events that require handling
         """
         start = 0
+        logging.warning(f"strange block {data['number']}")
     else:
         start = 1
     for i in range(start, len(data["extrinsics"])):

@@ -15,13 +15,13 @@ if __name__ == "__main__":
         {
         account {
             address
-            balances {
+            balances (type: "Reward") {
                 transferable,
                 bonded,
                 unbonding,
                 blockNumber
             }
-            transfers {
+            transfers  {
                 value,
                 type 
             }
