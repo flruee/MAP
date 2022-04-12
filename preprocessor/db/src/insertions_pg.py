@@ -38,6 +38,7 @@ class PGBlockHandler:
             author = header["author"],
             timestamp=timestamp
         )
+        #TODO Make a singleton/global add/query/commit class
         self.session.add(block)
         try:
             self.session.commit()

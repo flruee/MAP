@@ -16,6 +16,7 @@ import logging
 
 
 if __name__ == "__main__":
+    #TODO: crrrreate logging object
     logging.basicConfig(filename='db.log', level=logging.INFO,format='%(asctime)s,%(levelname)s :%(message)s')
 
     if DB == "postgres":
