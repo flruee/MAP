@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from src.models.models import Account
 DB = "postgres"
+MODE = "node"
 if DB == "postgres":
 	from src.insertions_pg import PGBlockHandler
 else:
@@ -20,12 +21,17 @@ if __name__ == "__main__":
     logging.basicConfig(filename='db.log', level=logging.INFO,format='%(asctime)s,%(levelname)s :%(message)s')
 
     if DB == "postgres":
-        engine = create_engine('postgresql://mapUser:mapmap@localhost/map')
+        engine = create_engine('postgresql://mapUser:mapmap@172.23.149.214/map')
         with Session(engine) as session:
             block_handler = PGBlockHandler(session)
             start = time.time()
-            block_handler.handle_blocks(4710599, 4721600)
-            print(time.time()-start)
+            if MODE == "json":
+                block_handler.handle_blocks(0, 10000)
+            elif MODE == "node": 
+                block_handler.handle_node_connection_blocks(1,10000)
+
+            print(time.time()-start())
+                
 
 
     else:

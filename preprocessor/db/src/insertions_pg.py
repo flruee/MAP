@@ -6,7 +6,7 @@ from src.event_handlers.utils import event_error_handling
 from src.pg_models import Block,Extrinsic,Event
 from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler
 from sqlalchemy.exc import IntegrityError
-
+from src.node_connection import handle_one_block
 class PGBlockHandler:
     def __init__(self, session):
         self.session = session
@@ -20,6 +20,11 @@ class PGBlockHandler:
             print(data["number"])
             #self.session.commit()
 
+    def handle_node_connection_blocks(self,start,end):
+        for i in range(start, end+1):
+            block = handle_one_block(i)
+            self.handle_full_block(block)
+            print(block["number"])
 
     def handle_full_block(self,data):
         block = self.insert_block(data)
@@ -27,7 +32,12 @@ class PGBlockHandler:
 
     def insert_block(self,data):
         header = self.insert_header(data["header"])
-        timestamp = data["extrinsics"][0]["call"]["call_args"][0]["value"]
+        try:
+            timestamp = data["extrinsics"][0]["call"]["call_args"][0]["value"]
+
+        except IndexError:
+            timestamp = 1590507378000 - 6
+
         timestamp = datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=timestamp)
         block = Block(
             block_number=data["number"],
