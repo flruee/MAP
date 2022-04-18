@@ -122,7 +122,7 @@ if __name__ == "__main__":
         url=polkadot_config["url"],
         ss58_format=polkadot_config["ss58_format"],
         type_registry_preset=polkadot_config["type_registry_preset"],
-        
+
         ws_options=sslopt
     )
 

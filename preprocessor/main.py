@@ -24,7 +24,8 @@ if __name__ == "__main__":
     for message in consumer:
         # message value and key are raw bytes -- decode if necessary!
         # e.g., for unicode: `message.value.decode('utf-8')`
-
+        print(message)
+        exit()
         x = message.key.decode("utf-8").replace("b","")
         print(f"received block {message.key.decode('utf-8')}")
         data = json.loads(message.value)
