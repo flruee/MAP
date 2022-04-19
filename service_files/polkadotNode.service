@@ -1,0 +1,10 @@
+[Unit]
+Description=Polkadot Node
+
+[Service]
+Type=simple
+ExecStart=/opt/polkadot/polkadot --name "polkaDotMapNode" --rpc-cors all --pruning=archive --wasm-execution Compiled --base-path /mnt/polkadot/ 
+
+[Install]
+WantedBy=multi-user.target
+
