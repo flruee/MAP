@@ -100,6 +100,7 @@ def transfer(from_account: Account, to_account: Account, value: int, from_subbal
     session.commit()
     return from_account, to_account
 
+
 def internal_transfer(account, from_subbalance, to_subbalance, value,session):
     stmt = select(Balance).where(Balance.account == account.address)
     account_balance = deepcopy(list(session.execute(stmt))[-1])[0]
@@ -111,3 +112,4 @@ def internal_transfer(account, from_subbalance, to_subbalance, value,session):
     session.add(account_balance)
     session.commit()
     return account, account
+
