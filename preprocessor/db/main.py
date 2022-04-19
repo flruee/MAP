@@ -21,16 +21,15 @@ if __name__ == "__main__":
     logging.basicConfig(filename='db.log', level=logging.INFO,format='%(asctime)s,%(levelname)s :%(message)s')
 
     if DB == "postgres":
-        engine = create_engine('postgresql://mapUser:mapmap@172.23.149.214/map')
+        engine = create_engine('postgresql://mapUser:mapmap@localhost/map')
         with Session(engine) as session:
             block_handler = PGBlockHandler(session)
             start = time.time()
             if MODE == "json":
                 block_handler.handle_blocks(0, 10000)
             elif MODE == "node": 
-                block_handler.handle_node_connection_blocks(1,10000)
+                block_handler.handle_node_connection_blocks(4710599,4710599+100)
 
-            print(time.time()-start())
                 
 
 

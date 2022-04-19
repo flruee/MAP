@@ -19,7 +19,8 @@ class BalancesEventHandler:
     @event_error_handling(DoesNotExist)
     def __handle_endowed(self,block: Block, extrinsic: Extrinsic, event: Event):
         """
-        This event can be ignored because it is followed by another event (Transfer) that contains more relevant data
+        if used in Claims(attest) then the event is usable, else it is redundant.
+
         """
         pass
 

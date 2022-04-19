@@ -4,7 +4,7 @@ import datetime
 import json
 from src.event_handlers.utils import event_error_handling
 from src.pg_models import Block,Extrinsic,Event
-from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler
+from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler, ClaimsEventHandler
 from sqlalchemy.exc import IntegrityError
 from src.node_connection import handle_one_block
 class PGBlockHandler:
@@ -226,6 +226,10 @@ class PGBlockHandler:
                 
                 elif event.module_name == "Staking":
                     handler = StakingEventHandler(self.session)
+                    handler.handle_event(block, extrinsic, event)
+                
+                elif event.module_name == "Claims":
+                    handler = ClaimsEventHandler(self.session)
                     handler.handle_event(block, extrinsic, event)
                 
                 
