@@ -1,3 +1,4 @@
+from tkinter.messagebox import NO
 from src.event_handlers_pg.utils import event_error_handling, get_account
 from src.pg_models import Account, Block, Extrinsic, Event, Balance, Transfer
 from src.event_handlers_pg.utils import transfer
@@ -41,6 +42,12 @@ class ClaimsEventHandler:
             role=None
             )
 
+        account2 = Account(
+            address = ethereum_address,
+            account_index = None,
+            nonce=None,
+            role = "Ethereum address"
+        )
         transferObj = Transfer(
             block_number=block.block_number,
             from_address=ethereum_address,
@@ -51,6 +58,7 @@ class ClaimsEventHandler:
         )
 
         self.session.add(account)
+        self.session.add(account2)
         self.session.commit()
         self.session.add(balance)
         self.session.add(transferObj)
