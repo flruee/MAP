@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from src.models.models import Account
 DB = "postgres"
-MODE = "kafka"
+MODE = "node"
 if DB == "postgres":
 	from src.insertions_pg import PGBlockHandler
 else:
@@ -32,7 +32,7 @@ if __name__ == "__main__":
             if MODE == "json":
                 block_handler.handle_blocks(0, 10000)
             elif MODE == "node": 
-                block_handler.handle_node_connection_blocks(4710599,4710599+100)
+                block_handler.handle_node_connection_blocks(892,892)
             elif MODE == "kafka":
                 logging.info("2")
                 with open("config.json","r") as f:

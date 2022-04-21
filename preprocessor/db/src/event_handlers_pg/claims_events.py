@@ -21,19 +21,18 @@ class ClaimsEventHandler(AbstractEventHandler):
         if used in Claims(attest) then the event is usable, else it is redundant.
 
         """
-        print(event.attributes)
         address = event.attributes[0]["value"]
         ethereum_address = event.attributes[1]["value"]
 
         account = self.get_or_create_account(address)
-        ethereum_account = self.get_or_create_account(address, role="Ethereum address")
+        ethereum_account = self.get_or_create_account(ethereum_address, block.block_number, role="Ethereum address")
 
 
         value = event.attributes[2]["value"]
 
         balance = self.get_last_balance(account)
         if balance is None:
-            balance = self.create_empty_balance(account.address, commit=False)
+            balance = self.create_empty_balance(account.address, block.block_number, commit=False)
             balance.transferable = value
 
         transfer = Transfer(

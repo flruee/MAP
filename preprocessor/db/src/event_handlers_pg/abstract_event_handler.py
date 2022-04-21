@@ -9,7 +9,11 @@ class AbstractEventHandler:
 
     def get_account(self, address):
         stmt = select(Account).where(Account.address == address)
-        account = self.session.execute(stmt).fetchone()[0]
+        account = self.session.execute(stmt).fetchone()
+        if account is None:
+            return account
+        else:
+            return account[0]
         
 
     def create_account(self, address, account_index=None, nonce=None, role=None,commit=True) -> Account:
@@ -32,7 +36,10 @@ class AbstractEventHandler:
 
     def get_last_balance(self, account: Account) -> Balance:
         stmt = select(Balance).where(Balance.account == account.address)
-        balance = deepcopy(list(self.session.execute(stmt))[-1])[0]
+        balances = self.session.execute(stmt).fetchall()
+        if len(balances) == 0:
+            return None
+        balance = deepcopy(balances[-1])[0]
         return balance
 
     def create_empty_balance(self, address, block_number, commit=True) -> Balance:
