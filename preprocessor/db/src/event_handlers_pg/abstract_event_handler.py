@@ -64,7 +64,7 @@ class AbstractEventHandler:
         return balance
 
     def create_transfer_in_balances(self,from_balance: Balance, to_balance: Balance, value: int, from_subbalance: str, to_subbalance: str):
-        if from_balance.address == to_balance.address:
+        if from_balance.account == to_balance.account:
             return self.internal_transfer(from_balance, from_subbalance, to_subbalance, value)
         from_updated_value = getattr(from_balance, from_subbalance) - value
         setattr(from_balance, from_subbalance, from_updated_value)
