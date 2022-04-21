@@ -1,9 +1,9 @@
 from select import select
 from src.pg_models import Account, Block, Extrinsic, Event, Balance, Transfer
-from src.event_handlers_pg.utils import event_error_handling, get_account, transfer
+from src.event_handlers_pg.utils import event_error_handling
+from .abstract_event_handler import AbstractEventHandler
 
-
-class StakingEventHandler:
+class StakingEventHandler(AbstractEventHandler):
     def __init__(self, session):
         self.session = session
     
@@ -27,12 +27,29 @@ class StakingEventHandler:
         """
         Moves dot from transferable to bonded
         """
-        account = get_account(event.attributes[0]['value'], block.block_number, self.session)
+
+        address = event.attributes[0]['value']
+        account = self.get_or_create_account(address)
+        balance = self.get_or_create_last_balance(account, block.block_number, commit=False)
+
         value = event.attributes[1]['value']
 
         from_subbalance = "transferable"
         to_subbalance = "bonded"
-        from_account, _ = transfer(account, account, value, from_subbalance, to_subbalance, self.session)
+        self.create_transfer_in_balances(balance, balance, value, from_subbalance, to_subbalance)
+
+
+        transfer = Transfer(
+            block_number=block.block_number,
+            from_address=account.address,
+            to_address=account.address,
+            value=value,
+            extrinsic=extrinsic.id,
+            type="Bonded"
+        )
+
+        self.session.add(transfer)
+        self.session.commit()
 
 
     
@@ -42,14 +59,23 @@ class StakingEventHandler:
     
     #@event_error_handling(Exception)
     def __handle_rewarded(self,block: Block, extrinsic: Extrinsic, event: Event):
-        from_account = get_account(extrinsic.address, block.block_number, self.session)
-        to_account = get_account(event.attributes[0]["value"], block.block_number, self.session)
+        from_address = extrinsic.address
+        to_address = event.attributes[0]["value"]
+
+        from_account = self.get_or_create_account(from_address)
+        to_account = self.get_or_create_account(to_address)
+
+
+        from_balance = self.get_or_create_last_balance(from_account, block.block_number,commit=False)
+        to_balance = self.get_or_create_last_balance(to_account, block.block_number, commit=False)
+
         value = event.attributes[1]["value"]
 
         subbalance = "transferable"
-        from_account, to_account = transfer(from_account, to_account, value, subbalance, subbalance, self.session)
-        print(event.attributes)
-        transferObj = Transfer(
+
+        self.create_transfer_in_balances(from_balance, to_balance, value, subbalance, subbalance)
+
+        transfer = Transfer(
             block_number=block.block_number,
             from_address=from_account.address,
             to_address=to_account.address,
@@ -57,66 +83,96 @@ class StakingEventHandler:
             extrinsic=extrinsic.id,
             type="Reward"
         )
-        self.session.add(transferObj)
-        self.session.add(from_account)
-        self.session.add(to_account)
+        self.session.add(transfer)
+        #self.session.add(from_account)
+        #self.session.add(to_account)
         self.session.commit()
 
     
     def __handle_slashed(self,block: Block, extrinsic: Extrinsic, event: Event):
-        account = get_account(event.attributes[0]['value'], block.block_number, self.session)
-        value = event.attributes[1]['value']
+        address = event.attributes[0]['value']
+        account = self.get_or_create_account(self,address)
 
         treasury_account_address = '0xTreasury'
-        treasury_account = get_account(treasury_account_address, block.block_number, self.session)
+        treasury_account = self.get_or_create_account(treasury_account_address,role="Treasury")
 
+        account_balance = self.get_or_create_last_balance(account, block.block_number)
+        treasury_balance = self.get_or_create_last_balance(treasury_account, block.block_number)
+
+        value = event.attributes[1]['value']
         subbalance = "transferable"
-        from_account, to_account = transfer(account, treasury_account, value, subbalance, subbalance, self.session)
+        self.create_transfer_in_balances(account_balance, treasury_balance, value, subbalance, subbalance)
 
-        transferObj = Transfer(
+        transfer = Transfer(
             block_number=block.block_number,
-            from_address=from_account.address,
-            to_address=to_account.address,
+            from_address=account.address,
+            to_address=treasury_account.address,
             value=value,
             extrinsic=extrinsic.id,
             type="Slash"
         )
-        self.session.add(transferObj)
-        self.session.add(from_account)
-        self.session.add(to_account)
+        self.session.add(transfer)
+        #self.session.add(from_account)
+        #self.session.add(to_account)
         self.session.commit()
-
-
-
-
-
     
     #@event_error_handling(Exception)
     def __handle_unbonded(self,block: Block, extrinsic: Extrinsic, event: Event):
         """
         Moves DOT from bonded to unbonding (for minimum of 28 days before it can be withdrawn)
         """
-        account = get_account(event.attributes[0]['value'], block.block_number, self.session)
-        value = event.attributes[1]['value']
+        address = event.attributes[0]['value']
+        account = self.get_or_create_account(address)
 
+        balance = self.get_or_create_last_balance(account, block.block_number,commit=False)
+
+        value = event.attributes[1]['value']
         from_subbalance = "bonded"
         to_subbalance = "unbonding"
-        from_account, _ = transfer(account, account, value, from_subbalance, to_subbalance, self.session)
+        self.create_transfer_in_balances(balance, balance, value, from_subbalance, to_subbalance)
 
+        transfer = Transfer(
+            block_number=block.block_number,
+            from_address=account.address,
+            to_address=account.address,
+            value=value,
+            extrinsic=extrinsic.id,
+            type="Unbonded"
+        )
+        self.session.add(transfer)
+        #self.session.add(from_account)
+        #self.session.add(to_account)
+        self.session.commit()
 
     #@event_error_handling(Exception)
     def __handle_withdrawn(self,block: Block, extrinsic: Extrinsic, event: Event):
         """
         Moves DOT from unbonding to transferable
         """
-        account = get_account(event.attributes[0]['value'], block.block_number, self.session)
+        address = event.attributes[0]["value"]
+        account = self.get_or_create_account(address)
+
+        balance = self.get_or_create_last_balance(account, block.block_number)
+
         value = event.attributes[1]['value']
 
         from_subbalance = "unbonding"
         to_subbalance = "transferable"
-        from_account, _ = transfer(account, account, value, from_subbalance, to_subbalance, self.session)
+        self.create_transfer_in_balances(balance, balance, value, from_subbalance, to_subbalance, self.session)
 
 
+        transfer = Transfer(
+            block_number=block.block_number,
+            from_address=account.address,
+            to_address=account.address,
+            value=value,
+            extrinsic=extrinsic.id,
+            type="Withdrawn"
+        )
+        self.session.add(transfer)
+        #self.session.add(from_account)
+        #self.session.add(to_account)
+        self.session.commit()
 
 
 
