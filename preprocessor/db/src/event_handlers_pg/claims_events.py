@@ -1,8 +1,6 @@
-from tkinter import N
 from src.event_handlers_pg.abstract_event_handler import AbstractEventHandler
 from src.event_handlers_pg.utils import event_error_handling, get_account
 from src.pg_models import Account, Block, Extrinsic, Event, Balance, Transfer
-from src.event_handlers_pg.utils import transfer
 import logging
 from copy import deepcopy
 from mongoengine.errors import DoesNotExist
