@@ -1,9 +1,10 @@
+from .abstract_event_handler import AbstractEventHandler
 from src.event_handlers_pg.utils import get_account
 from src.pg_models.pg_models import Account, Block, Extrinsic, Event, Balance
 from src.event_handlers_pg.utils import event_error_handling
 
 
-class SystemEventHandler:
+class SystemEventHandler(AbstractEventHandler):
     def __init__(self, session):
         self.session = session
     
@@ -14,7 +15,10 @@ class SystemEventHandler:
     
     @event_error_handling(Exception)
     def __handle_new_account(self,block: Block, extrinsic: Extrinsic, event: Event):
-        get_account(event.attributes[0]["value"],block.block_number,self.session)
+        address = event.attributes[0]["value"]
+        self.get_or_create_account(address)
+        
+            
         """
         balance = Balance(
             transferable=0,

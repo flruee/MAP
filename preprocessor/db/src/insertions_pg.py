@@ -136,7 +136,7 @@ class PGBlockHandler:
                     self.session.commit()
                 except IntegrityError:
                     pass
-
+                    
                 for event in current_events:
                     event.extrinsic = extrinsic.id
                     event.block_number = data["number"]
