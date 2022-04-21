@@ -1,7 +1,4 @@
-from tkinter import N
 from sqlalchemy import select
-import sqlalchemy
-from preprocessor.db.src.event_handlers_pg.utils import get_account
 from src.pg_models import Account, Balance
 from copy import deepcopy
 
