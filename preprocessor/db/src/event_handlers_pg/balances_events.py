@@ -42,7 +42,7 @@ class BalancesEventHandler(AbstractEventHandler):
 
         subbalance = "transferable"
         value = event.attributes[2]["value"]
-        self.create_transfer_in_balance(from_balance, to_balance, value,
+        self.create_transfer_in_balances(from_balance, to_balance, value,
                                             subbalance, subbalance, block)
 
         transfer = Transfer(
