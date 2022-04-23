@@ -16,7 +16,7 @@ class Serializer:
         self.kafka_config = kafka_config
 
     def string_replacer(self,data):
-        return data.replace("'",'"').replace("(","[").replace(")","]").replace("None","null")
+        return data.replace("'",'"').replace("(","[").replace(")","]").replace("None","null").replace("True", "true").replace("False", "false")
 
 
     def handle_block_data(self,block_dict, kafka=True):
@@ -80,7 +80,7 @@ class Serializer:
             try:
                 json.dumps(event_jsonized, indent=4)
                 events_jsonized.append(json.loads(event_jsonized))
-            except TypeError or json.decoder.JSONDecoder:
+            except TypeError or json.decoder.JSONDecoder as e:
                 logging.error(f"Error {e} in block {block_hash}. JSON serialization failed for event #{count}")
                 logging.debug(f"Event content:\n{event_jsonized}")
 
