@@ -6,7 +6,7 @@ Base = declarative_base()
 Block
 """
 class RawData(Base):
-    __tablename__ = "block"
+    __tablename__ = "raw_data"
     block_number = Column(Integer, primary_key=True)
     data = Column(JSON)
 
