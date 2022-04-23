@@ -16,7 +16,7 @@ if __name__ == "__main__":
     #TODO: crrrreate logging object
     logging.basicConfig(filename='rawDataPersister.log', level=logging.INFO,format='%(asctime)s,%(levelname)s :%(message)s')
 
-    engine = create_engine('postgresql://mapUser:mapmap@localhost/rawData')
+    engine = create_engine('postgresql://mapUser:mapmap@localhost/raw_data')
     with Session(engine) as session:
 
         logging.info("2")
