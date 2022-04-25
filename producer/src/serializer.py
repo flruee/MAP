@@ -78,12 +78,21 @@ class Serializer:
             event_jsonized = self.string_replacer(event_jsonized)
             
             try:
-                json.dumps(event_jsonized, indent=4)
-                events_jsonized.append(json.loads(event_jsonized))
-            except TypeError or json.decoder.JSONDecoder as e:
+                old_string = event_jsonized#json.dumps(event_jsonized, indent=4)
+                while True:
+                    new_string = self.backslash_escaper(old_string)
+                    if new_string == old_string:
+                        break
+                    else:
+                        old_string = new_string
+                
+                json.dumps(new_string, indent=4)
+                print(new_string)
+                events_jsonized.append(json.loads(new_string))
+            except Exception as e2:
+                print(e2)
                 logging.error(f"Error {e} in block {block_hash}. JSON serialization failed for event #{count}")
                 logging.debug(f"Event content:\n{event_jsonized}")
-
             count+=1
 
         return events_jsonized
@@ -122,3 +131,38 @@ class Serializer:
             self.handle_one_block(header)
 
 
+    def backslash_escaper(self,string):
+        """
+        bad python encoding strikes again.
+        Some hex values are interpreted as string and then contain \x00, which will throw if jsonized.
+        This function transforms the bad string back to valid hex
+        """
+        backslash_index = None
+        for i in range(len(string)):
+            if string[i] == "\\":
+                backslash_index = i
+        if backslash_index is None:
+            return string
+        string_start = None
+        string_end = None
+        for i in range(backslash_index,0,-1):
+            if string[i] == '"':
+                string_start = i
+                break
+        for i in range(backslash_index, len(string)):
+            if string[i] == '"':
+                string_end = i
+                break
+        
+        bad_string = string[string_start+1:string_end]
+        print(bad_string)
+        bad_count = bad_string.count("\\x00")
+        string_without_null_char = bad_string.replace("\\x00", "")
+        cleaned_hex = string_without_null_char.encode("utf-8").hex()
+        print(cleaned_hex)
+        print(bad_string)
+        for i in range(bad_count):
+            cleaned_hex+="00"
+        cleaned_string = string.replace(bad_string, cleaned_hex)
+        print(cleaned_string)
+        return cleaned_string
