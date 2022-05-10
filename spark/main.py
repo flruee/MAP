@@ -1,8 +1,18 @@
 import argparse
-import timeit
-from datetime import time
+import time
 from pyspark.sql import SparkSession
 from networkx_processing.networkx_visualisation import plot_graph
+
+
+queries = {
+    "get_balances_all": "select * from balance",
+    "get_balances_year": "select * from balance b where b.block_number > (select greatest(max(b.block_number) - 5256000 , 0) from balance b)",
+    "get_balances_month": "select * from balance b where b.block_number > (select greatest(max(b.block_number) - 432000 , 0) from balance b)",
+    "get_balances_day": "select * from balance b where b.block_number > (select greatest(max(b.block_number) - 14400 , 0) from balance b)",
+    "get_transfers_all": "select * from transfer",
+    "get_accounts_all": "select * from account",
+    "get_blocks_all": "select * from block"
+}
 
 
 def init_spark(query: str, ipaddress: str):
@@ -24,35 +34,48 @@ def init_spark(query: str, ipaddress: str):
         .load()
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-q",   "--query",        help="enter SQL query",           type=str)
-    parser.add_argument("-i",   "--ipaddress",    help="default: localhost",        type=str)
-    parser.add_argument("-p",   "--plot",         help="plot of graph",             type=bool)
-    parser.add_argument("-s",   "--save",         help="Save to /results",          type=bool)
-    parser.add_argument("-n",   "--name",         help="name for file results",     type=str)
-    parser.add_argument("-p",   "--predefined",   help="choose predefined query",   type=str)
-    #parser.add_argument("-max", "--maxrequest",   help="Maximum amount of rows",    type=int)
-    args = parser.parse_args()
-    queries = {
-        "get_balances_all": "select * from balances",
-        "get_transfers_all": "select * from transfers",
-
-
-    }
-    if args.predefined is not None:
-        query = queries[args.predefined]
-    start = timeit.timeit()
-    spark = init_spark(query=args.query, ipaddress=args.ipaddress)
-    end = timeit.timeit()
-    print(end-start)
-    exit()
+def main(args):
+    start = time.perf_counter()
+    if args.query is not None:
+        query = args.query
+    else:
+        query = queries[args.preset]
+    spark = init_spark(query, ipaddress=args.ipaddress)
+    end = time.perf_counter()
+    print(end - start)
+    print(spark.head())
     if args.save:
         if args.name is None:
             name = "untitled"
         else:
             name = args.name
         spark.write.parquet(path=f"./results/{name}.parquet")
+
+
+def argparser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-q",   "--query",                              help="enter SQL query",           type=str)
+    parser.add_argument("-ip",   "--ipaddress",                          help="default: localhost",        type=str)
+    parser.add_argument("-n",   "--name",                               help="name for file results",     type=str)
+    parser.add_argument("-pre", "--preset",                           help="choose predefined query",   type=str)
+    parser.add_argument("-p",   "--plot",    action='store_true',       help="plot of graph")
+    parser.add_argument("-s",   "--save",    action='store_true',       help="Save to /results")
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    arguments = argparser()
+    if arguments.query is None and arguments.preset is None:
+        raise UserWarning("A predefined or userdefined query via flags {-q, -pre} is required")
+        exit()
+    if arguments.query is not None and arguments.preset is not None:
+        raise UserWarning("Cannot process predefined AND userdefined query. Select one and remove other")
+        exit()
+
+    main(arguments)
+
+
+
 
 
 
