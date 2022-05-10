@@ -1,7 +1,7 @@
 import argparse
 import time
 from pyspark.sql import SparkSession
-from networkx_processing.networkx_visualisation import plot_graph
+#from networkx_processing.networkx_visualisation import plot_graph
 
 
 queries = {
@@ -11,13 +11,15 @@ queries = {
     "get_balances_day": "select * from balance b where b.block_number > (select greatest(max(b.block_number) - 14400 , 0) from balance b)",
     "get_transfers_all": "select * from transfer",
     "get_accounts_all": "select * from account",
-    "get_blocks_all": "select * from block"
+    "get_blocks_all": "select * from block",
+    "get_transfers_and_accounts": "select * from transfer t inner join account a1 on a1.address = t.from_address inner join account a2  on a2.address = t.to_address"
 }
 
 
 def init_spark(query: str, ipaddress: str):
     if ipaddress is None:
         ipaddress = "localhost"
+    print(query)
     return \
         SparkSession \
         .builder \
