@@ -158,7 +158,7 @@ class StakingEventHandler(AbstractEventHandler):
 
         from_subbalance = "unbonding"
         to_subbalance = "transferable"
-        self.create_transfer_in_balances(balance, balance, value, from_subbalance, to_subbalance, self.session)
+        self.create_transfer_in_balances(balance, balance, value, from_subbalance, to_subbalance)
 
 
         transfer = Transfer(
