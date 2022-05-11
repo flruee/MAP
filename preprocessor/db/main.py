@@ -8,14 +8,14 @@ from sqlalchemy.orm import Session
 
 from src.models.models import Account
 DB = "postgres"
-MODE = "node"
+MODE = "kafka"
 if DB == "postgres":
 	from src.insertions_pg import PGBlockHandler
 else:
 	from src.insertions import handle_blocks
 from src.queries.schema import schema
 import logging
-
+import traceback
 
 
 
@@ -47,7 +47,9 @@ if __name__ == "__main__":
                 consumer = KafkaConsumer(
                         kafka_config["topic"],
                         auto_offset_reset="earliest",
-                        bootstrap_servers=kafka_config["bootstrap_servers"]
+                        bootstrap_servers=kafka_config["bootstrap_servers"],
+                        group_id="grp3",
+                        max_poll_records=1
                 )
                 print("waiting")
                 for message in consumer:
@@ -59,8 +61,12 @@ if __name__ == "__main__":
                     data = json.loads(message.value)
                     #with open(f"block_data/{data['number']}.json", "w+") as f:
                     #    f.write(json.dumps(data,indent=4))
-                    block_handler.handle_full_block(data)
-
+                    try:
+                        block_handler.handle_full_block(data)
+                    except Exception:
+                        print(data["number"])
+                        traceback.print_exc()
+                        exit()
 
                 
 
