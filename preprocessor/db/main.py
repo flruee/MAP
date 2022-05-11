@@ -3,10 +3,10 @@ import json
 import logging
 from kafka import KafkaConsumer
 from mongoengine import connect
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from src.models.models import Account
+from src.models.models import Account, Block
 DB = "postgres"
 MODE = "kafka"
 if DB == "postgres":
@@ -30,7 +30,7 @@ if __name__ == "__main__":
             block_handler = PGBlockHandler(session)
             start = time.time()
             if MODE == "json":
-                block_handler.handle_blocks(0, 10000)
+                block_handler.handle_blocks(331050, 331050)
             elif MODE == "node": 
                 block_handler.handle_node_connection_blocks(892,892)
             elif MODE == "kafka":
@@ -61,12 +61,17 @@ if __name__ == "__main__":
                     data = json.loads(message.value)
                     #with open(f"block_data/{data['number']}.json", "w+") as f:
                     #    f.write(json.dumps(data,indent=4))
-                    try:
-                        block_handler.handle_full_block(data)
-                    except Exception:
-                        print(data["number"])
-                        traceback.print_exc()
-                        exit()
+                               #check if already in db
+                    stmt = select(Block).where(Block.block_number==data["number"])
+                    db_data = session.execute(stmt).fetchone()
+
+                    if db_data is None:
+                        try:
+                            block_handler.handle_full_block(data)
+                        except Exception:
+                            print(data["number"])
+                            traceback.print_exc()
+                            exit()
 
                 
 

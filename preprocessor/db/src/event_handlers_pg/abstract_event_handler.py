@@ -19,9 +19,9 @@ class AbstractEventHandler:
     def create_account(self, address, account_index=None, nonce=None, role=None,commit=True) -> Account:
         account = Account(
             address=address,
-            account_index=None,
-            nonce=None,
-            role=None
+            account_index=account_index,
+            nonce=nonce,
+            role=role
         )
         if commit:
             self.session.add(account)
