@@ -93,6 +93,8 @@ class Transfer(Base):
     value = Column(BigInteger)
     extrinsic = Column(Integer, ForeignKey("extrinsic.id"))
     type = Column(String)
+
+    
 """
 
 
