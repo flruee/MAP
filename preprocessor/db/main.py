@@ -6,7 +6,7 @@ from mongoengine import connect
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from src.models.models import Account, Block
+from src.pg_models.pg_models import Account, Block
 DB = "postgres"
 MODE = "kafka"
 if DB == "postgres":
@@ -62,6 +62,7 @@ if __name__ == "__main__":
                     #with open(f"block_data/{data['number']}.json", "w+") as f:
                     #    f.write(json.dumps(data,indent=4))
                                #check if already in db
+                    print(data)
                     stmt = select(Block).where(Block.block_number==data["number"])
                     db_data = session.execute(stmt).fetchone()
 
