@@ -12,7 +12,8 @@ queries = {
     "get_transfers_all": "select * from transfer",
     "get_accounts_all": "select * from account",
     "get_blocks_all": "select * from block",
-    "get_transfers_and_accounts": "select * from transfer t inner join account a1 on a1.address = t.from_address inner join account a2  on a2.address = t.to_address"
+    "get_transfers_and_accounts": "select * from transfer t inner join account a1 on a1.address = t.from_address inner join account a2  on a2.address = t.to_address",
+    "get_last_balances": "Select b2.* from balance b2 inner join (select b.account, max(b.block_number) as block_number from balance b group by b.account) as b1 on b1.account=b2.account and b1.block_number=b2.block_number"
 }
 
 
@@ -43,15 +44,14 @@ def main(args):
     else:
         query = queries[args.preset]
     spark = init_spark(query, ipaddress=args.ipaddress)
-    end = time.perf_counter()
-    print(end - start)
-    print(spark.head())
     if args.save:
         if args.name is None:
             name = "untitled"
         else:
             name = args.name
         spark.write.parquet(path=f"./results/{name}.parquet")
+        end = time.perf_counter()
+        print(end - start)
 
 
 def argparser():
