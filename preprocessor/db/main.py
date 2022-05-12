@@ -3,19 +3,19 @@ import json
 import logging
 from kafka import KafkaConsumer
 from mongoengine import connect
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from src.models.models import Account
+from src.pg_models.pg_models import Account, Block
 DB = "postgres"
-MODE = "node"
+MODE = "kafka"
 if DB == "postgres":
 	from src.insertions_pg import PGBlockHandler
 else:
 	from src.insertions import handle_blocks
 from src.queries.schema import schema
 import logging
-
+import traceback
 
 
 
@@ -30,7 +30,7 @@ if __name__ == "__main__":
             block_handler = PGBlockHandler(session)
             start = time.time()
             if MODE == "json":
-                block_handler.handle_blocks(0, 10000)
+                block_handler.handle_blocks(331050, 331050)
             elif MODE == "node": 
                 block_handler.handle_node_connection_blocks(892,892)
             elif MODE == "kafka":
@@ -47,7 +47,9 @@ if __name__ == "__main__":
                 consumer = KafkaConsumer(
                         kafka_config["topic"],
                         auto_offset_reset="earliest",
-                        bootstrap_servers=kafka_config["bootstrap_servers"]
+                        bootstrap_servers=kafka_config["bootstrap_servers"],
+                        group_id="grp3",
+                        max_poll_records=1
                 )
                 print("waiting")
                 for message in consumer:
@@ -59,8 +61,18 @@ if __name__ == "__main__":
                     data = json.loads(message.value)
                     #with open(f"block_data/{data['number']}.json", "w+") as f:
                     #    f.write(json.dumps(data,indent=4))
-                    block_handler.handle_full_block(data)
+                               #check if already in db
+                    print(data)
+                    stmt = select(Block).where(Block.block_number==data["number"])
+                    db_data = session.execute(stmt).fetchone()
 
+                    if db_data is None:
+                        try:
+                            block_handler.handle_full_block(data)
+                        except Exception:
+                            print(data["number"])
+                            traceback.print_exc()
+                            exit()
 
                 
 
