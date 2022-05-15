@@ -6,16 +6,16 @@ from mongoengine import connect
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from src.models.models import Account, Block
+from src.pg_models.pg_models import Account, Block
 DB = "postgres"
-MODE = "json"
+MODE = "kafka"
 if DB == "postgres":
 	from src.insertions_pg import PGBlockHandler
 else:
 	from src.insertions import handle_blocks
 from src.queries.schema import schema
 import logging
-
+import traceback
 
 
 
@@ -47,7 +47,9 @@ if __name__ == "__main__":
                 consumer = KafkaConsumer(
                         kafka_config["topic"],
                         auto_offset_reset="earliest",
-                        bootstrap_servers=kafka_config["bootstrap_servers"]
+                        bootstrap_servers=kafka_config["bootstrap_servers"],
+                        group_id="grp3",
+                        max_poll_records=1
                 )
                 print("waiting")
                 for message in consumer:
@@ -60,12 +62,17 @@ if __name__ == "__main__":
                     #with open(f"block_data/{data['number']}.json", "w+") as f:
                     #    f.write(json.dumps(data,indent=4))
                                #check if already in db
+                    print(data)
                     stmt = select(Block).where(Block.block_number==data["number"])
                     db_data = session.execute(stmt).fetchone()
 
                     if db_data is None:
-                        block_handler.handle_full_block(data)
-
+                        try:
+                            block_handler.handle_full_block(data)
+                        except Exception:
+                            print(data["number"])
+                            traceback.print_exc()
+                            exit()
 
                 
 
