@@ -91,7 +91,7 @@ class StakingEventHandler(AbstractEventHandler):
     
     def __handle_slashed(self,block: Block, extrinsic: Extrinsic, event: Event):
         address = event.attributes[0]['value']
-        account = self.get_or_create_account(self,address)
+        account = self.get_or_create_account(address)
 
         treasury_account_address = '0xTreasury'
         treasury_account = self.get_or_create_account(treasury_account_address,role="Treasury")
