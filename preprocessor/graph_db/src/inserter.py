@@ -49,9 +49,7 @@ class Neo4jBlockHandler:
             block.last_block.add(last_block)
         except TypeError:
             pass
-        if(last_block):
-            last_block.next_block.add(block)
-            self.driver.save(last_block)
+
         return block
 
     def insert_header(self,header_data):
@@ -116,7 +114,6 @@ class Neo4jBlockHandler:
             
             )
 
-            extrinsic.has_block.add(block)
             block.has_extrinsics.add(extrinsic)
 
             extrinsics.append(extrinsic)
@@ -145,10 +142,8 @@ class Neo4jBlockHandler:
                 
                     )
                     extrinsic.has_events.add(event)
-                    event.has_extrinsic.add(extrinsic)
                     if order_id > 0:
                         event.event_before.add(current_events[-1])
-                        current_events[-1].event_after.add(event)
                     current_events.append(event)
 
                     order_id += 1

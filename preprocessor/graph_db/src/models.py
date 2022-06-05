@@ -29,7 +29,6 @@ class Block(GraphObject):
     has_extrinsics = RelatedTo("Extrinsic")
     #has_balances = RelatedTo("Balance")
     last_block = RelatedTo("Block")
-    next_block = RelatedTo("Block")
 
 
 class Extrinsic(GraphObject):
@@ -45,9 +44,7 @@ class Extrinsic(GraphObject):
     fee = Property() # Found in last event "ApplyExtrinsic"
     was_successful = Property()
 
-    has_block = RelatedTo("Block")
     has_events = RelatedTo("Event")
-    #has_callee = RelatedTo("Account")
 
 
 class Event(GraphObject):
@@ -58,7 +55,5 @@ class Event(GraphObject):
     attributes = Property()
     topics = Property()
 
-    has_extrinsic = RelatedTo("Extrinsic")
 
     event_before = RelatedTo("Event")
-    event_after = RelatedTo("Event")
