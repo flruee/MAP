@@ -5,7 +5,7 @@ import json
 
 from sqlalchemy import JSON
 #from src.event_handlers.utils import event_error_handling
-from src.models import Block,Extrinsic,Event
+from src.models import Block,Extrinsic,Event, Account, Balance
 #from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler, ClaimsEventHandler
 from sqlalchemy.exc import IntegrityError
 #from src.node_connection import handle_one_block
@@ -19,11 +19,12 @@ class Neo4jBlockHandler:
         block = self.__insert_block(data)
         extrinsics= self.__insert_extrinsics(data, block)
         events = self.__insert_events(data, extrinsics)
-        self.__commit_all(block, extrinsics, events)
+        author = self.__add_fees_to_author(data["header"]["author"],block, events)
+        self.__commit_all(block, extrinsics, events, author)
         
 
     def __insert_block(self,data):
-        header = self.insert_header(data["header"])
+        header = self.__insert_header(data["header"])
         try:
             timestamp = data["extrinsics"][0]["call"]["call_args"][0]["value"]
 
@@ -40,7 +41,7 @@ class Neo4jBlockHandler:
             extrinsics_root = header["header"]["extrinsicsRoot"],
             parent_hash = header["header"]["parentHash"],
             state_root = header["header"]["stateRoot"],
-            author = header["author"],
+            #author = header["author"],
             timestamp=timestamp,
         )
 
@@ -52,7 +53,7 @@ class Neo4jBlockHandler:
 
         return block
 
-    def insert_header(self,header_data):
+    def __insert_header(self,header_data):
         """
         Removes unnecessary fields from header data, then creates a Header object, stores it and returns it 
         """
@@ -153,13 +154,69 @@ class Neo4jBlockHandler:
 
 
         return current_events
-    def __commit_all(self, block, extrinsics, events):
-        #self.driver.save(extrinsics)
+
+    def __add_fees_to_author(self, address, block, events: List[Event]):
+        
+        author = Account.match(self.driver, address).first()
+        if author is None:
+            author, author_balance = self.__create_account(address )
+        else:
+            author_balance =  list(author.has_balances.triples())[-1][-1]
+                
+        fees = 0
+        for event in events:
+            if event.module_name == "Balances" and event.event_name == "Deposit":
+                attributes = json.loads(event.attributes)
+                if not attributes[0]["value"] == author.address:
+                    raise Exception("author and event address not the same")
+                fees += attributes[1]["value"]
+        if fees != 0:
+            new_balance = Balance(
+                transferable = author_balance.transferable + fees,
+                reserved = author_balance.reserved,
+                bonded = author_balance.bonded,
+                unbonding = author_balance.unbonding
+            )
+
+            author.has_balances.add(new_balance)
+            block.has_balances.add(new_balance)
+            self.driver.save(new_balance)
+
+        block.has_author.add(author)
+
+        return author
+        
+
+
+    def __create_account(self, address:str):
+        account = Account(
+            address = address
+        )
+        balance = Balance(
+            transferable = 0,
+            reserved = 0,
+            bonded = 0,
+            unbonding = 0
+        )
+
+        account.has_balances.add(balance)
+
+        self.driver.save(account)
+        self.driver.save(balance)
+
+        return account, balance
+        
+
+    def __commit_all(self, block, extrinsics, events, author):
+        self.driver.save(author)
+
         for event in events:
             self.driver.save(event)
         for extrinsic in extrinsics:
             self.driver.save(extrinsic)
         self.driver.save(block)
+
+
     def handle_extrinsics_and_events(self,block,data) -> List[Extrinsic]:
         events_data = data["events"]
 

@@ -24,10 +24,10 @@ class Block(GraphObject):
     extrinsics_root = Property("extrinsics_root")
     parent_hash = Property("parent_hash")
     state_root = Property("state_root")
-    author = Property("author")
-
+    
+    has_author = RelatedTo("Account")
     has_extrinsics = RelatedTo("Extrinsic")
-    #has_balances = RelatedTo("Balance")
+    has_balances = RelatedTo("Balance")
     last_block = RelatedTo("Block")
 
 
@@ -57,3 +57,22 @@ class Event(GraphObject):
 
 
     event_before = RelatedTo("Event")
+
+class Account(GraphObject):
+    __primarykey__ = "address"
+    
+    address = Property()
+    account_index = Property()
+    nonce = Property()
+
+    has_balances = RelatedTo("Balance")
+
+
+class Balance(GraphObject):
+    __tablename__ = "balance"
+    # Values are bigger than 32bit int can handle, therefore used float as a workaround
+    #TODO find another field type
+    transferable = Property()
+    reserved = Property()
+    bonded = Property()
+    unbonding = Property()
