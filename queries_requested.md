@@ -14,3 +14,19 @@ Basic set of blockchain data, in order of priority:
    - Token transaction table
    - Transaction networks in snapshots
    - Balance distribution in snapshots
+
+
+Tables:
+- Rewards/Supply
+- TX cryptocurrency
+- List F-tokens - it's easier to lookup for the smart contract addresses if they are all in one place
+- List NF-tokens
+- TX F-tokens
+- TX NF-tokens
+
+
+List of transactions:
+- timestamp, block number
+- input and output address
+- amount and type of transfer (native, token, NFT)
+- additional labels (mining rewards, burning)
