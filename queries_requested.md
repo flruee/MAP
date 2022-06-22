@@ -30,3 +30,7 @@ List of transactions:
 - input and output address
 - amount and type of transfer (native, token, NFT)
 - additional labels (mining rewards, burning)
+
+
+slashing article:
+https://blog.unit410.com/polkadot,/kusama,/slashing,/validator/2021/08/05/polkadot-slashing.html
