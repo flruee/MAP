@@ -1,10 +1,12 @@
 import argparse
 import time
 from pyspark.sql import SparkSession
-#from networkx_processing.networkx_visualisation import plot_graph
+import findspark
+from MAP.preprocessor.graph_db.src import models
 
 
-queries = {
+
+queries_postgres = {
     "get_balances_all": "select * from balance",
     "get_balances_year": "select * from balance b where b.block_number > (select greatest(max(b.block_number) - 5256000 , 0) from balance b)",
     "get_balances_month": "select * from balance b where b.block_number > (select greatest(max(b.block_number) - 432000 , 0) from balance b)",
@@ -16,25 +18,44 @@ queries = {
     "get_last_balances": "Select b2.* from balance b2 inner join (select b.account, max(b.block_number) as block_number from balance b group by b.account) as b1 on b1.account=b2.account and b1.block_number=b2.block_number"
 }
 
+queries_neo4j = {
+    ""
+}
 
-def init_spark(query: str, ipaddress: str):
-    if ipaddress is None:
-        ipaddress = "localhost"
+
+def init_sparksession(query: str, db: str):
     print(query)
-    return \
-        SparkSession \
-        .builder \
-        .appName("MAP Polkadot Pyspark") \
-        .config("spark.jars", "./postgresql-42.2.6.jar") \
-        .getOrCreate() \
-        .read \
-        .format("jdbc") \
-        .option("url", "jdbc:postgresql://" + ipaddress + ":5432/map") \
-        .option("user", "mapUser") \
-        .option("password", "mapmap") \
-        .option("driver", "org.postgresql.Driver") \
-        .option("query", query) \
-        .load()
+    print(db)
+    if db == "p":
+        url = "jdbc:postgresql://172.23.149.214:5432/map"
+        return \
+            SparkSession \
+            .builder \
+            .appName("Polkadot Pyspark Postgres") \
+            .config("spark.jars", "./postgresql-42.2.6.jar") \
+            .getOrCreate() \
+            .read \
+            .format("jdbc") \
+            .option("url", url) \
+            .option("user", "mapUser") \
+            .option("password", "mapmap") \
+            .option("driver", "org.postgresql.Driver") \
+            .option("query", query) \
+            .load()
+    else:
+        url = 'bolt://127.0.0.1:7687'
+        return \
+            SparkSession \
+            .builder \
+            .appName("Polkadot Pyspark neo4j") \
+            .getOrCreate()\
+            .read \
+            .option("url", url) \
+            .option("user", "neo4j") \
+            .option("password", "mapmap") \
+            .option("query", query) \
+            .load(schema=models.Block)
+
 
 
 def main(args):
@@ -42,8 +63,13 @@ def main(args):
     if args.query is not None:
         query = args.query
     else:
-        query = queries[args.preset]
-    spark = init_spark(query, ipaddress=args.ipaddress)
+        if args.db == "P":
+            query = queries_postgres[args.preset]
+        else:
+            query = queries_neo4j[args.preset]
+    spark = init_sparksession(query, db=args.database)
+    print('arrive')
+    exit()
     if args.save:
         if args.name is None:
             name = "untitled"
@@ -57,15 +83,17 @@ def main(args):
 def argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-q",   "--query",                              help="enter SQL query",           type=str)
-    parser.add_argument("-ip",   "--ipaddress",                          help="default: localhost",        type=str)
+    parser.add_argument("-u",   "--url",                          help="default: localhost",        type=str)
     parser.add_argument("-n",   "--name",                               help="name for file results",     type=str)
     parser.add_argument("-pre", "--preset",                           help="choose predefined query",   type=str)
     parser.add_argument("-p",   "--plot",    action='store_true',       help="plot of graph")
     parser.add_argument("-s",   "--save",    action='store_true',       help="Save to /results")
+    parser.add_argument("-d",  "--database",                           help="p=postgres or n=neo4j")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
+    findspark.init("/opt/spark")
     arguments = argparser()
     if arguments.query is None and arguments.preset is None:
         raise UserWarning("A predefined or userdefined query via flags {-q, -pre} is required")
