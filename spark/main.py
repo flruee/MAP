@@ -1,4 +1,5 @@
 import argparse
+from sys import set_coroutine_origin_tracking_depth
 import time
 from pyspark.sql import SparkSession
 
@@ -45,12 +46,16 @@ def init_sparksession(query: str, db: str):
         print('graph_job')
         url = 'bolt://127.0.0.1:7687'
         user = "neo4j"
-        password = "mapmap"
+        password = ""
         return \
             SparkSession \
             .builder \
             .appName("Polkadot Pyspark neo4j") \
             .config("spark.jars", "./neo4j-connector-apache-spark_2.12-4.1.2_for_spark_3.jar") \
+            .config("neo4j.url", "bolt://localhost:7687") \
+            .config("neo4j.authentication.type", "basic") \
+            .config("neo4j.authentication.basic.username", user) \
+            .config("neo4j.authentication.basic.password", password) \
             .getOrCreate()\
             .read \
             .format("org.neo4j.spark.DataSource") \
