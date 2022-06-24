@@ -1,8 +1,6 @@
 import argparse
 import time
 from pyspark.sql import SparkSession
-import findspark
-from MAP.preprocessor.graph_db.src import models
 
 
 
@@ -27,6 +25,7 @@ def init_sparksession(query: str, db: str):
     print(query)
     print(db)
     if db == "p":
+        print('postgres_job')
         url = "jdbc:postgresql://172.23.149.214:5432/map"
         return \
             SparkSession \
@@ -43,18 +42,24 @@ def init_sparksession(query: str, db: str):
             .option("query", query) \
             .load()
     else:
+        print('graph_job')
         url = 'bolt://127.0.0.1:7687'
+        user = "neo4j"
+        password = "mapmap"
         return \
             SparkSession \
             .builder \
             .appName("Polkadot Pyspark neo4j") \
+            .config("spark.jars", "./neo4j-connector-apache-spark_2.12-4.1.2_for_spark_3.jar") \
             .getOrCreate()\
             .read \
+            .format("org.neo4j.spark.DataSource") \
             .option("url", url) \
-            .option("user", "neo4j") \
-            .option("password", "mapmap") \
-            .option("query", query) \
-            .load(schema=models.Block)
+            .option("user", user) \
+            .option("password", password) \
+            .option("query", query)\
+            .load()
+
 
 
 
@@ -92,8 +97,10 @@ def argparser():
     return parser.parse_args()
 
 
+
+
+
 if __name__ == "__main__":
-    findspark.init("/opt/spark")
     arguments = argparser()
     if arguments.query is None and arguments.preset is None:
         raise UserWarning("A predefined or userdefined query via flags {-q, -pre} is required")
