@@ -21,11 +21,10 @@ if __name__ == "__main__":
 
     logging_filename = 'preprocessor.log'
     logger = logging.getLogger('preprocessor')
-    log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
-    logging.basicConfig(filename=logging_filename, level=preprocessor_config["logLevel"])
     handler = RotatingFileHandler(logging_filename, maxBytes=1024**3, backupCount=2)
-    handler.setFormatter(log_formatter)
-    logger.addHandler(handler)
+    logging.basicConfig(filename=logging_filename, level=preprocessor_config["logLevel"], handlers=[handler],
+                        format='%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
+
 
     consumer = KafkaConsumer(
         bootstrap_servers=kafka_config["bootstrap_servers"],
