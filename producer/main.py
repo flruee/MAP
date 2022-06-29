@@ -24,7 +24,7 @@ if __name__ == "__main__":
     logger = logging.getLogger('producer')
     log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
     handler = RotatingFileHandler(logging_filename, maxBytes=1024**3, backupCount=2)
-    logging.basicConfig(filename=logging_filename, level=producer_config["logLevel"], handlers=[handler], format=log_formatter)
+    logging.basicConfig(level=producer_config["logLevel"], handlers=[handler], format=log_formatter)
 
     #needed for self signed certificate
     sslopt = {
