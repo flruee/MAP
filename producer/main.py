@@ -1,3 +1,4 @@
+from logging.handlers import RotatingFileHandler
 from select import select
 import kafka
 from substrateinterface import SubstrateInterface
@@ -19,8 +20,13 @@ if __name__ == "__main__":
     kafka_config = config["kafka"]
     producer_config = config["producer"]
 
-    logging.basicConfig(filename='producer.log', level=producer_config["logLevel"],
-                        format='%(asctime)s,%(levelname)s :%(message)s')
+    logging_filename = 'producer.log'
+    logger = logging.getLogger('producer')
+    log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
+    logging.basicConfig(filename=logging_filename, level=producer_config["logLevel"])
+    handler = RotatingFileHandler(logging_filename, maxBytes=1024**3, backupCount=2)
+    handler.setFormatter(log_formatter)
+    logger.addHandler(handler)
 
     #needed for self signed certificate
     sslopt = {
