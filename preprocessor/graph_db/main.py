@@ -3,7 +3,9 @@ from dotenv import load_dotenv, find_dotenv
 from neo4j import GraphDatabase, basic_auth
 from neo4j.exceptions import Neo4jError
 from py2neo.ogm import Repository
-from src import Neo4jBlockHandler, RawData
+from src.inserter import Neo4jBlockHandler
+from src.models import RawData
+from src.driver_singleton import Driver
 import time
 import json
 import logging
@@ -42,6 +44,9 @@ DATABASE_URL = env('DATABASE_URL')
 
 
 driver = Repository(DATABASE_URL, auth=(DATABASE_USERNAME, str(DATABASE_PASSWORD)))
+driver_singleton = Driver()
+driver_singleton.add_driver(driver)
+print(driver_singleton)
 pg_driver = create_engine('postgresql://postgres:polkamap@172.23.149.214/raw_data')
 block_handler = Neo4jBlockHandler(driver)
 with Session(pg_driver) as session:
