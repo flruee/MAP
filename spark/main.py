@@ -46,7 +46,7 @@ def init_sparksession(query: str, db: str):
         print('graph_job')
         url = 'bolt://127.0.0.1:7687'
         user = "neo4j"
-        password = ""
+        password = "mapmap"
         return \
             SparkSession \
             .builder \
@@ -78,7 +78,8 @@ def main(args):
         else:
             query = queries_neo4j[args.preset]
     spark = init_sparksession(query, db=args.database)
-    print('arrive')
+    spark.show(
+    )
     exit()
     if args.save:
         if args.name is None:

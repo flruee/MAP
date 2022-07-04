@@ -1,6 +1,13 @@
 import json
 import logging
+from logging.handlers import TimedRotatingFileHandler, RotatingFileHandler
 from kafka import KafkaConsumer
+import datetime
+
+
+def filer(self):
+    now = datetime.datetime.now()
+    return self + now.strftime("%Y-%m-%d_%H:%M:%S")
 
 
 
@@ -12,8 +19,13 @@ if __name__ == "__main__":
     kafka_config = config["kafka"]
     preprocessor_config = config["preprocessor"]
 
-    logging.basicConfig(filename='preprocessor.log', level=preprocessor_config["logLevel"])
-    
+    logging_filename = 'preprocessor.log'
+    logger = logging.getLogger('preprocessor')
+    handler = RotatingFileHandler(logging_filename, maxBytes=1024**3, backupCount=2)
+    logging.basicConfig(filename=logging_filename, level=preprocessor_config["logLevel"], handlers=[handler],
+                        format='%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
+
+
     consumer = KafkaConsumer(
         bootstrap_servers=kafka_config["bootstrap_servers"],
     )
