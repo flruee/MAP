@@ -16,7 +16,11 @@ from py2neo.ogm import Repository
 class Neo4jBlockHandler:
     def __init__(self, driver: Repository):
         self.driver = driver
+        self.handled_call_modules = ['Balances',
+                                'Staking',
+                                'Treasury',
 
+                                ]
     def handle_full_block(self,data):
         
         block = self.__handle_block_data(data)
@@ -33,8 +37,7 @@ class Neo4jBlockHandler:
         
         timestamp = data["extrinsics"][0]["call"]["call_args"][0]["value"]
         timestamp = datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=timestamp)
-        driver = Driver()
-        print(driver)
+
         last_block = Block.match(Driver().get_driver(), data["number"]-1).first()
 
         block = Block(
@@ -43,12 +46,19 @@ class Neo4jBlockHandler:
             timestamp=timestamp,
         )
 
+        author = Account.get(data["header"]["author"])
+        if not author:
+            author = Account.create(data["header"]["author"])
+        block.has_author.add(author)
+
+
         #Only a problem for the first block
         try:
             block.previous_block.add(last_block)
         except TypeError:
             pass
-
+        
+        #Block.save(block)
         return block
 
 
@@ -56,6 +66,8 @@ class Neo4jBlockHandler:
     def __handle_transaction_data(self, data, block: Block):
 
         transactions = []
+        events_data = data["events"]
+
         if len(data['extrinsics']) == 1 and len(data["events"]) > 2: # Todo: handle differently,
             """
             This was done because some blocks contain 0 extrinsics, 
@@ -66,49 +78,39 @@ class Neo4jBlockHandler:
         else:
             start = 1
         for i in range(start, len(data["extrinsics"])):
-            """
-            #index 0 is reserved for the timestamp transaction in extrinsics which was already included
-            # in __handle_block_data.
-            
-            if i in 0:
-                timestamp = extrinsic_data["call"]["call_args"][0]["value"]
-                print(timestamp)
-                continue
-            
-            #index 1 is for paraInherents which probably have to be handled differently
-            if i == 1:
-                continue
-            """
+
             #TODO make a parainherent check here
             extrinsic_data = data["extrinsics"][i]
+            current_events = self.handle_events(events_data, i)
+
             # an extrinsic_hash of None indicates ParaInherent transactions or Timestamp transactions
             # timestamp is already handled above
-            transaction = self.__handle_transaction(extrinsic_data, block)
-            for key in ["address", "signature", "nonce", "tip"]:
-                if not key in extrinsic_data.keys():
-                    extrinsic_data[key] = None
-            transaction = Transaction(
-                extrinsic_hash = extrinsic_data["extrinsic_hash"],
-                module_name = extrinsic_data["call"]["call_module"],
-                function_name = extrinsic_data["call"]["call_function"],
-
-            
-            )
-
+            transaction = self.__handle_transaction(block,extrinsic_data, current_events)
+            if not transaction:
+                continue
             block.has_transaction.add(transaction)
 
             transactions.append(transaction)
-        return extrinsics
+        return transactions
 
-    def __handle_transaction(self, transaction_data: Dict, block: Block):
+    def __handle_transaction(self, block: Block,transaction_data: Dict,event_data: Dict):
         """
         creates a transaction node, 
         """
-        transaction = Transaction.create(transaction_data)
 
-        return transaction
+        if not transaction_data["call"]["call_module"] in self.handled_call_modules:
+            return None
+        
+        if transaction_data["call"]["call_function"] in ["transfer", "transfer_all"]:
+            transaction = Transaction.create(block,transaction_data, event_data)
+            #Transaction.handle_transfer(transaction, transaction_data, block)
+            
+        else:
+            return None
+        
 
 
+    
     
 
     def __add_fees_to_author(self, address, block, events: List):
@@ -209,4 +211,24 @@ class Neo4jBlockHandler:
                 #handler.handle_event(block, extrinsic, event)
             
 
+    def handle_events(self,events, extrinsic_idx) -> List:
+            """
+                Iterates through events, selects those that have the same extrinsic_idx as the given one
+                stores them in the db and returns all found events
 
+
+                The events correspond to the transactions based on the order the transactions were executed
+                The last event of a transaction indicates if the transaction was executed successfully
+                i.e. the first transaction (timestamp) with index 0 has one event (with extrinsic_id 0) that indicates if it was successfull.
+                an extrinsic (lets say it was extrinsic n) that sends DOT to an other account has multiple events (all with the same extrinic_id = n-1)
+
+            """
+            current_events = []
+            for event_data in events:
+                if extrinsic_idx == 0:
+                    extrinsic_idx = None
+                if event_data["extrinsic_idx"] == extrinsic_idx:
+                    current_events.append(event_data)
+
+
+            return current_events
