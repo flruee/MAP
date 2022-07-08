@@ -101,7 +101,7 @@ class Neo4jBlockHandler:
         if not transaction_data["call"]["call_module"] in self.handled_call_modules:
             return None
         
-        if transaction_data["call"]["call_function"] in ["transfer", "transfer_all"]:
+        if transaction_data["call"]["call_function"] in ["transfer", "transfer_all", "transfer_keep_alive"]:
             transaction = Transaction.create(block,transaction_data, event_data)
             #Transaction.handle_transfer(transaction, transaction_data, block)
             

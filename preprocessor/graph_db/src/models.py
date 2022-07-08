@@ -65,7 +65,7 @@ class Transaction(GraphObject):
         if not from_account:
             from_account = Account.create(transaction_data["address"].replace("0x", ""))
         print(extrinsic_function.name)
-        if extrinsic_function.name in ["transfer", "transfer_all"]:
+        if extrinsic_function.name in ["transfer", "transfer_all", "transfer_keep_alive"]:
             to_account = Account.get(transaction_data["call"]["call_args"][0]["value"].replace("0x", ""))
             validator_account = list(block.has_author.triples())[0][-1]
 
@@ -76,28 +76,14 @@ class Transaction(GraphObject):
             treasury_fee = event_data[-3]["attributes"][0]["value"]
             treasury_account = Account.get_treasury()
 
+            for event in event_data:
+                if event['event_id'] == 'Transfer':
+                    amount_transferred = event['attributes'][2]['value']
 
-            # If a keep alive flag is set then the amount remaining on the from balance
-            # has to be 1 Dot. To achieve this here we set a deduct_fee_multiplier variable
-            # If keep alive is False then we deduct fees normally (fees multiplied with deduct_fees_multiplier)
-            # if keep alive is true we subtract 1 Dot from the amount transferred, set deduct_fees_multiplier to 0
-            # therefore the from balance will not subtract the fees additionally.
-            # We do the opposite in the to_account
-            deduct_fees_multpilier = 1
-            if extrinsic_function.name == "transfer_all":
-                #TODO check correctness ex. 6451916
-                amount_transferred = from_account.get_current_balance().transferable
-                #check keep alive
-                if transaction_data["call"]["call_args"][1]["value"] == True:
-                    amount_transferred -= int(1e10)
-                    deduct_fees_multpilier = 0
-
-
-            amount_transferred = transaction_data["call"]["call_args"][1]["value"]
             transaction.amount_transferred = amount_transferred
 
-            from_account.update_balance(block.block_number, to_account,transferable=-amount_transferred - (treasury_fee + validator_fee)*deduct_fees_multpilier)
-            to_account.update_balance(transferable=amount_transferred - (treasury_fee+validator_fee) * (not deduct_fees_multpilier))
+            from_account.update_balance(block.block_number, to_account,transferable=-amount_transferred - (treasury_fee + validator_fee))
+            to_account.update_balance(transferable=amount_transferred)
             treasury_account.update_balance(transferable=treasury_fee)
             validator_account.update_balance(transferable=validator_fee)
 
