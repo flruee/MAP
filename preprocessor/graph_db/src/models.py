@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, JSON
 from sqlalchemy.orm import declarative_base
 from py2neo.ogm import GraphObject, Property, RelatedTo
 from src.driver_singleton import Driver
+from typing import Dict
 Base = declarative_base()
 """
 Block
@@ -51,6 +52,10 @@ class Transaction(GraphObject):
 
     @staticmethod
     def create(block: Block,transaction_data, event_data) -> "Transaction":
+        #transaction failed so we don't include it
+        if event_data[-1]["event_id"] != "ExtrinsicSuccess":
+            return None
+
 
         transaction = Transaction(
             extrinsic_hash = transaction_data["extrinsic_hash"]
@@ -61,37 +66,32 @@ class Transaction(GraphObject):
 
         transaction.has_extrinsic_function.add(extrinsic_function)
 
-        from_account = Account.get(transaction_data["address"].replace("0x", ""))
-        if not from_account:
-            from_account = Account.create(transaction_data["address"].replace("0x", ""))
-        print(extrinsic_function.name)
         if extrinsic_function.name in ["transfer", "transfer_all", "transfer_keep_alive"]:
-            to_account = Account.get(transaction_data["call"]["call_args"][0]["value"].replace("0x", ""))
-            validator_account = list(block.has_author.triples())[0][-1]
+            Transaction.handle_transfer(transaction_data, event_data, block, transaction)
 
-            if not to_account:
-                to_account = Account.create(transaction_data["call"]["call_args"][0]["value"].replace("0x", ""))
+        elif extrinsic_function.name in ["bond", "bond_extra"]:
+            from_account = Account.get(transaction_data["address"].replace("0x", ""))
+            if not from_account:
+                from_account = Account.create(transaction_data["address"].replace("0x", ""))
 
-            validator_fee = event_data[-2]["attributes"][1]["value"]
-            treasury_fee = event_data[-3]["attributes"][0]["value"]
-            treasury_account = Account.get_treasury()
+            balance = Account.get_current_balance(from_account)
 
-            for event in event_data:
-                if event['event_id'] == 'Transfer':
-                    amount_transferred = event['attributes'][2]['value']
+            if extrinsic_function.name == "bond":
+                amount_transferred = transaction_data["call"]["call_args"][1]["value"]
+            elif extrinsic_function.name == "bond_extra":
+                amount_transferred = transaction_data["call"]["call_args"][0]["value"]
+            else:
+                raise NotImplementedError()
 
             transaction.amount_transferred = amount_transferred
+            fee = Transaction.pay_fees(event_data, block, transaction)
 
-            from_account.update_balance(block.block_number, to_account,transferable=-amount_transferred - (treasury_fee + validator_fee))
-            to_account.update_balance(transferable=amount_transferred)
-            treasury_account.update_balance(transferable=treasury_fee)
-            validator_account.update_balance(transferable=validator_fee)
+
+            from_account.update_balance(block.block_number, from_account, transferable=-(amount_transferred+fee) ,bonded=amount_transferred)
+
 
             transaction.from_balance.add(from_account.get_current_balance())
-            transaction.to_balance.add(to_account.get_current_balance())
-            transaction.reward_validator.add(validator_account.get_current_balance())
-            transaction.reward_treasury.add(treasury_account.get_current_balance())
-    
+            transaction.to_balance.add(from_account.get_current_balance())
  
         
         Transaction.save(transaction)
@@ -102,6 +102,47 @@ class Transaction(GraphObject):
     @staticmethod
     def save(transaction: "Transaction"):
         Driver().get_driver().save(transaction)
+
+    @staticmethod
+    def handle_transfer(transaction_data: Dict, event_data: Dict, block: Block, transaction: "Transaction"):
+        from_account = Account.get(transaction_data["address"].replace("0x", ""))
+        if not from_account:
+            from_account = Account.create(transaction_data["address"].replace("0x", ""))
+        to_account = Account.get(transaction_data["call"]["call_args"][0]["value"].replace("0x", ""))
+
+        if not to_account:
+            to_account = Account.create(transaction_data["call"]["call_args"][0]["value"].replace("0x", ""))
+
+        fee = Transaction.pay_fees(event_data, block, transaction)
+
+        for event in event_data:
+            if event['event_id'] == 'Transfer':
+                amount_transferred = event['attributes'][2]['value']
+
+        transaction.amount_transferred = amount_transferred
+
+        from_account.update_balance(block.block_number, to_account,transferable= -(amount_transferred + fee) )
+        to_account.update_balance(transferable=amount_transferred)
+
+
+        transaction.from_balance.add(from_account.get_current_balance())
+        transaction.to_balance.add(to_account.get_current_balance())
+
+
+    @staticmethod
+    def pay_fees(event_data, block, transaction):
+        validator_account = list(block.has_author.triples())[0][-1]
+        treasury_account = Account.get_treasury()
+        validator_fee = event_data[-2]["attributes"][1]["value"]
+        treasury_fee = event_data[-3]["attributes"][0]["value"]
+
+        treasury_account.update_balance(transferable=treasury_fee)
+        validator_account.update_balance(transferable=validator_fee)
+
+        transaction.reward_validator.add(validator_account.get_current_balance())
+        transaction.reward_treasury.add(treasury_account.get_current_balance())
+
+        return (validator_fee+treasury_fee)
 
 
 class Aggregator(GraphObject):
@@ -138,7 +179,6 @@ class ExtrinsicFunction(GraphObject):
 
     @staticmethod
     def save(extrinsic_function: "ExtrinsicFunction"):
-        print(extrinsic_function.name)
         Driver().get_driver().save(extrinsic_function)
 
 class ExtrinsicModule(GraphObject):
@@ -153,7 +193,6 @@ class ExtrinsicModule(GraphObject):
 
     @staticmethod
     def create(module_name: str) -> "ExtrinsicModule":
-        print(module_name)
         extrinsic_module = ExtrinsicModule(
                 name=module_name,
                 )
@@ -162,7 +201,6 @@ class ExtrinsicModule(GraphObject):
 
     @staticmethod
     def save(extrinsic_module: "ExtrinsicModule"):
-        print(extrinsic_module.name)
         Driver().get_driver().save(extrinsic_module) 
 
 
@@ -200,8 +238,7 @@ class Account(GraphObject):
             balance = Balance.create(0,0,0,0)
         else:
             balance = triples[0][-1]
-        print("eyy")
-        print(balance)
+   
         return balance
 
 
@@ -211,7 +248,6 @@ class Account(GraphObject):
             address=address
         )
         null_balance = Balance.create(0,0,0,0)
-        print(null_balance)
         account.has_balances.add(null_balance)
         account.current_balance.add(null_balance)
         Account.save(account)
@@ -239,9 +275,9 @@ class Account(GraphObject):
         last_balance = self.get_current_balance()
 
         last_balance.transferable += transferable
-        last_balance.transferable += reserved
-        last_balance.transferable += bonded
-        last_balance.transferable += unbonding
+        last_balance.reserved += reserved
+        last_balance.bonded += bonded
+        last_balance.unbonding += unbonding
 
 
 
