@@ -92,8 +92,29 @@ use Staking(withdrawn) event to migrate bonded to transferable
 
 
 
+# Conspiracy
+Stash: 14d2kv44xf9nFnYdms32dYPKQsr5C9urbDzTz7iwU8iHb9az aka Coinstudio
+Controller: 12MnpxhC2cSRTWXiwX8jwxegwXZNuxTZsJMCLfCLfCiUpWeu
 
 
+
+# handle ValidatorPool
+* if grandpa(newAuthorities) then Validatorpool starts and last Validatorpool ends.
+* connect new to old via previous
+* in old Validatorpool set attribute "to_block" to current block - 1 .
+
+## Finding Validators
+1. author -> validator
+2. some validators might not mine, but will surely claim their reward -> use the `Staking(PayoutStakers)` extrinsic (called from any Account DANGERZONE) it will contain the address of validatorStash and validatorpool era.
+
+
+    * create Validator node with stash account.
+    * connect Validator node to validatorPool of era.
+    * use `staking(Rewarded)` event to get the nominator addresses and their reward for era.
+    * create Nominator node and connect it to account (check if stash or not).
+    * connect Nominator and Validator Node.   
+ 
+# 
 
 
 "(Babe,report_equivocation_unsigned)"
