@@ -70,18 +70,25 @@ class Transaction(GraphObject):
             Transaction.handle_transfer(transaction_data, event_data, block, transaction)
 
         elif extrinsic_function.name in ["bond", "bond_extra"]:
+            Transaction.handle_bond(transaction_data, event_data, block, transaction)
+            
+        elif extrinsic_function.name == "set_controller":
             from_account = Account.get(transaction_data["address"].replace("0x", ""))
             if not from_account:
                 from_account = Account.create(transaction_data["address"].replace("0x", ""))
 
             balance = Account.get_current_balance(from_account)
 
-            if extrinsic_function.name == "bond":
-                amount_transferred = transaction_data["call"]["call_args"][1]["value"]
-            elif extrinsic_function.name == "bond_extra":
-                amount_transferred = transaction_data["call"]["call_args"][0]["value"]
-            else:
-                raise NotImplementedError()
+            controller_address = transaction_data["call"]["call_args"][0]["value"].replace("0x", "")
+            print(controller_address)
+            
+            controller_account = Account.get(controller_address)
+            if not controller_account:
+                controller_account = Account.create(controller_address)
+            controller_account.controls.add(from_account)
+            Account.save(controller_account)
+
+            amount_transferred = 0
 
             transaction.amount_transferred = amount_transferred
             fee = Transaction.pay_fees(event_data, block, transaction)
@@ -92,8 +99,8 @@ class Transaction(GraphObject):
 
             transaction.from_balance.add(from_account.get_current_balance())
             transaction.to_balance.add(from_account.get_current_balance())
- 
-        
+
+
         Transaction.save(transaction)
         block.has_transaction.add(transaction)
         Block.save(block)
@@ -128,19 +135,54 @@ class Transaction(GraphObject):
         transaction.from_balance.add(from_account.get_current_balance())
         transaction.to_balance.add(to_account.get_current_balance())
 
+    @staticmethod
+    def handle_bond(transaction_data: Dict, event_data: Dict, block: Block, transaction: "Transaction", extrinsic_function: "ExtrinsicFunction"):
+        from_account = Account.get(transaction_data["address"].replace("0x", ""))
+        if not from_account:
+            from_account = Account.create(transaction_data["address"].replace("0x", ""))
+
+        balance = Account.get_current_balance(from_account)
+
+        if extrinsic_function.name == "bond":
+            amount_transferred = transaction_data["call"]["call_args"][1]["value"]
+            controller_address = transaction_data["call"]["call_args"][0]["value"].replace("0x", "")
+            controller_account = Account.get(controller_address)
+            if not controller_account:
+                controller_account = Account.create(controller_address)
+            controller_account.controls.add(from_account)
+            Account.save(controller_account)
+        elif extrinsic_function.name == "bond_extra":
+            amount_transferred = transaction_data["call"]["call_args"][0]["value"]
+        else:
+            raise NotImplementedError()
+
+        transaction.amount_transferred = amount_transferred
+        fee = Transaction.pay_fees(event_data, block, transaction)
+
+
+        from_account.update_balance(block.block_number, from_account, transferable=-(amount_transferred+fee) ,bonded=amount_transferred)
+
+
+        transaction.from_balance.add(from_account.get_current_balance())
+        transaction.to_balance.add(from_account.get_current_balance())
+
 
     @staticmethod
     def pay_fees(event_data, block, transaction):
         validator_account = list(block.has_author.triples())[0][-1]
         treasury_account = Account.get_treasury()
-        validator_fee = event_data[-2]["attributes"][1]["value"]
-        treasury_fee = event_data[-3]["attributes"][0]["value"]
+        try:
+            validator_fee = event_data[-2]["attributes"][1]["value"]
+            treasury_fee = event_data[-3]["attributes"][0]["value"]
+            treasury_account.update_balance(transferable=treasury_fee)
+            transaction.reward_treasury.add(treasury_account.get_current_balance())
+        except IndexError:
+            validator_fee = event_data[-2]["attributes"][1]["value"]
+            treasury_fee = 0
 
-        treasury_account.update_balance(transferable=treasury_fee)
         validator_account.update_balance(transferable=validator_fee)
 
         transaction.reward_validator.add(validator_account.get_current_balance())
-        transaction.reward_treasury.add(treasury_account.get_current_balance())
 
         return (validator_fee+treasury_fee)
 
@@ -231,6 +273,7 @@ class Account(GraphObject):
     has_balances = RelatedTo("Balance")
     current_balance = RelatedTo("Balance")
     transfer_to = RelatedTo("Account")
+    controls = RelatedTo("Account")
 
     def get_current_balance(self):
         triples = list(self.current_balance.triples())
@@ -294,8 +337,7 @@ class Account(GraphObject):
 
 class Balance(GraphObject):
     __tablename__ = "balance"
-    # Values are bigger than 32bit int can handle, therefore used float as a workaround
-    #TODO find another field type
+
     transferable = Property()
     reserved = Property()
     bonded = Property()

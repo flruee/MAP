@@ -2,6 +2,8 @@
 Redenomination of DOT in block 1_248_328
 Treasury address: 13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB
 
+good account: 14d2kv44xf9nFnYdms32dYPKQsr5C9urbDzTz7iwU8iHb9az
+
 # Fee
 The last 3 events of each transaction (maybe not) contain the fee.
 the third to last event is useless and foreshadows (*MENACING*) the next.
@@ -72,8 +74,8 @@ from transferable to bonded.
 
 ### bondExtra (see bonded) 6499896
 
-### rebond TBH
-
+### rebond 6497272
+### setController 4474128
 ### withdrawUnbonded (currency shuffle)
 use Staking(withdrawn) event to migrate bonded to transferable
 
