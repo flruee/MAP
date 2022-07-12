@@ -11,9 +11,9 @@ Note: if an extrinsic contains a tip the tip is added to the last event
 
 
 ## assets TBH
-## Balances
+## Balances Implemented
 
-### Transfer (1349471,1349473,1349474)
+### Transfer (1349471,1349473,1349474) Implemented
 Create Transfer
 add amount to transfer
 Select accounts.
@@ -23,18 +23,19 @@ Create relations:
  * Extrinsic->transfer
  * transfer->fromBalance
  * transfer->toBalance
+ * transfer->validatorBalance
+ * transfer->treasuryBalance
  * change current_balance of accounts
  * add last_balance to current_balance
  * add balance to has_balance
  * add Transfer Type
 
-### TransferAll (alias of Transfer, 10855617, 	
-10855625, 10856155)
+### TransferAll (alias of Transfer, 10855617, 10855625, 10856155) Implemented
 
-### TransferKeepAlive
+### TransferKeepAlive Implemented
 
 ## Bounty
-### claimBounty (alias of transfer, need to take data from events)
+### claimBounty (alias of transfer, need to take data from events) (found only once: 6535806)
 
 ### proposeBounty TBH
 
@@ -65,11 +66,11 @@ Create relations:
 
 ## staking
 
-### bond (currency shuffle, )
+### bond (currency shuffle, ) 6498556 Implemented
 from transferable to bonded.
 
 
-### bondExtra (see bonded)
+### bondExtra (see bonded) 6499896
 
 ### rebond TBH
 
