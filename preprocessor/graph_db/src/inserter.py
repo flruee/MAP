@@ -5,7 +5,7 @@ import json
 
 from sqlalchemy import JSON
 #from src.event_handlers.utils import event_error_handling
-from src.models import Block,Transaction, Account, Balance, Transaction
+from src.models import Block,Transaction, Account, Balance, Transaction, Validator
 from src.driver_singleton import Driver
 #from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler, ClaimsEventHandler
 from sqlalchemy.exc import IntegrityError
@@ -46,10 +46,15 @@ class Neo4jBlockHandler:
             timestamp=timestamp,
         )
 
-        author = Account.get(data["header"]["author"])
-        if not author:
-            author = Account.create(data["header"]["author"])
-        block.has_author.add(author)
+        author_account = Account.get(data["header"]["author"])
+        if not author_account:
+            author_account = Account.create(data["header"]["author"])
+
+        validator = Validator.get_from_account(author_account)
+        if not validator:
+            validator = Validator.create(author_account)
+
+        block.has_author.add(validator)
 
 
         #Only a problem for the first block

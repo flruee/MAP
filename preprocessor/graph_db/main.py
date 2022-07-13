@@ -3,6 +3,7 @@ from dotenv import load_dotenv, find_dotenv
 from neo4j import GraphDatabase, basic_auth
 from neo4j.exceptions import Neo4jError
 from py2neo.ogm import Repository
+#from py2neo import Graph
 from src.inserter import Neo4jBlockHandler
 from src.models import RawData
 from src.driver_singleton import Driver
