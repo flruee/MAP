@@ -20,11 +20,7 @@ if __name__ == "__main__":
     kafka_config = config["kafka"]
     producer_config = config["producer"]
 
-    logging_filename = 'producer.log'
-    logger = logging.getLogger('producer')
-    handler = RotatingFileHandler(logging_filename, maxBytes=1024**3, backupCount=2)
-    logging.basicConfig(level=producer_config["logLevel"], handlers=[handler],
-                        format='%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
+
 
     #needed for self signed certificate
     sslopt = {

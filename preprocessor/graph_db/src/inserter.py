@@ -5,7 +5,7 @@ import json
 
 from sqlalchemy import JSON
 #from src.event_handlers.utils import event_error_handling
-from src.models import Block,Transaction, Account, Balance, Transaction, Validator
+from src.models import Block,Transaction, Account, Balance, Transaction, Validator, ValidatorPool
 from src.driver_singleton import Driver
 #from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler, ClaimsEventHandler
 from sqlalchemy.exc import IntegrityError
@@ -24,7 +24,8 @@ class Neo4jBlockHandler:
     def handle_full_block(self,data):
         
         block = self.__handle_block_data(data)
-        transactions= self.__handle_transaction_data(data, block)
+        transactions = self.__handle_transaction_data(data, block)
+        events = self.__handle_event_data(data, transactions, block)
         #events = self.__insert_events(data, extrinsics)
         #author = self.__add_fees_to_author(data["header"]["author"],block, events)
         #self.__commit_all(block, extrinsics, events, author)
@@ -34,10 +35,8 @@ class Neo4jBlockHandler:
         """
         Creates new block node and connects it to previous block node
         """
-        
         timestamp = data["extrinsics"][0]["call"]["call_args"][0]["value"]
         timestamp = datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=timestamp)
-
         last_block = Block.match(Driver().get_driver(), data["number"]-1).first()
 
         block = Block(
@@ -57,13 +56,14 @@ class Neo4jBlockHandler:
         block.has_author.add(validator)
 
 
-        #Only a problem for the first block
+
+        # Only a problem for the first block
         try:
             block.previous_block.add(last_block)
         except TypeError:
             pass
         
-        #Block.save(block)
+        Block.save(block) #todo: save block
         return block
 
 
@@ -106,14 +106,40 @@ class Neo4jBlockHandler:
         if not transaction_data["call"]["call_module"] in self.handled_call_modules:
             return None
         print(transaction_data["call"]["call_function"])
-        if transaction_data["call"]["call_function"] in ["transfer", "transfer_all", "transfer_keep_alive", "bond","bond_extra","set_controller"]:
+        if transaction_data["call"]["call_function"] in \
+                ["transfer", "transfer_all", "transfer_keep_alive", "bond","bond_extra","set_controller"]:
             transaction = Transaction.create(block,transaction_data, event_data)
             #Transaction.handle_transfer(transaction, transaction_data, block)
             
         else:
             return None
-        
 
+    def __handle_event_data(self, data, transactions, block):
+        for event in data['events']:
+            if event['event_id'] == 'EraPayout' and event['module_id'] == 'Staking':
+                self.current_era = event['attributes'][0]['value']
+            elif event['event_id'] == 'NewAuthorities' and event['module_id'] == 'Grandpa':
+                validator_pool = ValidatorPool.create(self.current_era, block)
+                previous_validator_pool = ValidatorPool.get(self.current_era - 1)
+                if previous_validator_pool is None:
+                    pass
+                else:
+                    validator_pool.previous_validator_pool.add(previous_validator_pool)
+                    previous_validator_pool.to_block.add(list(block.previous_block.triples())[0][2])
+        validator_pool = ValidatorPool.get(self.current_era)
+        validator_pool = self.__add_validator_to_validatorpool(validator_pool, block)
+        ValidatorPool.save(validator_pool)
+        return
+
+    def __add_validator_to_validatorpool(self, validator_pool, block):
+        validators = list(validator_pool.hasValidators.triples())
+        if not len(validators):
+            validator_pool.hasValidators.add(list(block.has_author.triples())[0][2])
+        else:
+            for validator in validators:
+                if list(block.has_author.triples())[0][2] != validator[2]:
+                    validator_pool.hasValidators.add(list(block.has_author.triples())[0][2])
+        return validator_pool
 
     
     

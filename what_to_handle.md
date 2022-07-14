@@ -98,7 +98,7 @@ Controller: 12MnpxhC2cSRTWXiwX8jwxegwXZNuxTZsJMCLfCLfCiUpWeu
 
 
 
-# handle ValidatorPool
+# handle ValidatorPool  (328745 --> Era index 0)
 * if grandpa(newAuthorities) then Validatorpool starts and last Validatorpool ends.
 * connect new to old via previous
 * in old Validatorpool set attribute "to_block" to current block - 1 .

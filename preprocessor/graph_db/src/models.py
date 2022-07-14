@@ -70,7 +70,7 @@ class Transaction(GraphObject):
             Transaction.handle_transfer(transaction_data, event_data, block, transaction)
 
         elif extrinsic_function.name in ["bond", "bond_extra"]:
-            Transaction.handle_bond(transaction_data, event_data, block, transaction)
+            Transaction.handle_bond(transaction_data, event_data, block, transaction, extrinsic_function)
             
         elif extrinsic_function.name == "set_controller":
             from_account = Account.get(transaction_data["address"].replace("0x", ""))
@@ -383,6 +383,25 @@ class ValidatorPool(GraphObject):
     from_block = RelatedTo("Block")
     to_block = RelatedTo("Block")
     previous_validator_pool = RelatedTo("ValidatorPool")
+
+    @staticmethod
+    def get(era):
+        return ValidatorPool.match(Driver().get_driver(), era).first()
+
+    @staticmethod
+    def create(era, block, total_staked=0, total_reward=0):
+        validatorpool = ValidatorPool(
+            era=era,
+            total_staked=total_staked,
+            total_reward=total_reward
+        )
+        validatorpool.from_block.add(block)
+        ValidatorPool.save(validatorpool)
+        return validatorpool
+
+    @staticmethod
+    def save(validatorpool: "ValidatorPool"):
+        Driver().get_driver().save(validatorpool)
 
 
 class Validator(GraphObject):
