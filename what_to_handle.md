@@ -111,7 +111,7 @@ Controller: 12MnpxhC2cSRTWXiwX8jwxegwXZNuxTZsJMCLfCLfCiUpWeu
     * create Validator node with stash account.
     * connect Validator node to validatorPool of era.
     * use `staking(Rewarded)` event to get the nominator addresses and their reward for era.
-    * create Nominator node and connect it to account (check if stash or not).
+    * create Nominator node and cgonnect it to account (check if stash or not).
     * connect Nominator and Validator Node.   
  
 # 

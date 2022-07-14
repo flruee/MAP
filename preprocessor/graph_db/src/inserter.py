@@ -5,7 +5,7 @@ import json
 
 from sqlalchemy import JSON
 #from src.event_handlers.utils import event_error_handling
-from src.models import Block,Transaction, Account, Balance, Transaction, Validator, ValidatorPool
+from src.models import Block,Transaction, Account, Balance, Transaction, Validator, ValidatorPool, Nominator
 from src.driver_singleton import Driver
 #from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler, ClaimsEventHandler
 from sqlalchemy.exc import IntegrityError
@@ -21,6 +21,8 @@ class Neo4jBlockHandler:
                                 'Treasury',
 
                                 ]
+        self.current_era = None
+        self.block_author = None
     def handle_full_block(self,data):
         
         block = self.__handle_block_data(data)
@@ -115,6 +117,11 @@ class Neo4jBlockHandler:
             return None
 
     def __handle_event_data(self, data, transactions, block):
+
+        for extrinsic in data['extrinsics']:
+            if extrinsic['call']['call_function'] == 'payout_stakers' and extrinsic['call']['call_module'] == 'Staking':
+                payout_era = extrinsic['call']['call_args'][1]['value']
+                payout_validator = extrinsic['call']['call_args'][0]['value']
         for event in data['events']:
             if event['event_id'] == 'EraPayout' and event['module_id'] == 'Staking':
                 self.current_era = event['attributes'][0]['value']
@@ -126,9 +133,34 @@ class Neo4jBlockHandler:
                 else:
                     validator_pool.previous_validator_pool.add(previous_validator_pool)
                     previous_validator_pool.to_block.add(list(block.previous_block.triples())[0][2])
-        validator_pool = ValidatorPool.get(self.current_era)
-        validator_pool = self.__add_validator_to_validatorpool(validator_pool, block)
-        ValidatorPool.save(validator_pool)
+            elif event['event_id'] == 'Reward' and event['module_id'] == 'Staking':
+                nominator_reward = event['attributes'][1]['value']
+                nominator_address = event['attributes'][0]['value']
+                nominator_account = Account.get(nominator_address)
+                if nominator_account is None:
+                    nominator_account = Account.create(nominator_address)
+                nominator_account.update_balance(transferable=nominator_reward)
+                nominator = Nominator.get_from_account(nominator_account)
+                nominator_account.is_nominator.add(nominator)
+                Account.save(nominator_account)
+                nominator.reward = nominator_reward
+                author_account = Account.get(payout_validator)
+                if not author_account:
+                    author_account = Account.create(payout_validator)
+
+                validator = Validator.get_from_account(author_account)
+                if not validator:
+                    validator = Validator.create(author_account)
+                Nominator.save(nominator)
+                validator.has_nominator.add(nominator)
+                Validator.save(validator)
+
+        if self.current_era is not None:
+            validator_pool = ValidatorPool.get(self.current_era)
+            if validator_pool is None:
+                validator_pool = ValidatorPool.create(self.current_era, block)
+            validator_pool = self.__add_validator_to_validatorpool(validator_pool, block)
+            ValidatorPool.save(validator_pool)
         return
 
     def __add_validator_to_validatorpool(self, validator_pool, block):
