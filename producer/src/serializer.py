@@ -91,7 +91,7 @@ class Serializer:
                 events_jsonized.append(json.loads(new_string))
             except Exception as e2:
                 print(e2)
-                logging.error(f"Error {e} in block {block_hash}. JSON serialization failed for event #{count}")
+                logging.error(f"Error {e2} in block {block_hash}. JSON serialization failed for event #{count}")
                 logging.debug(f"Event content:\n{event_jsonized}")
             count+=1
 
