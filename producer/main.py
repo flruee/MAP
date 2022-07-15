@@ -37,18 +37,17 @@ if __name__ == "__main__":
         ws_options=sslopt
     )
     engine = create_engine('postgresql://mapUser:mapmap@localhost/map')
-    """
+
     producer = KafkaProducer(
         bootstrap_servers=kafka_config["bootstrap_servers"],
         max_request_size=317344026,
         value_serializer=lambda x: 
             json.dumps(x).encode('utf-8')
     )
-    """
-    producer = None
+
     serializer = Serializer(producer, substrate, producer_config, polkadot_config, kafka_config)
     while True:
-        engine = create_engine('postgresql://mapUser:mapmap@localhost/rawData')
+        engine = create_engine('postgresql://mapUser:mapmap@localhost/raw_data')
         x = engine.connect()
         max_db = x.execute("Select max(block_number) from raw_data;").fetchone()[0]
         hash = substrate.get_chain_head()
