@@ -1,3 +1,6 @@
+from dotenv import load_dotenv, find_dotenv
+import os
+import ast
 import time
 import json
 import logging
@@ -5,10 +8,10 @@ from kafka import KafkaConsumer
 from mongoengine import connect
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
-
-from src.pg_models.pg_models import Account, Block
+from src.driver_singleton import Driver
+from src.pg_models.block import Block
 DB = "postgres"
-MODE = "kafka"
+MODE = "node"
 if DB == "postgres":
 	from src.insertions_pg import PGBlockHandler
 else:
@@ -18,21 +21,47 @@ import logging
 import traceback
 
 
+load_dotenv(find_dotenv())
 
+def env(key, default=None, required=True):
+    """
+    Retrieves environment variables and returns Python natives. The (optional)
+    default will be returned if the environment variable does not exist.
+    """
+    try:
+        value = os.environ[key]
+        return ast.literal_eval(value)
+    except (SyntaxError, ValueError):
+        return value
+    except KeyError:
+        if default or not required:
+            return default
+        raise RuntimeError("Missing required environment variable '%s'" % key)
+
+
+DATABASE_USERNAME = env('DATABASE_USERNAME')
+DATABASE_PASSWORD = env('DATABASE_PASSWORD')
+DATABASE_URL = env('DATABASE_URL')
+DATABASE_NAME = env("DATABASE_NAME")
 if __name__ == "__main__":
     #TODO: crrrreate logging object
     logging.basicConfig(filename='db.log', level=logging.INFO,format='%(asctime)s,%(levelname)s :%(message)s')
 
     if DB == "postgres":
-        engine = create_engine('postgresql://mapUser:mapmap@localhost/map')
+        #engine = create_engine('postgresql://mapUser:mapmap@localhost/map')
+        engine = create_engine(f'postgresql://{DATABASE_USERNAME}:{DATABASE_PASSWORD}@{DATABASE_URL}/{DATABASE_NAME}')
         with Session(engine) as session:
+            driver = Driver()
+            driver.add_driver(session)
             logging.info("hi")
             block_handler = PGBlockHandler(session)
             start = time.time()
+
             if MODE == "json":
                 block_handler.handle_blocks(331050, 331050)
             elif MODE == "node": 
-                block_handler.handle_node_connection_blocks(892,892)
+                with session.begin():
+                    block_handler.handle_node_connection_blocks(892,892)
             elif MODE == "kafka":
                 logging.info("2")
                 with open("config.json","r") as f:
@@ -68,7 +97,8 @@ if __name__ == "__main__":
 
                     if db_data is None:
                         try:
-                            block_handler.handle_full_block(data)
+                            with session.begin():
+                                block_handler.handle_full_block(data)
                         except Exception:
                             print(data["number"])
                             traceback.print_exc()

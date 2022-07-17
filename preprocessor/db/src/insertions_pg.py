@@ -3,8 +3,11 @@ from typing import List
 import datetime
 import json
 from src.event_handlers.utils import event_error_handling
-from src.pg_models import Block,Extrinsic,Event
-from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler, ClaimsEventHandler
+#from src.pg_models import Block as b,Extrinsic as e,Event as v
+from src.pg_models.block import Block
+from src.pg_models.extrinsic import Extrinsic
+from src.pg_models.event import Event
+#from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler, ClaimsEventHandler
 from sqlalchemy.exc import IntegrityError
 from src.node_connection import handle_one_block
 class PGBlockHandler:
@@ -31,40 +34,7 @@ class PGBlockHandler:
         extrinsics= self.handle_extrinsics_and_events(block,data)
 
     def insert_block(self,data):
-        header = self.insert_header(data["header"])
-        try:
-            timestamp = data["extrinsics"][0]["call"]["call_args"][0]["value"]
-
-        except IndexError:
-            timestamp = 1590507378000 - 6
-
-        timestamp = datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=timestamp)
-        block = Block(
-            block_number=data["number"],
-            hash=data["hash"],
-            extrinsicsRoot = header["header"]["extrinsicsRoot"],
-            parentHash = header["header"]["parentHash"],
-            stateRoot = header["header"]["stateRoot"],
-            author = header["author"],
-            timestamp=timestamp
-        )
-        #TODO Make a singleton/global add/query/commit class
-        self.session.add(block)
-        try:
-            self.session.commit()
-        except IntegrityError:
-            pass
-        return block
-
-    def insert_header(self,header_data):
-        """
-        Removes unnecessary fields from header data, then creates a Header object, stores it and returns it 
-        """
-        header_data["header"].pop("number")
-        header_data["header"].pop("hash")
-
-        return header_data
-
+        return Block.create(data)
 
     def handle_extrinsics_and_events(self,block,data) -> List[Extrinsic]:
         events_data = data["events"]
@@ -98,9 +68,13 @@ class PGBlockHandler:
             extrinsic_data = data["extrinsics"][i]
             # an extrinsic_hash of None indicates ParaInherent transactions or Timestamp transactions
             # timestamp is already handled above
-            current_events = self.handle_events(events_data, i)
+            current_events_data = self.handle_events(events_data, i)
             #last event denotes if ectrinsic was successfull
-            was_successful = current_events[-1].event_name == "ExtrinsicSuccess"
+            #was_successful = current_events[-1].event_name == "ExtrinsicSuccess"
+            extrinsic = Extrinsic.create(block, extrinsic_data,current_events_data)
+            events = [Event.create(event_data,extrinsic.id,block.block_number) for event_data in current_events_data]
+
+            """
 
 
             # if no era create an empty list
@@ -147,8 +121,9 @@ class PGBlockHandler:
                     pass
             except IntegrityError:
                 pass
+            """
             
-            self.special_event(block, extrinsic, current_events)
+            #self.special_event(block, extrinsic, current_events)
 
             extrinsics.append(extrinsic)
             
@@ -176,7 +151,7 @@ class PGBlockHandler:
             if extrinsic_idx == 0:
                 extrinsic_idx = None
             if event_data["extrinsic_idx"] == extrinsic_idx:
-                current_events.append(self.insert_event(event_data))
+                current_events.append(event_data)
 
 
         return current_events
@@ -203,7 +178,7 @@ class PGBlockHandler:
         return event
 
 
-    def special_event(self,block, extrinsic, events):
+    #def special_event(self,block, extrinsic, events):
         """
         Each event has some implications on the overall data model. This function here differentiates between
         the different modules and then uses a event handler class to handle the specific event.
@@ -211,6 +186,7 @@ class PGBlockHandler:
 
         Since not all data relevant for us is contained in the event data (sometimes we additionally need to know the blocknumber or time)
         we use the whole block.
+        """
         """
         for event in events:
                 print(f"{event.module_name}: {event.event_name}")
@@ -234,6 +210,6 @@ class PGBlockHandler:
                 
                 
                 #handler.handle_event(block, extrinsic, event)
-            
+        """
 
 

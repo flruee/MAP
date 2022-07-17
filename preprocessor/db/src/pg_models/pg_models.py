@@ -1,16 +1,14 @@
-from graphene import Int
 from sqlalchemy import Column, null
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer,String, DateTime, JSON, TEXT, Boolean,BigInteger
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import relationship
 
 
 
 Base = declarative_base()
 """
 Block
-"""
+
 class Block(Base):
     __tablename__ = "block"
     block_number = Column(Integer, primary_key=True)
@@ -22,9 +20,36 @@ class Block(Base):
     author = Column(String,nullable=False)
 
 
+    
+    @staticmethod
+    def create(data):
+        header = self.insert_header(data["header"])
+        try:
+            timestamp = data["extrinsics"][0]["call"]["call_args"][0]["value"]
+
+        except IndexError:
+            timestamp = 1590507378000 - 6
+
+        timestamp = datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=timestamp)
+        block = Block(
+            block_number=data["number"],
+            hash=data["hash"],
+            extrinsicsRoot = header["header"]["extrinsicsRoot"],
+            parentHash = header["header"]["parentHash"],
+            stateRoot = header["header"]["stateRoot"],
+            author = header["author"],
+            timestamp=timestamp
+        )
+        #TODO Make a singleton/global add/query/commit class
+        self.session.add(block)
+        try:
+            self.session.commit()
+        except IntegrityError:
+            pass
+        return block
+
     def __repr__(self):
         return f"Block {self.block_number}"
-
 class Extrinsic(Base):
     __tablename__ = "extrinsic"
     id = Column(Integer,primary_key=True)
@@ -42,7 +67,8 @@ class Extrinsic(Base):
     
     was_successful = Column(Boolean)
     fee = Column(BigInteger)
-
+    """
+"""
 class Event(Base):
     __tablename__ = "event"
     id = Column(Integer, primary_key=True)
@@ -54,7 +80,6 @@ class Event(Base):
     event_name =  Column(String)
     attributes = Column(JSON)
     topics = Column(JSON)
-    
 
 
 class Balance(Base):
@@ -102,7 +127,7 @@ class Transfer(Base):
 
 
 
-
+"""
 class Vote(Document):
     validator = StringField()
     validator_bonded = FloatField()
