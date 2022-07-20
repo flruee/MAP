@@ -1,6 +1,5 @@
 from sqlalchemy import Column, null
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer,String, DateTime, JSON, TEXT, Boolean,BigInteger
+from sqlalchemy import Integer,String, DateTime
 from src.pg_models.base import Base
 import datetime
 from src.driver_singleton import Driver
@@ -13,9 +12,9 @@ class Block(Base):
     block_number = Column(Integer, primary_key=True)
     hash = Column(String, nullable=False)
     timestamp = Column(DateTime,nullable=False)
-    extrinsicsRoot = Column(String, nullable=False)
-    parentHash = Column(String, nullable=False)
-    stateRoot = Column(String, nullable=False)
+    extrinsics_root = Column(String, nullable=False)
+    parent_hash = Column(String, nullable=False)
+    state_root = Column(String, nullable=False)
     author = Column(String,nullable=False)
 
     @staticmethod
@@ -26,11 +25,11 @@ class Block(Base):
         block = Block(
             block_number=data["number"],
             hash=data["hash"],
-            extrinsicsRoot = header["header"]["extrinsicsRoot"],
-            parentHash = header["header"]["parentHash"],
-            stateRoot = header["header"]["stateRoot"],
-            author = header["author"],
-            timestamp=timestamp
+            timestamp=timestamp,
+            extrinsics_oot = header["header"]["extrinsicsRoot"],
+            parent_hash = header["header"]["parentHash"],
+            state_root = header["header"]["stateRoot"],
+            author = header["author"]
         )
 
         Block.save(block)

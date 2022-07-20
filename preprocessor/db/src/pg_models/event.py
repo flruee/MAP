@@ -1,7 +1,7 @@
 from re import I
-from sqlalchemy import Column, null
+from sqlalchemy import Column
 from sqlalchemy import ForeignKey
-from sqlalchemy import Integer,String, DateTime, JSON, TEXT, Boolean,BigInteger
+from sqlalchemy import Integer,String, JSON
 from sqlalchemy.orm import declarative_base
 
 import datetime

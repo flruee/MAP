@@ -92,7 +92,7 @@ class Balance(Base):
     bonded = Column(BigInteger)
     unbonding = Column(BigInteger)
     block_number = Column(Integer, ForeignKey("block.block_number"))
-    account = Column(String, ForeignKey("account.address"))
+    account = Column(Integer, ForeignKey("account.id"))
 
     def copy(self):
         return Balance(
@@ -104,17 +104,18 @@ class Balance(Base):
 
 class Account(Base):
     __tablename__ = "account"
-    address = Column(String, primary_key=True)
-    account_index = Column(Integer)
+    id = Column(Integer, primary_key=True)
+    address = Column(String)
     nonce = Column(Integer)
-    role = Column(String)
 
 class Transfer(Base):
     __tablename__ = "transfer"
     id = Column(Integer, primary_key=True)
     block_number = Column(Integer, ForeignKey("block.block_number"))
-    from_address = Column(String, ForeignKey("account.address"))
-    to_address = Column(String, ForeignKey("account.address"))
+    from = Column(Integer, ForeignKey("account.int"))
+    to = Column(Integer, ForeignKey("account.id"))
+    from_balance(Integer, ForeignKey("balance.id))
+    to_balance(Integer,ForeignKey("balance.id))
     value = Column(BigInteger)
     extrinsic = Column(Integer, ForeignKey("extrinsic.id"))
     type = Column(String)

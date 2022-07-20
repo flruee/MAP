@@ -1,18 +1,16 @@
-from sqlalchemy import Column, null
+from sqlalchemy import Column,
 from sqlalchemy import ForeignKey
-from sqlalchemy import Integer,String, DateTime, JSON, TEXT, Boolean,BigInteger
+from sqlalchemy import Integer,String, JSON, Boolean,BigInteger
 from src.pg_models.base import Base
 
 import datetime
 from src.driver_singleton import Driver
 from src.pg_models import Block
-from sqlalchemy.exc import IntegrityError
 
 class Extrinsic(Base):
     __tablename__ = "extrinsic"
     id = Column(Integer,primary_key=True)
     extrinsic_hash = Column(String)
-    block_number = Column(Integer, ForeignKey(Block.block_number))
     extrinsic_length = Column(Integer, nullable=False)
     address = Column(String)
     signature = Column(JSON)
@@ -22,6 +20,9 @@ class Extrinsic(Base):
     module_name = Column(String)
     function_name = Column(String)
     call_args = Column(JSON)
+    block_number = Column(Integer, ForeignKey(Block.block_number))
+    treasury_balance = Column(Integer, ForeignKey("balance.id"))
+    validator_balance = Column(Integer, ForeignKey("balance.id"))
     
     was_successful = Column(Boolean)
     fee = Column(BigInteger)
@@ -45,7 +46,8 @@ class Extrinsic(Base):
             function_name = extrinsic_data["call"]["call_function"],
             call_args = extrinsic_data["call"]["call_args"],
             was_successful = was_successful,
-            fee = 0          
+            
+            fee = 0 #TODO get fee
         )
         Extrinsic.save(extrinsic)
         return extrinsic
