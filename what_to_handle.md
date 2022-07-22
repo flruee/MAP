@@ -4,6 +4,15 @@ Treasury address: 13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB
 
 good account: 14d2kv44xf9nFnYdms32dYPKQsr5C9urbDzTz7iwU8iHb9az
 
+
+# Staking amounts how to
+if event               "module_id": "Staking",
+                "event_id": "EraPayout",
+or             "module_id": "Staking",
+            "event_id": "EraPaid",
+1. at end of era get all validators with storage function Staking(ErasRewardPoints)
+2. for each validator use storage function Staking(erasStaker(era, validator_address)) to get all nominators and their 
+respective stake
 # Fee
 The last 3 events of each transaction (maybe not) contain the fee.
 the third to last event is useless and foreshadows (*MENACING*) the next.
@@ -70,6 +79,23 @@ Create relations:
 
 ### bond (currency shuffle, ) 6498556 Implemented
 from transferable to bonded.
+warning
+the third argument name refers to the following
+Staked - Pay into the stash account, increasing the amount at stake accordingly. -> increase bonded  
+Stash - Pay into the stash account, not increasing the amount at stake. -> increase transferable  
+Account - Pay into a custom account, like so: Account DMTHrNcmA8QbqRS4rBq8LXn8ipyczFoNMb1X4cY2WD9tdBX. -> classic transfer  
+Controller - Pay into the controller account. -> classic transfer  
+
+proposal:
+    create new property for account node: bonding_type
+    possible values: 
+* null: not bonding
+* "staking": Rewards go to bonded
+* "controller": Rewards go to controller
+* "stash": rewards go to transferable
+* an address: rewards go to address
+
+
 
 
 ### bondExtra (see bonded) 6499896
