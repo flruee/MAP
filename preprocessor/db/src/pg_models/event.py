@@ -3,11 +3,10 @@ from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer,String, JSON
 from sqlalchemy.orm import declarative_base
-
 import datetime
 from src.driver_singleton import Driver
 from src.pg_models.block import Block
-from src.pg_models.extrinsic import Extrinsic
+#from src.pg_models.extrinsic import Extrinsic
 from src.pg_models.base import Base
 
 class Event(Base):
@@ -15,7 +14,7 @@ class Event(Base):
     id = Column(Integer, primary_key=True)
     event_order_id = Column(Integer) #denotes in which order the events happened. given n events the first event in block has 0 last event has n-1
     phase = Column(String)
-    extrinsic = Column(Integer, ForeignKey(Extrinsic.id))
+    extrinsic = Column(Integer, ForeignKey("extrinsic.id"))
     block_number = Column(Integer, ForeignKey(Block.block_number))
     module_name =  Column(String)
     event_name =  Column(String)

@@ -3,6 +3,7 @@ from src.pg_models.base import Base
 from src.pg_models.block import Block
 from src.pg_models.extrinsic import Extrinsic
 from src.pg_models.event import Event
+from src.pg_models.transfer import Transfer
 
 from dotenv import load_dotenv, find_dotenv
 import os

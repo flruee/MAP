@@ -2,11 +2,14 @@ import logging
 from typing import List
 import datetime
 import json
+from src.pg_models.balance import Balance
 from src.event_handlers.utils import event_error_handling
 #from src.pg_models import Block as b,Extrinsic as e,Event as v
 from src.pg_models.block import Block
 from src.pg_models.extrinsic import Extrinsic
 from src.pg_models.event import Event
+from src.pg_models.account import Account
+from src.pg_models.transfer import Transfer
 #from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler, ClaimsEventHandler
 from sqlalchemy.exc import IntegrityError
 from src.node_connection import handle_one_block
@@ -32,6 +35,7 @@ class PGBlockHandler:
     def handle_full_block(self,data):
         block = self.insert_block(data)
         extrinsics= self.handle_extrinsics_and_events(block,data)
+        
 
     def insert_block(self,data):
         return Block.create(data)
@@ -74,6 +78,7 @@ class PGBlockHandler:
             extrinsic = Extrinsic.create(block, extrinsic_data,current_events_data)
             events = [Event.create(event_data,extrinsic.id,block.block_number) for event_data in current_events_data]
 
+            self.handle_special_extrinsics(block, extrinsic, events)
             """
 
 
@@ -178,7 +183,7 @@ class PGBlockHandler:
         return event
 
 
-    #def special_event(self,block, extrinsic, events):
+    def handle_special_extrinsics(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
         """
         Each event has some implications on the overall data model. This function here differentiates between
         the different modules and then uses a event handler class to handle the specific event.
@@ -187,6 +192,9 @@ class PGBlockHandler:
         Since not all data relevant for us is contained in the event data (sometimes we additionally need to know the blocknumber or time)
         we use the whole block.
         """
+        print(extrinsic.module_name)
+        if(extrinsic.module_name == "Balances" and extrinsic.function_name in ["transfer", "transfer_keep_alive,transfer_all"]):
+            self.__handle_transfer(block, extrinsic, events)
         """
         for event in events:
                 print(f"{event.module_name}: {event.event_name}")
@@ -213,3 +221,44 @@ class PGBlockHandler:
         """
 
 
+    def __handle_transfer(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
+        from_account = Account.get(extrinsic.account)
+        to_address = extrinsic.call_args[0]["value"]
+        to_account = Account.get_from_address(to_address)
+        if not to_account:
+            to_account = Account.create(to_address)
+        
+        # Get amount transferred from 'Transfer' event
+
+        for event in events:
+            if event.event_name == 'Transfer':
+                print(event.attributes)
+                amount_transferred = event.attributes[2]['value']
+
+        # Create new balances
+        from_balance = Balance.create(from_account, block.block_number, transferable=-(amount_transferred+extrinsic.fee))
+        to_balance = Balance.create(from_account, block.block_number,transferable=amount_transferred)
+
+        transfer = Transfer.create(
+            block_number=block.block_number,
+            from_account=from_account,
+            to_account=to_account,
+            from_balance=from_balance,
+            to_balance=to_balance,
+            value=amount_transferred,
+            extrinsic=extrinsic,
+            type=extrinsic.function_name
+        )
+        
+
+        """
+
+        transaction.amount_transferred = amount_transferred
+
+        from_account.update_balance(block.block_number, to_account,transferable= -(amount_transferred + fee) )
+        to_account.update_balance(transferable=amount_transferred)
+
+
+        transaction.from_balance.add(from_account.get_current_balance())
+        transaction.to_balance.add(to_account.get_current_balance())
+        """

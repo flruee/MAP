@@ -58,10 +58,15 @@ if __name__ == "__main__":
             start = time.time()
 
             if MODE == "json":
-                block_handler.handle_blocks(331050, 331050)
+                start = time.time()
+                block_handler.handle_blocks(1349471, 1349471)
+                print(time.time()-start)
             elif MODE == "node": 
                 with session.begin():
-                    block_handler.handle_node_connection_blocks(892,892)
+                    start = time.time()
+                    block_handler.handle_node_connection_blocks(1349471,1349471)
+                    print(time.time()-start)
+
             elif MODE == "kafka":
                 logging.info("2")
                 with open("config.json","r") as f:

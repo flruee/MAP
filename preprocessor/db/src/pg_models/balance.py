@@ -1,3 +1,5 @@
+from sqlalchemy import select
+
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer,BigInteger
@@ -10,9 +12,50 @@ from src.pg_models.account import Account
 class Balance(Base):
     __tablename__ = "balance"
     id = Column(Integer, primary_key=True)
-    transerable = Column(BigInteger)
+    transferable = Column(BigInteger)
     reserved = Column(BigInteger)
     bonded = Column(BigInteger)
     unbonding = Column(BigInteger)
     account = Column(Integer, ForeignKey(Account.id))
     block_number = Column(Integer, ForeignKey(Block.block_number))
+
+
+    @staticmethod
+    def create(account, block_number,transferable=0, reserved=0, bonded=0, unbonding=0) -> "Balance":
+        # get last balance
+        last_balance = Balance.get_last_balance(account)
+
+        balance = Balance(
+            transferable=last_balance.transferable+transferable,
+            reserved = last_balance.reserved + reserved,
+            bonded = last_balance.bonded + bonded,
+            unbonding = last_balance.unbonding + unbonding,
+            account = account.id,
+            block_number = block_number
+        )
+
+        Balance.save(balance)
+
+        return balance
+        
+
+    @staticmethod
+    def save(balance: "Balance"):
+        session = Driver().get_driver()
+        session.add(balance)
+        session.flush()
+    
+    @staticmethod
+    def get_last_balance(account) -> "Balance":
+        session = Driver().get_driver()
+        #stmt = select(Balance).where(account=account.id).order_by(Balance.id.desc())
+        balance = session.query(Balance).filter(Balance.account==1).order_by(Balance.id.desc()).first()
+        if balance is None:
+            return Balance(
+                transferable=0,
+                reserved=0,
+                bonded=0,
+                unbonding=0,
+            )
+        return balance
+        

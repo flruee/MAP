@@ -26,7 +26,7 @@ class Block(Base):
             block_number=data["number"],
             hash=data["hash"],
             timestamp=timestamp,
-            extrinsics_oot = header["header"]["extrinsicsRoot"],
+            extrinsics_root = header["header"]["extrinsicsRoot"],
             parent_hash = header["header"]["parentHash"],
             state_root = header["header"]["stateRoot"],
             author = header["author"]
