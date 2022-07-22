@@ -200,6 +200,8 @@ class PGBlockHandler:
         elif(extrinsic.module_name == "Staking" and extrinsic.function_name in ["bond", "bond_extra"]):
             self.__handle_bond(block, extrinsic, events)
 
+        elif(extrinsic.module_name == "Staking" and extrinsic.function_name == "set_controller"):
+            self.__handle_set_controller(block, extrinsic, events)
 
 
 
@@ -261,3 +263,14 @@ class PGBlockHandler:
             extrinsic=extrinsic,
             type=extrinsic.function_name
         )
+
+    def __handle_set_controller(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
+        controlled_account = Account.get(extrinsic.account)
+        controller_address = extrinsic.call_args[0]["value"]
+        controller_account = Account.get_from_address(controller_address)
+        if controller_account is None:
+            controller_account = Account.create(controller_address)
+        
+        Controller.create(controller_account, controlled_account)
+        
+
