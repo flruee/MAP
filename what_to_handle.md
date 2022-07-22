@@ -9,10 +9,15 @@ good account: 14d2kv44xf9nFnYdms32dYPKQsr5C9urbDzTz7iwU8iHb9az
 if event               "module_id": "Staking",
                 "event_id": "EraPayout",
 or             "module_id": "Staking",
-            "event_id": "EraPaid",
+            "event_id": "EraPaid", 
+
+    
 1. at end of era get all validators with storage function Staking(ErasRewardPoints)
 2. for each validator use storage function Staking(erasStaker(era, validator_address)) to get all nominators and their 
 respective stake
+3. the third (?) argument is the reward for treasury. It should be transferred then.
+
+
 # Fee
 The last 3 events of each transaction (maybe not) contain the fee.
 the third to last event is useless and foreshadows (*MENACING*) the next.
