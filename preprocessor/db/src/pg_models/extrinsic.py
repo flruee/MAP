@@ -53,11 +53,15 @@ class Extrinsic(Base):
             block_number = block.block_number,
             
         )
-        print(extrinsic.function_name)
+        #awkward to save it twice, but can't really see a better way
+        # extrinsic needs the fee from the handle_fees function
+        # but the function needs the id from extrinsic which is only
+        # created after saving
+        Extrinsic.save(extrinsic)
         if extrinsic.function_name not in ["set_heads"]:
             fee = Extrinsic.__handle_fees(extrinsic, event_data)
             extrinsic.fee = fee
-        Extrinsic.save(extrinsic)
+            Extrinsic.save(extrinsic)
 
         return extrinsic
 
@@ -94,14 +98,14 @@ class Extrinsic(Base):
         try:
             validator_fee = int(event_data[-2]["attributes"][1]["value"])
             treasury_fee = int(event_data[-3]["attributes"][0]["value"])
-            validator_balance = Balance.create(validator_account,extrinsic.block_number,transferable=validator_fee)
-            treasury_balance = Balance.create(treasury_account,extrinsic.block_number,transferable=treasury_fee)
+            validator_balance = Balance.create(validator_account,extrinsic,transferable=validator_fee)
+            treasury_balance = Balance.create(treasury_account,extrinsic,transferable=treasury_fee)
             
         except (IndexError,ValueError):
             try:
                 validator_fee = int(event_data[-2]["attributes"][1]["value"])
                 treasury_fee = 0
-                validator_balance = Balance.create(validator_account,extrinsic.block_number,transferable=validator_fee)
+                validator_balance = Balance.create(validator_account,extrinsic,transferable=validator_fee)
             except Exception:
                 validator_fee = 0
                 treasury_fee = 0

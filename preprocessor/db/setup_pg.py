@@ -1,9 +1,11 @@
 from sqlalchemy import create_engine
+# The following classes need to be imported, else they won't be created in psql
 from src.pg_models.base import Base
 from src.pg_models.block import Block
 from src.pg_models.extrinsic import Extrinsic
 from src.pg_models.event import Event
 from src.pg_models.transfer import Transfer
+from src.pg_models.controller import Controller
 
 from dotenv import load_dotenv, find_dotenv
 import os

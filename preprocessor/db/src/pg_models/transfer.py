@@ -30,7 +30,7 @@ class Transfer(Base):
         from_balance: Balance,
         to_balance: Balance,
         value: int,
-        extrinsic: int,
+        extrinsic: Extrinsic,
         type: str
         ) -> "Transfer":
         transfer = Transfer(

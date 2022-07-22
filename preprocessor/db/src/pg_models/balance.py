@@ -18,10 +18,11 @@ class Balance(Base):
     unbonding = Column(BigInteger)
     account = Column(Integer, ForeignKey(Account.id))
     block_number = Column(Integer, ForeignKey(Block.block_number))
+    extrinsic = Column(Integer, ForeignKey("extrinsic.id"))
 
 
     @staticmethod
-    def create(account, block_number,transferable=0, reserved=0, bonded=0, unbonding=0) -> "Balance":
+    def create(account: Account, extrinsic: "Extrinsic",transferable: int=0, reserved:int=0, bonded:int=0, unbonding:int=0) -> "Balance":
         # get last balance
         last_balance = Balance.get_last_balance(account)
 
@@ -31,7 +32,8 @@ class Balance(Base):
             bonded = last_balance.bonded + bonded,
             unbonding = last_balance.unbonding + unbonding,
             account = account.id,
-            block_number = block_number
+            block_number = extrinsic.block_number,
+            extrinsic=extrinsic.id
         )
 
         Balance.save(balance)

@@ -10,6 +10,7 @@ from src.pg_models.extrinsic import Extrinsic
 from src.pg_models.event import Event
 from src.pg_models.account import Account
 from src.pg_models.transfer import Transfer
+from src.pg_models.controller import Controller
 #from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler, ClaimsEventHandler
 from sqlalchemy.exc import IntegrityError
 from src.node_connection import handle_one_block
@@ -195,30 +196,11 @@ class PGBlockHandler:
         print(extrinsic.module_name)
         if(extrinsic.module_name == "Balances" and extrinsic.function_name in ["transfer", "transfer_keep_alive,transfer_all"]):
             self.__handle_transfer(block, extrinsic, events)
-        """
-        for event in events:
-                print(f"{event.module_name}: {event.event_name}")
-                if event.module_name == "System":
-                    handler= SystemEventHandler(self.session)
-                    handler.handle_event(block, extrinsic, event)
+        
+        elif(extrinsic.module_name == "Staking" and extrinsic.function_name in ["bond", "bond_extra"]):
+            self.__handle_bond(block, extrinsic, events)
 
-              
-                elif event.module_name == "Balances":
-                    handler = BalancesEventHandler(self.session)
-                    handler.handle_event(block, extrinsic, event)
 
-                
-                elif event.module_name == "Staking":
-                    handler = StakingEventHandler(self.session)
-                    handler.handle_event(block, extrinsic, event)
-                
-                elif event.module_name == "Claims":
-                    handler = ClaimsEventHandler(self.session)
-                    handler.handle_event(block, extrinsic, event)
-                
-                
-                #handler.handle_event(block, extrinsic, event)
-        """
 
 
     def __handle_transfer(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
@@ -249,16 +231,33 @@ class PGBlockHandler:
             extrinsic=extrinsic,
             type=extrinsic.function_name
         )
+    
+    def __handle_bond(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
+        from_account = Account.get(extrinsic.account)
+        print(extrinsic.call_args)
         
-
-        """
-
-        transaction.amount_transferred = amount_transferred
-
-        from_account.update_balance(block.block_number, to_account,transferable= -(amount_transferred + fee) )
-        to_account.update_balance(transferable=amount_transferred)
-
-
-        transaction.from_balance.add(from_account.get_current_balance())
-        transaction.to_balance.add(to_account.get_current_balance())
-        """
+        if extrinsic.function_name == "bond":
+            amount_transferred = extrinsic.call_args[1]["value"]
+            controller_address = extrinsic.call_args[0]["value"]
+            controller_account = Account.get_from_address(controller_address)
+            if not controller_account:
+                controller_account = Account.create(controller_address)
+            Controller.create(controller_account, from_account)
+        elif extrinsic.function_name == "bond_extra":
+            amount_transferred = extrinsic.call_args[0]["value"]
+        else:
+            raise NotImplementedError()
+        
+        old_balance = Balance.get_last_balance(from_account)
+        new_balance = Balance.create(from_account, extrinsic,transferable=-(extrinsic.fee+amount_transferred) ,bonded=amount_transferred)
+        
+        Transfer.create(
+            block_number=block.block_number,
+            from_account=from_account,
+            to_account=from_account,
+            from_balance=old_balance,
+            to_balance=new_balance,
+            value=amount_transferred,
+            extrinsic=extrinsic,
+            type=extrinsic.function_name
+        )
