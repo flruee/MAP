@@ -78,6 +78,8 @@ Create relations:
 ## staking
 
 ### bond (currency shuffle, ) 6498556 Implemented
+
+
 from transferable to bonded.
 warning
 the third argument name refers to the following
@@ -95,7 +97,10 @@ proposal:
 * "stash": rewards go to transferable
 * an address: rewards go to address
 
-
+## setPayee
+1. from_address should be controller
+2. select slaves
+3. change bonding_type of slaves
 
 
 ### bondExtra (see bonded) 6499896
