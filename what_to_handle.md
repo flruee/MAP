@@ -88,13 +88,13 @@ Create relations:
 from transferable to bonded.
 warning
 the third argument name refers to the following
-Staked - Pay into the stash account, increasing the amount at stake accordingly. -> increase bonded  
-Stash - Pay into the stash account, not increasing the amount at stake. -> increase transferable  
+Staked - Pay into the stash account, increasing the amount at stake accordingly. -> increase bonded   872623
+Stash - Pay into the stash account, not increasing the amount at stake. -> increase transferable  6498556
 Account - Pay into a custom account, like so: Account DMTHrNcmA8QbqRS4rBq8LXn8ipyczFoNMb1X4cY2WD9tdBX. -> classic transfer  
-Controller - Pay into the controller account. -> classic transfer  
+Controller - Pay into the controller account. -> classic transfer  3567543
 
 proposal:
-    create new property for account node: bonding_type
+    create new property for account node: reward_destination
     possible values: 
 * null: not bonding
 * "staking": Rewards go to bonded

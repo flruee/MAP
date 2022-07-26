@@ -23,7 +23,8 @@ class Neo4jBlockHandler:
                                 ]
         self.current_era = None
         self.block_author = None
-    def handle_full_block(self,data):
+
+    def handle_full_block(self, data):
         
         block = self.__handle_block_data(data)
         transactions = self.__handle_transaction_data(data, block)
@@ -104,10 +105,8 @@ class Neo4jBlockHandler:
         """
         creates a transaction node, 
         """
-
         if not transaction_data["call"]["call_module"] in self.handled_call_modules:
             return None
-        print(transaction_data["call"]["call_function"])
         if transaction_data["call"]["call_function"] in \
                 ["transfer", "transfer_all", "transfer_keep_alive", "bond","bond_extra","set_controller"]:
             transaction = Transaction.create(block,transaction_data, event_data)
@@ -139,7 +138,10 @@ class Neo4jBlockHandler:
                 nominator_account = Account.get(nominator_address)
                 if nominator_account is None:
                     nominator_account = Account.create(nominator_address)
-                nominator_account.update_balance(transferable=nominator_reward)
+                if nominator_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
+                    nominator_account.update_balance(transferable=nominator_reward)
+                elif nominator_account.reward_destination in ['Staked']:
+                    nominator_account.update_balance(bonded=nominator_account)
                 nominator = Nominator.get_from_account(nominator_account)
                 nominator_account.is_nominator.add(nominator)
                 Account.save(nominator_account)
@@ -173,16 +175,14 @@ class Neo4jBlockHandler:
                     validator_pool.hasValidators.add(list(block.has_author.triples())[0][2])
         return validator_pool
 
-    
-    
 
     def __add_fees_to_author(self, address, block, events: List):
         
         author = Account.match(self.driver, address).first()
         if author is None:
-            author, author_balance = self.__create_account(address )
-        else:
-            author_balance =  list(author.has_balances.triples())[-1][-1]
+            author = Account.create_account(address)
+
+        author_balance =  list(author.has_balances.triples())[-1][-1]
                 
         fees = 0
         for event in events:
@@ -206,26 +206,6 @@ class Neo4jBlockHandler:
         block.has_author.add(author)
 
         return author
-        
-
-
-    def __create_account(self, address:str):
-        account = Account(
-            address = address
-        )
-        balance = Balance(
-            transferable = 0,
-            reserved = 0,
-            bonded = 0,
-            unbonding = 0
-        )
-
-        account.has_balances.add(balance)
-
-        self.driver.save(account)
-        self.driver.save(balance)
-
-        return account, balance
         
 
     def __commit_all(self, block, extrinsics, events, author):

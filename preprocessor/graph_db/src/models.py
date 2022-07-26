@@ -1,4 +1,3 @@
-
 from sqlalchemy import Column, Integer, JSON
 from sqlalchemy.orm import declarative_base
 from py2neo.ogm import GraphObject, Property, RelatedTo, RelatedFrom
@@ -10,16 +9,17 @@ Block
 """
 
 treasury_address = "13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB"
+
+
 class RawData(Base):
     __tablename__ = "raw_data"
     block_number = Column(Integer, primary_key=True)
     data = Column(JSON)
 
-
     def __repr__(self):
         return f"Block {self.block_number}"
 
-###### Blocks and Transactions
+
 class Block(GraphObject):
     __primarykey__ = "block_number"
 
@@ -43,26 +43,24 @@ class Transaction(GraphObject):
     has_extrinsic_function = RelatedTo("ExtrinsicFunction")
     has_event_function = RelatedTo("EventFunction")
 
-
     from_balance = RelatedTo("Balance")
     to_balance = RelatedTo("Balance")
     reward_validator = RelatedTo("Balance")
     reward_treasury = RelatedTo("Balance")
 
-
     @staticmethod
-    def create(block: Block,transaction_data, event_data) -> "Transaction":
-        #transaction failed so we don't include it
+    def create(block: Block, transaction_data, event_data) -> "Transaction":
+        # transaction failed so we don't include it
         if event_data[-1]["event_id"] != "ExtrinsicSuccess":
             return None
 
-
         transaction = Transaction(
-            extrinsic_hash = transaction_data["extrinsic_hash"]
+            extrinsic_hash=transaction_data["extrinsic_hash"]
         )
         extrinsic_function = ExtrinsicFunction.get(transaction_data["call"]["call_function"])
         if not extrinsic_function:
-            extrinsic_function = ExtrinsicFunction.create(transaction_data["call"]["call_function"], transaction_data["call"]["call_module"])        
+            extrinsic_function = ExtrinsicFunction.create(transaction_data["call"]["call_function"],
+                                                          transaction_data["call"]["call_module"])
 
         transaction.has_extrinsic_function.add(extrinsic_function)
 
@@ -80,7 +78,6 @@ class Transaction(GraphObject):
             balance = Account.get_current_balance(from_account)
 
             controller_address = transaction_data["call"]["call_args"][0]["value"].replace("0x", "")
-            print(controller_address)
             
             controller_account = Account.get(controller_address)
             if not controller_account:
@@ -140,16 +137,18 @@ class Transaction(GraphObject):
         from_account = Account.get(transaction_data["address"].replace("0x", ""))
         if not from_account:
             from_account = Account.create(transaction_data["address"].replace("0x", ""))
-
         balance = Account.get_current_balance(from_account)
 
         if extrinsic_function.name == "bond":
             amount_transferred = transaction_data["call"]["call_args"][1]["value"]
             controller_address = transaction_data["call"]["call_args"][0]["value"].replace("0x", "")
+            reward_destination = transaction_data["call"]["call_args"][2]["value"]
             controller_account = Account.get(controller_address)
             if not controller_account:
                 controller_account = Account.create(controller_address)
             controller_account.controls.add(from_account)
+            controller_account.reward_destination = reward_destination
+
             Account.save(controller_account)
         elif extrinsic_function.name == "bond_extra":
             amount_transferred = transaction_data["call"]["call_args"][0]["value"]
@@ -158,11 +157,9 @@ class Transaction(GraphObject):
 
         transaction.amount_transferred = amount_transferred
         fee = Transaction.pay_fees(event_data, block, transaction)
-
-
+        from_account = Account.get(transaction_data["address"].replace("0x", ""))  # have to get account again in case
+        # controller is the same as from account, else everything updated gets overwritten in update balance.
         from_account.update_balance(block.block_number, from_account, transferable=-(amount_transferred+fee) ,bonded=amount_transferred)
-
-
         transaction.from_balance.add(from_account.get_current_balance())
         transaction.to_balance.add(from_account.get_current_balance())
 
@@ -186,15 +183,6 @@ class Transaction(GraphObject):
         transaction.reward_validator.add(validator_account.get_current_balance())
 
         return (validator_fee+treasury_fee)
-
-
-class Aggregator(GraphObject):
-    totalExtrinsics = Property()
-    totalEvents = Property()
-    totalAccounts = Property()
-    totalTransfers = Property()
-    totalIssuance = Property()
-    totalStaked = Property()
 
 class ExtrinsicFunction(GraphObject):
     __primarykey__ = "name"
@@ -270,6 +258,7 @@ class Account(GraphObject):
     address = Property()
     account_index = Property()
     nonce = Property()
+    reward_destination = Property()
 
     has_balances = RelatedTo("Balance")
     current_balance = RelatedTo("Balance")
@@ -277,6 +266,7 @@ class Account(GraphObject):
     controls = RelatedTo("Account")
     is_validator = RelatedTo("Validator")
     is_nominator = RelatedTo("Nominator")
+
 
     def get_current_balance(self):
         triples = list(self.current_balance.triples())
