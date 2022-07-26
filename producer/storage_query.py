@@ -32,7 +32,7 @@ if __name__ == "__main__":
     
     result = substrate.query(
         module='Staking',
-        storage_function='Ledger',
-        params=["1ZMbuCR3QiatxRsQdNnJYgydn3CWV4PELcTzpH4TNoNjxno"]
+        storage_function='ErasRewardPoints',
+        params=[5000]
     )
     print(result)

@@ -25,7 +25,6 @@ class Neo4jBlockHandler:
         #events = self.__insert_events(data, extrinsics)
         #author = self.__add_fees_to_author(data["header"]["author"],block, events)
         #self.__commit_all(block, extrinsics, events, author)
-        
 
     def __handle_block_data(self,data):
         """
@@ -34,42 +33,26 @@ class Neo4jBlockHandler:
         timestamp = data["extrinsics"][0]["call"]["call_args"][0]["value"]
         timestamp = datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=timestamp)
         last_block = Block.match(Driver().get_driver(), data["number"]-1).first()
-
-        block = Block(
-            block_number=data["number"],
-            hash=data["hash"],
-            timestamp=timestamp,
-        )
-
+        block = Block.create(data, timestamp)
         author_account = Account.get(data["header"]["author"])
         if not author_account:
             author_account = Account.create(data["header"]["author"])
-
         validator = Validator.get_from_account(author_account)
         if not validator:
             validator = Validator.create(author_account)
-
         block.has_author.add(validator)
-
-
-
-        # Only a problem for the first block
         try:
             block.previous_block.add(last_block)
-        except TypeError:
+        except TypeError:  # Only a problem for the first block
             pass
-        
-        Block.save(block) #todo: save block
+        Block.save(block)
         return block
 
-
-
     def __handle_transaction_data(self, data, block: Block):
-
         transactions = []
         events_data = data["events"]
 
-        if len(data['extrinsics']) == 1 and len(data["events"]) > 2: # Todo: handle differently,
+        if len(data['extrinsics']) == 1 and len(data["events"]) > 2:  # Todo: handle differently,
             """
             This was done because some blocks contain 0 extrinsics, 
             however they contain events that require handling
@@ -80,7 +63,7 @@ class Neo4jBlockHandler:
             start = 1
         for i in range(start, len(data["extrinsics"])):
 
-            #TODO make a parainherent check here
+            # TODO make a parainherent check here
             extrinsic_data = data["extrinsics"][i]
             current_events = self.handle_events(events_data, i)
 
@@ -109,17 +92,12 @@ class Neo4jBlockHandler:
             return None
 
     def __handle_event_data(self, data, transactions, block):
-
-        for extrinsic in data['extrinsics']:
-            if extrinsic['call']['call_function'] == 'payout_stakers' and extrinsic['call']['call_module'] == 'Staking':
-                payout_era = extrinsic['call']['call_args'][1]['value']
-                payout_validator = extrinsic['call']['call_args'][0]['value']
         for event in data['events']:
-            if event['event_id'] == 'EraPayout' and event['module_id'] == 'Staking':
-                self.current_era = event['attributes'][0]['value']
+            if event['event_id'] in ['EraPayout', 'EraPaid'] and event['module_id'] == 'Staking':
+                current_era = event['attributes'][0]['value']
             elif event['event_id'] == 'NewAuthorities' and event['module_id'] == 'Grandpa':
-                validator_pool = ValidatorPool.create(self.current_era, block)
-                previous_validator_pool = ValidatorPool.get(self.current_era - 1)
+                validator_pool = ValidatorPool.create(current_era-1, block)
+                previous_validator_pool = ValidatorPool.get(current_era-2 - 1)
                 if previous_validator_pool is None:
                     pass
                 else:
@@ -139,6 +117,11 @@ class Neo4jBlockHandler:
                 nominator_account.is_nominator.add(nominator)
                 Account.save(nominator_account)
                 nominator.reward = nominator_reward
+                for extrinsic in data['extrinsics']:
+                    if extrinsic['call']['call_function'] == 'payout_stakers' and extrinsic['call'][
+                        'call_module'] == 'Staking':
+                        payout_era = extrinsic['call']['call_args'][1]['value']
+                        payout_validator = extrinsic['call']['call_args'][0]['value']
                 author_account = Account.get(payout_validator)
                 if not author_account:
                     author_account = Account.create(payout_validator)
@@ -211,9 +194,6 @@ class Neo4jBlockHandler:
         self.driver.save(block)
 
 
-    
-
-
     def special_event(self,block, extrinsic, events):
         """
         Each event has some implications on the overall data model. This function here differentiates between
@@ -251,7 +231,6 @@ class Neo4jBlockHandler:
             """
                 Iterates through events, selects those that have the same extrinsic_idx as the given one
                 stores them in the db and returns all found events
-
 
                 The events correspond to the transactions based on the order the transactions were executed
                 The last event of a transaction indicates if the transaction was executed successfully

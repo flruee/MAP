@@ -7,9 +7,9 @@ good account: 14d2kv44xf9nFnYdms32dYPKQsr5C9urbDzTz7iwU8iHb9az
 
 # Staking amounts how to
 if event               "module_id": "Staking",
-                "event_id": "EraPayout",
+                "event_id": "EraPayout", 328745
 or             "module_id": "Staking",
-            "event_id": "EraPaid", 
+            "event_id": "EraPaid", 6812213
 
     
 1. at end of era get all validators with storage function Staking(ErasRewardPoints)

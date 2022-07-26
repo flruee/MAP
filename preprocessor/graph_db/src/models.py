@@ -33,6 +33,15 @@ class Block(GraphObject):
     has_aggregator = RelatedTo("Aggregator")
 
     @staticmethod
+    def create(data, timestamp):
+        block = Block(
+            block_number=data["number"],
+            hash=data["hash"],
+            timestamp=timestamp,
+        )
+        return block
+
+    @staticmethod
     def save(block: "Block"):
         Driver().get_driver().save(block)
 
