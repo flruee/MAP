@@ -102,7 +102,7 @@ proposal:
 * "stash": rewards go to transferable
 * an address: rewards go to address
 
-## setPayee
+## setPayee 6797156 (here he bonds first) 6985778 (here he sets payee)
 1. from_address should be controller
 2. select slaves
 3. change bonding_type of slaves

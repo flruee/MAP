@@ -2,14 +2,8 @@ import logging
 from typing import Dict, List
 import datetime
 import json
-
-from sqlalchemy import JSON
-#from src.event_handlers.utils import event_error_handling
 from src.models import Block,Transaction, Account, Balance, Transaction, Validator, ValidatorPool, Nominator
 from src.driver_singleton import Driver
-#from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler, ClaimsEventHandler
-from sqlalchemy.exc import IntegrityError
-#from src.node_connection import handle_one_block
 from py2neo.ogm import Repository
 
 
@@ -17,10 +11,9 @@ class Neo4jBlockHandler:
     def __init__(self, driver: Repository):
         self.driver = driver
         self.handled_call_modules = ['Balances',
-                                'Staking',
-                                'Treasury',
-
-                                ]
+                                     'Staking',
+                                     'Treasury'
+                                     ]
         self.current_era = None
         self.block_author = None
 
@@ -108,7 +101,7 @@ class Neo4jBlockHandler:
         if not transaction_data["call"]["call_module"] in self.handled_call_modules:
             return None
         if transaction_data["call"]["call_function"] in \
-                ["transfer", "transfer_all", "transfer_keep_alive", "bond","bond_extra","set_controller"]:
+                ["transfer", "transfer_all", "transfer_keep_alive", "bond","bond_extra","set_controller", "set_payee"]:
             transaction = Transaction.create(block,transaction_data, event_data)
             #Transaction.handle_transfer(transaction, transaction_data, block)
             

@@ -96,7 +96,8 @@ class Transaction(GraphObject):
 
             transaction.from_balance.add(from_account.get_current_balance())
             transaction.to_balance.add(from_account.get_current_balance())
-
+        elif extrinsic_function.name == "set_payee":
+            Transaction.handle_set_payee(transaction_data, event_data, block, transaction, extrinsic_function)
 
         Transaction.save(transaction)
         block.has_transaction.add(transaction)
@@ -183,6 +184,17 @@ class Transaction(GraphObject):
         transaction.reward_validator.add(validator_account.get_current_balance())
 
         return (validator_fee+treasury_fee)
+
+    @staticmethod
+    def handle_set_payee(transaction_data, event_data, block, transaction, extrinsic_function):
+        account = Account.get(transaction_data['address'])
+        if not account:
+            raise Exception("This should not have happened")
+        reward_destination = transaction_data['call']['call_args'][0]['value']
+        account.reward_destination = reward_destination
+        Account.save(account)
+
+
 
 class ExtrinsicFunction(GraphObject):
     __primarykey__ = "name"
