@@ -64,7 +64,9 @@ if __name__ == "__main__":
             elif MODE == "node": 
                 with session.begin():
                     start = time.time()
-                    block_handler.handle_node_connection_blocks(4474128,4474128)
+                    block_handler.handle_node_connection_blocks(6797156,6797156)
+                    block_handler.handle_node_connection_blocks(6985778,6985778)
+                    #exit()
                     print(time.time()-start)
 
             elif MODE == "kafka":
