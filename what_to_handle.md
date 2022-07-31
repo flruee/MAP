@@ -107,6 +107,7 @@ proposal:
 2. select slaves
 3. change bonding_type of slaves
 
+## setController 6483402
 
 ### bondExtra (see bonded) 6499896
 
@@ -141,7 +142,7 @@ Controller: 12MnpxhC2cSRTWXiwX8jwxegwXZNuxTZsJMCLfCLfCiUpWeu
 
 ## Finding Validators
 1. author -> validator
-2. some validators might not mine, but will surely claim their reward -> use the `Staking(PayoutStakers)` extrinsic (called from any Account DANGERZONE) it will contain the address of validatorStash and validatorpool era.
+2. some validators might not mine, but will surely claim their reward -> use the `Staking(PayoutStakers)` 6497886 extrinsic (called from any Account DANGERZONE) it will contain the address of validatorStash and validatorpool era.
 
 
     * create Validator node with stash account.

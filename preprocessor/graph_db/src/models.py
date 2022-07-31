@@ -62,7 +62,8 @@ class Transaction(GraphObject):
         # transaction failed so we don't include it
         if event_data[-1]["event_id"] != "ExtrinsicSuccess":
             return None
-
+        if transaction_data['call']['call_module'] in ['FinalityTracker', 'Parachains']:
+            return None
         transaction = Transaction(
             extrinsic_hash=transaction_data["extrinsic_hash"]
         )
@@ -72,46 +73,34 @@ class Transaction(GraphObject):
                                                           transaction_data["call"]["call_module"])
 
         transaction.has_extrinsic_function.add(extrinsic_function)
-
+        from_account = transaction_data['address']
+        to_account = None,
+        amount_transferred = 0
         if extrinsic_function.name in ["transfer", "transfer_all", "transfer_keep_alive"]:
-            Transaction.handle_transfer(transaction_data, event_data, block, transaction)
+            transaction, from_account, to_account, amount_transferred = \
+                Transaction.handle_transfer(transaction_data, event_data, block, transaction)
 
         elif extrinsic_function.name in ["bond", "bond_extra"]:
-            Transaction.handle_bond(transaction_data, event_data, block, transaction, extrinsic_function)
+            transaction, from_account, to_account, amount_transferred = \
+                Transaction.handle_bond(transaction_data, event_data, block, transaction, extrinsic_function)
 
         elif extrinsic_function.name == "set_controller":
-            from_account = Account.get(transaction_data["address"].replace("0x", ""))
-            if not from_account:
-                from_account = Account.create(transaction_data["address"].replace("0x", ""))
+            transaction, from_account, to_account, amount_transferred = \
+                Transaction.handle_set_controller(transaction_data, event_data, block, transaction)
 
-            balance = Account.get_current_balance(from_account)
-
-            controller_address = transaction_data["call"]["call_args"][0]["value"].replace("0x", "")
-            
-            controller_account = Account.get(controller_address)
-            if not controller_account:
-                controller_account = Account.create(controller_address)
-            controller_account.controls.add(from_account)
-            Account.save(controller_account)
-
-            amount_transferred = 0
-
-            transaction.amount_transferred = amount_transferred
-            fee = Transaction.pay_fees(event_data, block, transaction)
-
-
-            from_account.update_balance(block.block_number, from_account, transferable=-(amount_transferred+fee) ,bonded=amount_transferred)
-
-
-            transaction.from_balance.add(from_account.get_current_balance())
-            transaction.to_balance.add(from_account.get_current_balance())
         elif extrinsic_function.name == "set_payee":
-            Transaction.handle_set_payee(transaction_data, event_data, block, transaction, extrinsic_function)
+            transaction, from_account, to_account, amount_transferred = \
+                Transaction.handle_set_payee(transaction_data, event_data, block, transaction)
 
+        elif extrinsic_function.name == "payout_stakers":
+            transaction, from_account, to_account, amount_transferred = \
+                Transaction.handle_payout_stakers(transaction_data, event_data, block, transaction)
+
+        Transaction.pay_fees(event_data, block, transaction, from_account, to_account, amount_transferred,
+                             extrinsic_function.name)
         Transaction.save(transaction)
         block.has_transaction.add(transaction)
         Block.save(block)
-        return transaction
 
     @staticmethod
     def save(transaction: "Transaction"):
@@ -127,55 +116,67 @@ class Transaction(GraphObject):
         if not to_account:
             to_account = Account.create(transaction_data["call"]["call_args"][0]["value"].replace("0x", ""))
 
-        fee = Transaction.pay_fees(event_data, block, transaction)
-
+        amount_transferred = 0
         for event in event_data:
             if event['event_id'] == 'Transfer':
                 amount_transferred = event['attributes'][2]['value']
+                break
 
         transaction.amount_transferred = amount_transferred
+        return transaction, from_account, to_account, amount_transferred
 
-        from_account.update_balance(block.block_number, to_account,transferable= -(amount_transferred + fee) )
-        to_account.update_balance(transferable=amount_transferred)
+    @staticmethod
+    def handle_set_controller(transaction_data, event_data, block, transaction):
+        from_account = Account.get(transaction_data["address"].replace("0x", ""))
+        if not from_account:
+            from_account = Account.create(transaction_data["address"].replace("0x", ""))
+        controller_address = transaction_data["call"]["call_args"][0]["value"].replace("0x", "")
+        controller_account = Account.get(controller_address)
+        if not controller_account:
+            controller_account = Account.create(controller_address)
+        controller_account.controls.add(from_account)
+        Account.save(controller_account)
 
-
-        transaction.from_balance.add(from_account.get_current_balance())
-        transaction.to_balance.add(to_account.get_current_balance())
+        amount_transferred = 0
+        transaction.amount_transferred = amount_transferred
+        return transaction, from_account, from_account, amount_transferred
 
     @staticmethod
     def handle_bond(transaction_data: Dict, event_data: Dict, block: Block, transaction: "Transaction", extrinsic_function: "ExtrinsicFunction"):
         from_account = Account.get(transaction_data["address"].replace("0x", ""))
         if not from_account:
             from_account = Account.create(transaction_data["address"].replace("0x", ""))
-        balance = Account.get_current_balance(from_account)
 
         if extrinsic_function.name == "bond":
             amount_transferred = transaction_data["call"]["call_args"][1]["value"]
             controller_address = transaction_data["call"]["call_args"][0]["value"].replace("0x", "")
             reward_destination = transaction_data["call"]["call_args"][2]["value"]
-            controller_account = Account.get(controller_address)
+            if controller_address != transaction_data["address"].replace("0x", ""):
+                controller_account = Account.get(controller_address)
+            else:
+                controller_account = from_account
             if not controller_account:
                 controller_account = Account.create(controller_address)
             controller_account.controls.add(from_account)
             controller_account.reward_destination = reward_destination
-
             Account.save(controller_account)
+            from_account = controller_account
         elif extrinsic_function.name == "bond_extra":
             amount_transferred = transaction_data["call"]["call_args"][0]["value"]
         else:
-            raise NotImplementedError()
+            raise NotImplementedError(extrinsic_function.name)
 
         transaction.amount_transferred = amount_transferred
-        fee = Transaction.pay_fees(event_data, block, transaction)
-        from_account = Account.get(transaction_data["address"].replace("0x", ""))  # have to get account again in case
         # controller is the same as from account, else everything updated gets overwritten in update balance.
-        from_account.update_balance(block.block_number, from_account, transferable=-(amount_transferred+fee) ,bonded=amount_transferred)
-        transaction.from_balance.add(from_account.get_current_balance())
-        transaction.to_balance.add(from_account.get_current_balance())
+        return transaction, from_account, from_account, amount_transferred
 
 
     @staticmethod
-    def pay_fees(event_data, block, transaction):
+    def pay_fees(event_data, block, transaction, from_account, to_account, amount_transferred, extrinsic_function_name):
+        """
+        This function handles the settlement of transaction fees (validator and treasury).
+        There exist some blocks where there are no fees. (i.e. first blocks of era)
+        """
         validator_node = list(block.has_author.triples())[0][-1]
         validator_account = list(validator_node.account.triples())[0][-1]
         treasury_account = Account.get_treasury()
@@ -185,24 +186,84 @@ class Transaction(GraphObject):
             treasury_account.update_balance(transferable=treasury_fee)
             transaction.reward_treasury.add(treasury_account.get_current_balance())
         except IndexError:
-            validator_fee = event_data[-2]["attributes"][1]["value"]
-            treasury_fee = 0
+            try:
+                validator_fee = event_data[-2]["attributes"][1]["value"]
+                treasury_fee = 0
+            except IndexError:
+                validator_fee = 0
+                treasury_fee = 0
 
         validator_account.update_balance(transferable=validator_fee)
-
-        transaction.reward_validator.add(validator_account.get_current_balance())
-
-        return (validator_fee+treasury_fee)
+        if validator_fee+treasury_fee:
+            transaction.reward_validator.add(validator_account.get_current_balance())
+        total_fee = validator_fee+treasury_fee
+        if extrinsic_function_name in ['bond', 'bond_extra']:
+            from_account.update_balance(transferable=-(amount_transferred + total_fee),
+                                        bonded=amount_transferred)
+        else:
+            if from_account != to_account:
+                to_account.update_balance(transferable=+amount_transferred)
+                from_account.update_balance(block.block_number, to_account,
+                                            transferable=-(amount_transferred + total_fee))
+            else:
+                from_account.update_balance(transferable=-(amount_transferred + total_fee))
+        transaction.from_balance.add(from_account.get_current_balance())
+        transaction.to_balance.add(to_account.get_current_balance())
+        return validator_fee+treasury_fee
 
     @staticmethod
-    def handle_set_payee(transaction_data, event_data, block, transaction, extrinsic_function):
-        account = Account.get(transaction_data['address'])
+    def handle_set_payee(transaction_data, event_data, block, transaction):
+        account = Account.get(transaction_data["address"].replace("0x", ""))
         if not account:
-            raise Exception("This should not have happened")
+            account = Account.create(transaction_data["address"].replace("0x", ""))
         reward_destination = transaction_data['call']['call_args'][0]['value']
         account.reward_destination = reward_destination
         Account.save(account)
+        amount_transferred = 0
+        return transaction, account, account, amount_transferred
 
+    @staticmethod
+    def handle_payout_stakers(transaction_data, event_data, block, transaction):
+        """
+        handles Staking(Reward) event by creating a nominator node, checking their payout preferences (reward_destination)
+        adjusting their transferable/bonded balance respectively.
+        We check whether or not the nominator receiving the reward is the same address as the validator in order to avoid
+        creating a nominator node for a validator.
+        """
+        validator_stash = transaction_data['call']['call_args'][0]['value']
+        author_account = Account.get(validator_stash)
+        if not author_account:
+            author_account = Account.create(validator_stash)
+        validator = Validator.get_from_account(author_account)
+        if not validator:
+            validator = Validator.create(author_account)
+        for event in event_data:
+            if event['event_id'] == 'Reward':
+                nominator_reward = event['attributes'][1]['value']
+                nominator_address = event['attributes'][0]['value']
+                if nominator_address == validator_stash:
+                    if author_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
+                        author_account.update_balance(transferable=nominator_reward)
+                    elif author_account.reward_destination in ['Staked']:
+                        author_account.update_balance(bonded=nominator_reward)
+                    continue
+                nominator_account = Account.get(nominator_address)
+                if nominator_account is None:
+                    nominator_account = Account.create(nominator_address)
+                if nominator_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
+                    nominator_account.update_balance(transferable=nominator_reward)
+                elif nominator_account.reward_destination in ['Staked']:
+                    nominator_account.update_balance(bonded=nominator_account)
+                nominator = Nominator.get_from_account(nominator_account)
+                nominator_account.is_nominator.add(nominator)
+                Account.save(nominator_account)
+                nominator.reward = nominator_reward
+                Nominator.save(nominator)
+                validator.has_nominator.add(nominator)
+                Validator.save(validator)
+
+        amount_transferred = 0
+        return transaction, nominator_account, nominator_account, amount_transferred
 
 
 class ExtrinsicFunction(GraphObject):
@@ -326,8 +387,8 @@ class Account(GraphObject):
         return treasury
 
 
-    def update_balance(self,block_number=None,other_account: "Account"=None,transferable=0, reserved=0, bonded=0, unbonding=0):
-
+    def update_balance(self, block_number=None, other_account: "Account"=None,
+                       transferable=0, reserved=0, bonded=0, unbonding=0):
 
         last_balance = self.get_current_balance()
 

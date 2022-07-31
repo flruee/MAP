@@ -81,57 +81,42 @@ class Neo4jBlockHandler:
         """
         creates a transaction node, 
         """
+        Transaction.create(block, transaction_data, event_data)
+        """
         if not transaction_data["call"]["call_module"] in self.handled_call_modules:
+            Transaction.create(block, transaction_data,)
+            Transaction.pay_fees(block, transaction_data, event_data)
             return None
         if transaction_data["call"]["call_function"] in \
-                ["transfer", "transfer_all", "transfer_keep_alive", "bond","bond_extra","set_controller", "set_payee"]:
+                ["transfer", "transfer_all", "transfer_keep_alive", "bond","bond_extra",
+                 "set_controller", "set_payee","payout_stakers"]:
             transaction = Transaction.create(block,transaction_data, event_data)
             #Transaction.handle_transfer(transaction, transaction_data, block)
             
         else:
             return None
-
+        """
     def __handle_event_data(self, data, transactions, block):
+        """
+        Here we handle events that contain crucial information not tied to any extrinsics.
+        In the case of ['EraPayout', 'EraPaid'] we extract the previous era (and add one to get the current era)
+        In the case of 'NewAuthorities' we extract the new set of active validators for the current era.
+            We further extract the previous validatorpool via era-index in order to establish the relation
+            "previous_validator_pool" with the current validator_pool.
+        """
+        if data['events'][1]['event_id'] not in ['EraPayout', 'EraPaid']:
+            return
         for event in data['events']:
             if event['event_id'] in ['EraPayout', 'EraPaid'] and event['module_id'] == 'Staking':
-                current_era = event['attributes'][0]['value']
+                current_era = event['attributes'][0]['value'] + 1
             elif event['event_id'] == 'NewAuthorities' and event['module_id'] == 'Grandpa':
-                validator_pool = ValidatorPool.create(current_era-1, block)
-                previous_validator_pool = ValidatorPool.get(current_era-2 - 1)
+                validator_pool = ValidatorPool.create(current_era, block)
+                previous_validator_pool = ValidatorPool.get(current_era - 1)
                 if previous_validator_pool is None:
                     pass
                 else:
                     validator_pool.previous_validator_pool.add(previous_validator_pool)
                     previous_validator_pool.to_block.add(list(block.previous_block.triples())[0][2])
-            elif event['event_id'] == 'Reward' and event['module_id'] == 'Staking':
-                nominator_reward = event['attributes'][1]['value']
-                nominator_address = event['attributes'][0]['value']
-                nominator_account = Account.get(nominator_address)
-                if nominator_account is None:
-                    nominator_account = Account.create(nominator_address)
-                if nominator_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
-                    nominator_account.update_balance(transferable=nominator_reward)
-                elif nominator_account.reward_destination in ['Staked']:
-                    nominator_account.update_balance(bonded=nominator_account)
-                nominator = Nominator.get_from_account(nominator_account)
-                nominator_account.is_nominator.add(nominator)
-                Account.save(nominator_account)
-                nominator.reward = nominator_reward
-                for extrinsic in data['extrinsics']:
-                    if extrinsic['call']['call_function'] == 'payout_stakers' and extrinsic['call'][
-                        'call_module'] == 'Staking':
-                        payout_era = extrinsic['call']['call_args'][1]['value']
-                        payout_validator = extrinsic['call']['call_args'][0]['value']
-                author_account = Account.get(payout_validator)
-                if not author_account:
-                    author_account = Account.create(payout_validator)
-
-                validator = Validator.get_from_account(author_account)
-                if not validator:
-                    validator = Validator.create(author_account)
-                Nominator.save(nominator)
-                validator.has_nominator.add(nominator)
-                Validator.save(validator)
 
         if self.current_era is not None:
             validator_pool = ValidatorPool.get(self.current_era)
