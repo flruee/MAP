@@ -64,6 +64,15 @@ class Transaction(GraphObject):
             return None
         if transaction_data['call']['call_module'] in ['FinalityTracker', 'Parachains']:
             return None
+        if transaction_data['call']['call_module'] == 'Utility' and transaction_data['call']['call_function'] == 'batch':
+            for transaction_batch in transaction_data['call']['call_args'][0]['value']:
+                transaction_structure = dict()
+                transaction_structure['extrinsic_hash'] = transaction_data['extrinsic_hash']
+                transaction_structure['address'] = transaction_data['address']
+                transaction_structure['call'] = transaction_batch
+                Transaction.create(block, transaction_structure, event_data)
+        if transaction_data['call']['call_module'] == 'Utility' and transaction_data['call']['call_function'] == 'batch':
+            return None
         transaction = Transaction(
             extrinsic_hash=transaction_data["extrinsic_hash"]
         )
@@ -74,7 +83,8 @@ class Transaction(GraphObject):
 
         transaction.has_extrinsic_function.add(extrinsic_function)
         from_account = transaction_data['address']
-        to_account = None,
+        to_account = None
+        print(extrinsic_function.name)
         amount_transferred = 0
         if extrinsic_function.name in ["transfer", "transfer_all", "transfer_keep_alive"]:
             transaction, from_account, to_account, amount_transferred = \
@@ -173,6 +183,7 @@ class Transaction(GraphObject):
 
     @staticmethod
     def pay_fees(event_data, block, transaction, from_account, to_account, amount_transferred, extrinsic_function_name):
+        print(to_account)
         """
         This function handles the settlement of transaction fees (validator and treasury).
         There exist some blocks where there are no fees. (i.e. first blocks of era)
