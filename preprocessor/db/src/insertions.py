@@ -12,7 +12,6 @@ def handle_blocks(start, end):
         with open(f"small_block_dataset/{i}.json", "r") as f:
             data = json.loads(f.read())  
         handle_full_block(data)
-        print(data["number"])
 
 
 def handle_full_block(data):
@@ -173,7 +172,6 @@ def special_event(block):
     """
     for extrinsic in block.extrinsics:
         for event in extrinsic.events:
-            print(f"{event.module_id}: {event.event_id}")
             if event.module_id == "System":
                 SystemEventHandler.handle_event(block, extrinsic, event)
             elif event.module_id == "Balances":

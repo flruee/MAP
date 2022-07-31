@@ -11,6 +11,7 @@ class Account(Base):
     id = Column(Integer, primary_key=True)
     address = Column(String)
     nonce = Column(Integer)
+    reward_destination = Column(String, nullable=True)
 
     @staticmethod
     def get(id):

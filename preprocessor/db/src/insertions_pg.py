@@ -24,14 +24,12 @@ class PGBlockHandler:
             with open(f"small_block_dataset/{i}.json", "r") as f:
                 data = json.loads(f.read())  
             self.handle_full_block(data)
-            print(data["number"])
             #self.session.commit()
 
     def handle_node_connection_blocks(self,start,end):
         for i in range(start, end+1):
             block = handle_one_block(i)
             self.handle_full_block(block)
-            print(block["number"])
 
     def handle_full_block(self,data):
         block = self.insert_block(data)
@@ -202,6 +200,8 @@ class PGBlockHandler:
 
         elif(extrinsic.module_name == "Staking" and extrinsic.function_name == "set_controller"):
             self.__handle_set_controller(block, extrinsic, events)
+        elif(extrinsic.module_name == "Staking" and extrinsic.function_name == "set_payee"):
+            self.__handle_set_payee(block, extrinsic, events)
 
 
 
@@ -216,12 +216,11 @@ class PGBlockHandler:
 
         for event in events:
             if event.event_name == 'Transfer':
-                print(event.attributes)
                 amount_transferred = event.attributes[2]['value']
 
         # Create new balances
-        from_balance = Balance.create(from_account, block.block_number, transferable=-(amount_transferred+extrinsic.fee))
-        to_balance = Balance.create(from_account, block.block_number,transferable=amount_transferred)
+        from_balance = Balance.create(from_account, extrinsic, transferable=-(amount_transferred+extrinsic.fee))
+        to_balance = Balance.create(from_account, extrinsic,transferable=amount_transferred)
 
         transfer = Transfer.create(
             block_number=block.block_number,
@@ -236,12 +235,13 @@ class PGBlockHandler:
     
     def __handle_bond(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
         from_account = Account.get(extrinsic.account)
-        print(extrinsic.call_args)
         
         if extrinsic.function_name == "bond":
             amount_transferred = extrinsic.call_args[1]["value"]
             controller_address = extrinsic.call_args[0]["value"]
             controller_account = Account.get_from_address(controller_address)
+            print(extrinsic.call_args[2])
+            from_account.reward_destination = extrinsic.call_args[2]["value"]
             if not controller_account:
                 controller_account = Account.create(controller_address)
             Controller.create(controller_account, from_account)
@@ -272,5 +272,11 @@ class PGBlockHandler:
             controller_account = Account.create(controller_address)
         
         Controller.create(controller_account, controlled_account)
-        
+    
+    def __handle_set_payee(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
+        print("set_payee")
+        print(extrinsic.call_args)
+        from_account = Account.get(extrinsic.account)
+        from_account.reward_destination = extrinsic.call_args[0]["value"]
+        Account.save(from_account)
 
