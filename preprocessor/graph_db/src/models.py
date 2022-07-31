@@ -207,8 +207,9 @@ class Transaction(GraphObject):
                                             transferable=-(amount_transferred + total_fee))
             else:
                 from_account.update_balance(transferable=-(amount_transferred + total_fee))
-        transaction.from_balance.add(from_account.get_current_balance())
-        transaction.to_balance.add(to_account.get_current_balance())
+        if extrinsic_function_name in ["transfer", "transfer_all", "transfer_keep_alive"]:
+            transaction.from_balance.add(from_account.get_current_balance())
+            transaction.to_balance.add(to_account.get_current_balance())
         return validator_fee+treasury_fee
 
     @staticmethod
