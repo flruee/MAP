@@ -22,7 +22,7 @@ class Event(Base):
     topics = Column(JSON)
 
     @staticmethod
-    def create(event_data,extrinsic_id,block_number):
+    def create(event_data,extrinsic_id,block_number) -> "Event":
         event = Event(
             extrinsic=extrinsic_id,
             event_order_id = event_data["extrinsic_idx"], #denotes in which order the events happened. given n events the first event in block has 0 last event has n-1
@@ -35,6 +35,9 @@ class Event(Base):
 
         )
         Event.save(event)
+
+        
+
         return event
 
     @staticmethod

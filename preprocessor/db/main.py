@@ -64,8 +64,10 @@ if __name__ == "__main__":
             elif MODE == "node": 
                 with session.begin():
                     start = time.time()
-                    block_handler.handle_node_connection_blocks(6797156,6797156)
-                    block_handler.handle_node_connection_blocks(6985778,6985778)
+                    block_handler.handle_node_connection_blocks(6495603,6495603)
+                    block_handler.handle_node_connection_blocks(6497886,6497886)
+
+                    #block_handler.handle_node_connection_blocks(11360981,11360981)
                     #exit()
                     print(time.time()-start)
 

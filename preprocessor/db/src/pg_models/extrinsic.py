@@ -1,4 +1,5 @@
 from multiprocessing import Event
+from charset_normalizer import from_bytes
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer,String, JSON, Boolean,BigInteger
@@ -10,6 +11,7 @@ from src.pg_models.block import Block
 from src.pg_models.account import Account
 from src.pg_models.balance import Balance
 from src.pg_models.event import Event
+from src.pg_models.transfer import Transfer
 class Extrinsic(Base):
     __tablename__ = "extrinsic"
     id = Column(Integer,primary_key=True)
@@ -35,13 +37,14 @@ class Extrinsic(Base):
     def create(block: "Block",extrinsic_data,event_data) -> "Extrinsic":
         Extrinsic.__clean_fields(extrinsic_data)
         was_successful = event_data[-1]["event_id"] == "ExtrinsicSuccess"
-        validator_account = Extrinsic.__extract_validator_account(extrinsic_data)
+        sender_account = Extrinsic.__extract_sender_account(extrinsic_data)
 
-        
+        print(extrinsic_data["nonce"])
+
         extrinsic = Extrinsic(
             extrinsic_hash = extrinsic_data["extrinsic_hash"],
             extrinsic_length = extrinsic_data["extrinsic_length"],
-            account = validator_account,
+            account = sender_account.id,
             signature = extrinsic_data["signature"],
             era = extrinsic_data["era"],
             nonce = extrinsic_data["nonce"],
@@ -59,7 +62,7 @@ class Extrinsic(Base):
         # created after saving
         Extrinsic.save(extrinsic)
         if extrinsic.function_name not in ["set_heads"]:
-            fee = Extrinsic.__handle_fees(extrinsic, event_data)
+            fee = Extrinsic.__handle_fees(extrinsic, event_data,sender_account,block)
             extrinsic.fee = fee
             Extrinsic.save(extrinsic)
 
@@ -89,23 +92,36 @@ class Extrinsic(Base):
 
 
     @staticmethod
-    def __handle_fees(extrinsic, event_data):
-        validator_account = Account.get(extrinsic.account)
+    def __handle_fees(extrinsic: "Extrinsic", event_data, author_account: Account, block: Block):
+        validator_account = Account.get_from_address(block.author)
+        if not validator_account:
+            validator_account = Account.create(block.author)
         treasury_account = Account.get_treasury()
-        
+        author_balance = Balance.get_last_balance(author_account)
         if len(event_data) <= 1 or validator_account is None:
             return 0
+        
         try:
             validator_fee = int(event_data[-2]["attributes"][1]["value"])
+            validator_balance = validator_account.update_balance(extrinsic,transferable=validator_fee)
+            author_balance = author_account.update_balance(extrinsic,transferable=-validator_fee)
+            Transfer.create(extrinsic.block_number, author_account, validator_account, author_balance,validator_balance,validator_fee,extrinsic,"ValidatorFee")
+
             treasury_fee = int(event_data[-3]["attributes"][0]["value"])
-            validator_balance = Balance.create(validator_account,extrinsic,transferable=validator_fee)
-            treasury_balance = Balance.create(treasury_account,extrinsic,transferable=treasury_fee)
-            
+            treasury_balance = treasury_account.update_balance(extrinsic,transferable=treasury_fee)
+            author_balance = author_account.update_balance(extrinsic,transferable=-treasury_fee)
+            Transfer.create(extrinsic.block_number, author_account, treasury_account, author_balance,treasury_balance,treasury_fee,extrinsic,"TreasuryFee")
+
         except (IndexError,ValueError):
             try:
                 validator_fee = int(event_data[-2]["attributes"][1]["value"])
+                validator_balance = validator_account.update_balance(extrinsic,transferable=validator_fee)
+                author_balance = author_account.update_balance(extrinsic,transferable=-validator_fee)
+                treasury_balance = Balance.create(treasury_account,extrinsic,transferable=treasury_fee)
+                Transfer.create(extrinsic.block_number, author_account, validator_account, author_balance,validator_balance,validator_fee,extrinsic,"ValidatorFee")
+
                 treasury_fee = 0
-                validator_balance = Balance.create(validator_account,extrinsic,transferable=validator_fee)
+
             except Exception:
                 validator_fee = 0
                 treasury_fee = 0
@@ -114,11 +130,11 @@ class Extrinsic(Base):
 
 
     @staticmethod
-    def __extract_validator_account(extrinsic_data):
+    def __extract_sender_account(extrinsic_data):
         if extrinsic_data["call"]["call_function"] not in ["final_hint"]:
-            validator_account = Account.get_from_address(extrinsic_data["address"])
-            if validator_account is None:
-                validator_account = Account.create(extrinsic_data["address"])
-            return validator_account.id
+            sender_account = Account.get_from_address(extrinsic_data["address"])
+            if sender_account is None:
+                sender_account = Account.create(extrinsic_data["address"])
+            return sender_account
         else:
             return None

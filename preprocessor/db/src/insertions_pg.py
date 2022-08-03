@@ -2,6 +2,7 @@ import logging
 from typing import List
 import datetime
 import json
+from src.pg_models.validator_pool import ValidatorPool
 from src.pg_models.balance import Balance
 from src.event_handlers.utils import event_error_handling
 #from src.pg_models import Block as b,Extrinsic as e,Event as v
@@ -11,9 +12,15 @@ from src.pg_models.event import Event
 from src.pg_models.account import Account
 from src.pg_models.transfer import Transfer
 from src.pg_models.controller import Controller
+from src.pg_models.nominator import Nominator
+from src.pg_models.validator import Validator
+from src.pg_models.validator_to_nominator import ValidatorToNominator
 #from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler, ClaimsEventHandler
 from sqlalchemy.exc import IntegrityError
 from src.node_connection import handle_one_block
+from substrateinterface import SubstrateInterface
+import ssl
+
 class PGBlockHandler:
     def __init__(self, session):
         self.session = session
@@ -54,6 +61,11 @@ class PGBlockHandler:
             logging.warning(f"strange block {data['number']}")
         else:
             start = 1
+            current_events_data = self.handle_events(events_data, 0)
+            events = []
+            for event_data in current_events_data:
+                event = Event.create(event_data, None, block.block_number)
+                self.handle_special_events(event)
         for i in range(start, len(data["extrinsics"])):
             """
             #index 0 is reserved for the timestamp transaction in extrinsics.
@@ -75,7 +87,15 @@ class PGBlockHandler:
             #last event denotes if ectrinsic was successfull
             #was_successful = current_events[-1].event_name == "ExtrinsicSuccess"
             extrinsic = Extrinsic.create(block, extrinsic_data,current_events_data)
-            events = [Event.create(event_data,extrinsic.id,block.block_number) for event_data in current_events_data]
+            #events = [Event.create(event_data,extrinsic.id,block.block_number) for event_data in current_events_data]
+            events = []
+            for event_data in current_events_data:
+                event = Event.create(event_data, extrinsic.id, block.block_number)
+                self.handle_special_events(event)
+                events.append(event)
+
+
+            #if event['event_id'] in ['EraPayout', 'EraPaid'] and event['module_id'] == 'Staking':
 
             self.handle_special_extrinsics(block, extrinsic, events)
             """
@@ -158,6 +178,7 @@ class PGBlockHandler:
                 current_events.append(event_data)
 
 
+
         return current_events
 
 
@@ -192,6 +213,7 @@ class PGBlockHandler:
         we use the whole block.
         """
         print(extrinsic.module_name)
+        print(events)
         if(extrinsic.module_name == "Balances" and extrinsic.function_name in ["transfer", "transfer_keep_alive,transfer_all"]):
             self.__handle_transfer(block, extrinsic, events)
         
@@ -202,6 +224,8 @@ class PGBlockHandler:
             self.__handle_set_controller(block, extrinsic, events)
         elif(extrinsic.module_name == "Staking" and extrinsic.function_name == "set_payee"):
             self.__handle_set_payee(block, extrinsic, events)
+        elif(extrinsic.module_name == "Staking") and extrinsic.function_name == "payout_stakers":
+            self.__handle_payout_stakers(block, extrinsic, events)
 
 
 
@@ -213,14 +237,15 @@ class PGBlockHandler:
             to_account = Account.create(to_address)
         
         # Get amount transferred from 'Transfer' event
-
         for event in events:
+            print(event.module_name)
+            print(event.event_name)
             if event.event_name == 'Transfer':
                 amount_transferred = event.attributes[2]['value']
 
         # Create new balances
-        from_balance = Balance.create(from_account, extrinsic, transferable=-(amount_transferred+extrinsic.fee))
-        to_balance = Balance.create(from_account, extrinsic,transferable=amount_transferred)
+        from_balance = Balance.create(from_account, extrinsic, transferable=-(amount_transferred+extrinsic.fee), executing=True)
+        to_balance = Balance.create(to_account, extrinsic,transferable=amount_transferred)
 
         transfer = Transfer.create(
             block_number=block.block_number,
@@ -251,7 +276,7 @@ class PGBlockHandler:
             raise NotImplementedError()
         
         old_balance = Balance.get_last_balance(from_account)
-        new_balance = Balance.create(from_account, extrinsic,transferable=-(extrinsic.fee+amount_transferred) ,bonded=amount_transferred)
+        new_balance = Balance.create(from_account, extrinsic,transferable=-(extrinsic.fee+amount_transferred) ,bonded=amount_transferred, executing=True)
         
         Transfer.create(
             block_number=block.block_number,
@@ -280,3 +305,90 @@ class PGBlockHandler:
         from_account.reward_destination = extrinsic.call_args[0]["value"]
         Account.save(from_account)
 
+    def handle_special_events(self,event: Event):
+        """
+        Certain features, like an era change, are only captured in events.
+        """
+        # Denotes that a new era has started. Note that EraPayout and EraPaid are the same event, they just got
+        # renamed after some time.
+        # From the following event we get the total reward of the last era
+        print("handle_special_events")
+        print(event.event_name)
+        if event.event_name in ['EraPayout', 'EraPaid'] and event.module_name == 'Staking':
+            validator_pool = ValidatorPool.create(event)
+            return
+            substrate = self.create_substrate_connection()
+            print(validator_pool.era)
+            result = substrate.query(
+                module='Staking',
+                storage_function='ErasRewardPoints',
+                params=[validator_pool.era]
+            )
+
+    def __handle_payout_stakers(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
+        validator_stash = extrinsic.call_args[0]["value"]
+        era = extrinsic.call_args[1]["value"]
+        validator_account = Account.get_from_address(validator_stash)
+        if not validator_account:
+            validator_account = Account.create(validator_stash)
+        validator = Validator.get_from_account(validator_account)
+        if not validator:
+            validator = Validator.create(validator_account,era)
+        for event in events:
+            if event.event_name == "Reward":
+                nominator_reward = event.attributes[1]['value']
+                nominator_address = event.attributes[0]['value']
+                
+                nominator_account = Account.get_from_address(nominator_address)
+                if nominator_account is None:
+                    nominator_account = Account.create(nominator_address)
+                from_balance = Balance.get_last_balance(validator_account)
+                
+                
+                if nominator_address == validator_stash:
+                    if validator_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
+                        to_balance = validator_account.update_balance(extrinsic,transferable=nominator_reward)
+                        transfer = Transfer.create(block.block_number, validator_account,nominator_account,from_balance,to_balance,nominator_reward,extrinsic,"Reward")
+                        from_balance = to_balance
+                    elif validator_account.reward_destination in ['Staked']:
+                        to_balance = validator_account.update_balance(extrinsic,bonded=nominator_reward)
+                        Transfer.create(block.block_number, validator_account,nominator_account,from_balance,to_balance,nominator_reward,extrinsic,"Reward")
+                        from_balance = to_balance
+
+                else:
+                    if nominator_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
+                        from_balance = validator_account.update_balance(extrinsic, transferable=-nominator_reward)
+                        to_balance = nominator_account.update_balance(extrinsic, transferable=nominator_reward)
+                        Transfer.create(block.block_number, validator_account,nominator_account,from_balance,to_balance,nominator_reward,extrinsic,"Reward")
+                    elif nominator_account.reward_destination in ['Staked']:
+                        from_balance = validator_account.update_balance(extrinsic, transferable=-nominator_reward)
+                        to_balance = nominator_account.update_balance(extrinsic,bonded=nominator_account)
+                        Transfer.create(block.block_number, validator_account,nominator_account,from_balance,to_balance,nominator_reward,extrinsic,"Reward")
+
+                nominator = Nominator.get_from_account(nominator_account)
+                if nominator is None:
+                    nominator = Nominator.create(nominator_account,validator,0,era)
+                Account.save(nominator_account)
+                nominator.reward = nominator_reward
+                Nominator.save(nominator)
+                Validator.save(validator)
+                ValidatorToNominator.create(nominator, validator, era)
+
+    def create_substrate_connection(self):
+        exit()
+        with open("config.json", "r") as f:
+            polkadot_config = json.load(f)["node"]
+          #needed for self signed certificate
+        sslopt = {
+            "sslopt": {
+                "cert_reqs": ssl.CERT_NONE
+                }
+        }
+        return SubstrateInterface(
+            url=polkadot_config["url"],
+            ss58_format=polkadot_config["ss58_format"],
+            type_registry_preset=polkadot_config["type_registry_preset"],
+            ws_options=sslopt
+        )
+        
+        

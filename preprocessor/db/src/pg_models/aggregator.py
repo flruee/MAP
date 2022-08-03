@@ -15,3 +15,5 @@ class Aggregator(Base):
     total_transfers = Column(Integer)
     total_currency = Column(BigInteger)
     total_staked = Column(BigInteger)
+
+    
