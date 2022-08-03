@@ -7,7 +7,6 @@ from src.pg_models.base import Base
 
 from src.driver_singleton import Driver
 from src.pg_models.block import Block
-from src.pg_models.extrinsic import Extrinsic
 from src.pg_models.account import Account
 
 class Transfer(Base):
@@ -19,7 +18,7 @@ class Transfer(Base):
     from_balance = Column(Integer, ForeignKey(Balance.id))
     to_balance = Column(Integer, ForeignKey(Balance.id))
     value = Column(BigInteger)
-    extrinsic = Column(Integer, ForeignKey(Extrinsic.id))
+    extrinsic = Column(Integer, ForeignKey("extrinsic.id"))
     type = Column(String)
 
     @staticmethod
@@ -30,7 +29,7 @@ class Transfer(Base):
         from_balance: Balance,
         to_balance: Balance,
         value: int,
-        extrinsic: Extrinsic,
+        extrinsic: "Extrinsic",
         type: str
         ) -> "Transfer":
         transfer = Transfer(

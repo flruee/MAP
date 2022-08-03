@@ -1,10 +1,12 @@
+from requests import session
 from sqlalchemy import Column, null
 from sqlalchemy import ForeignKey, select
 from sqlalchemy import Integer,String, DateTime, JSON, TEXT, Boolean,BigInteger
 from src.pg_models.base import Base
 import datetime
 from src.driver_singleton import Driver
-from src.pg_models.block import Block
+#from src.pg_models.extrinsic import Extrinsic
+from src.pg_models.balance import Balance
 
 class Account(Base):
     __tablename__ = "account"
@@ -54,3 +56,22 @@ class Account(Base):
         session = Driver().get_driver()
         session.add(account)
         session.flush()
+
+    def update_balance(self, extrinsic: "Extrinsic",transferable=0, reserved=0, bonded=0,
+                       unbonding=0):
+
+        last_balance = Balance.get_last_balance(self)
+
+        balance = Balance.create(
+            account=self,
+            extrinsic=extrinsic,
+            transferable=last_balance.transferable + transferable,
+            reserved=last_balance.reserved + reserved,
+            bonded=last_balance.bonded + bonded,
+            unbonding=last_balance.unbonding + unbonding,
+        )
+
+
+        #Account.save(self)
+        return balance
+    

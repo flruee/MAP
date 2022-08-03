@@ -6,7 +6,10 @@ from src.pg_models.extrinsic import Extrinsic
 from src.pg_models.event import Event
 from src.pg_models.transfer import Transfer
 from src.pg_models.controller import Controller
-
+from src.pg_models.validator import Validator
+from src.pg_models.nominator import Nominator
+from src.pg_models.validator_pool import ValidatorPool
+from src.pg_models.validator_to_nominator import ValidatorToNominator
 from dotenv import load_dotenv, find_dotenv
 import os
 import ast
