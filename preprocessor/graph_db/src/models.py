@@ -49,9 +49,10 @@ class Block(GraphObject):
 class Transaction(GraphObject):
     extrinsic_hash = Property()
     amount_transferred = Property()
+    is_successful = Property()
+
     has_extrinsic_function = RelatedTo("ExtrinsicFunction")
     has_event_function = RelatedTo("EventFunction")
-
     from_balance = RelatedTo("Balance")
     to_balance = RelatedTo("Balance")
     reward_validator = RelatedTo("Balance")
@@ -60,23 +61,6 @@ class Transaction(GraphObject):
 
     @staticmethod
     def create(block: Block, transaction_data, event_data, length_transaction=1) -> "Transaction":
-        # transaction failed so we don't include it
-        if event_data[-1]["event_id"] != "ExtrinsicSuccess":
-            # todo: handle fees
-            return None
-        if transaction_data['call']['call_module'] in ['FinalityTracker', 'Parachains']:
-            return None
-        if transaction_data['call']['call_module'] == 'Utility' and transaction_data['call']['call_function'] == 'batch':
-            # todo: txfee might not be correct yet, difficult to check since batch call has one total fee
-            for transaction_batch in transaction_data['call']['call_args'][0]['value']:
-                transaction_structure = dict()
-                transaction_structure['extrinsic_hash'] = transaction_data['extrinsic_hash']
-                transaction_structure['address'] = transaction_data['address']
-                transaction_structure['call'] = transaction_batch
-                Transaction.create(block, transaction_structure, event_data, len(transaction_data['call']['call_args'][0]['value']))
-        if transaction_data['call']['call_module'] == 'Utility' and transaction_data['call']['call_function'] == 'batch':
-            # todo: connect with individual batch calls via extrinsic hash & blocknr
-            return None
         transaction = Transaction(
             extrinsic_hash=transaction_data["extrinsic_hash"]
         )
@@ -91,6 +75,33 @@ class Transaction(GraphObject):
         if from_account is None:
             from_account = Account.create(from_account_address)
         transaction.sender_account.add(from_account)
+        # transaction failed so we don't include it
+        if event_data[-1]["event_id"] != "ExtrinsicSuccess":
+            transaction.is_successful = False
+            # todo: handle fees
+            return transaction
+        transaction.is_successful = True
+        if transaction_data['call']['call_module'] in ['FinalityTracker', 'Parachains']:
+            return transaction
+        if transaction_data['call']['call_module'] == 'Utility' and transaction_data['call']['call_function'] == 'batch':
+            for transaction_batch in transaction_data['call']['call_args'][0]['value']:
+                transaction_structure = dict()
+                transaction_structure['extrinsic_hash'] = transaction_data['extrinsic_hash']
+                transaction_structure['address'] = transaction_data['address']
+                transaction_structure['call'] = transaction_batch
+                Transaction.create(block, transaction_structure, event_data, len(transaction_data['call']['call_args'][0]['value']))
+        if transaction_data['call']['call_module'] == 'Utility' and transaction_data['call']['call_function'] == 'batch':
+            # todo: connect with individual batch calls via extrinsic hash & blocknr
+            return transaction
+
+        if transaction_data['call']['call_module'] == 'Proxy' and transaction_data['call']['call_function'] == 'proxy':
+            transaction_structure = dict()
+            transaction_structure['extrinsic_hash'] = transaction_data['extrinsic_hash']
+            transaction_structure['address'] = transaction_data['address']
+            transaction_structure['call'] = transaction_data['call']['call_args'][2]['value']
+            Transaction.create(block, transaction_structure, event_data)
+            # todo: connect with proxy call
+            return transaction
         to_account = None
         print(extrinsic_function.name)
         amount_transferred = 0
