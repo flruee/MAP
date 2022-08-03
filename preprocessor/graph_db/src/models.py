@@ -56,22 +56,26 @@ class Transaction(GraphObject):
     to_balance = RelatedTo("Balance")
     reward_validator = RelatedTo("Balance")
     reward_treasury = RelatedTo("Balance")
+    sender_account = RelatedTo("Account")
 
     @staticmethod
-    def create(block: Block, transaction_data, event_data) -> "Transaction":
+    def create(block: Block, transaction_data, event_data, length_transaction=1) -> "Transaction":
         # transaction failed so we don't include it
         if event_data[-1]["event_id"] != "ExtrinsicSuccess":
+            # todo: handle fees
             return None
         if transaction_data['call']['call_module'] in ['FinalityTracker', 'Parachains']:
             return None
         if transaction_data['call']['call_module'] == 'Utility' and transaction_data['call']['call_function'] == 'batch':
+            # todo: txfee might not be correct yet, difficult to check since batch call has one total fee
             for transaction_batch in transaction_data['call']['call_args'][0]['value']:
                 transaction_structure = dict()
                 transaction_structure['extrinsic_hash'] = transaction_data['extrinsic_hash']
                 transaction_structure['address'] = transaction_data['address']
                 transaction_structure['call'] = transaction_batch
-                Transaction.create(block, transaction_structure, event_data)
+                Transaction.create(block, transaction_structure, event_data, len(transaction_data['call']['call_args'][0]['value']))
         if transaction_data['call']['call_module'] == 'Utility' and transaction_data['call']['call_function'] == 'batch':
+            # todo: connect with individual batch calls via extrinsic hash & blocknr
             return None
         transaction = Transaction(
             extrinsic_hash=transaction_data["extrinsic_hash"]
@@ -82,7 +86,11 @@ class Transaction(GraphObject):
                                                           transaction_data["call"]["call_module"])
 
         transaction.has_extrinsic_function.add(extrinsic_function)
-        from_account = transaction_data['address']
+        from_account_address = transaction_data['address']
+        from_account = Account.get(from_account_address)
+        if from_account is None:
+            from_account = Account.create(from_account_address)
+        transaction.sender_account.add(from_account)
         to_account = None
         print(extrinsic_function.name)
         amount_transferred = 0
@@ -107,7 +115,7 @@ class Transaction(GraphObject):
                 Transaction.handle_payout_stakers(transaction_data, event_data, block, transaction)
 
         Transaction.pay_fees(event_data, block, transaction, from_account, to_account, amount_transferred,
-                             extrinsic_function.name)
+                             extrinsic_function.name, length_transaction)
         Transaction.save(transaction)
         block.has_transaction.add(transaction)
         Block.save(block)
@@ -182,8 +190,8 @@ class Transaction(GraphObject):
 
 
     @staticmethod
-    def pay_fees(event_data, block, transaction, from_account, to_account, amount_transferred, extrinsic_function_name):
-        print(to_account)
+    def pay_fees(event_data, block, transaction, from_account, to_account, amount_transferred, extrinsic_function_name,
+                 length_transaction):
         """
         This function handles the settlement of transaction fees (validator and treasury).
         There exist some blocks where there are no fees. (i.e. first blocks of era)
@@ -192,13 +200,13 @@ class Transaction(GraphObject):
         validator_account = list(validator_node.account.triples())[0][-1]
         treasury_account = Account.get_treasury()
         try:
-            validator_fee = event_data[-2]["attributes"][1]["value"]
-            treasury_fee = event_data[-3]["attributes"][0]["value"]
+            validator_fee = int(event_data[-2]["attributes"][1]["value"] / length_transaction)
+            treasury_fee = int(event_data[-3]["attributes"][0]["value"] / length_transaction)
             treasury_account.update_balance(transferable=treasury_fee)
             transaction.reward_treasury.add(treasury_account.get_current_balance())
         except IndexError:
             try:
-                validator_fee = event_data[-2]["attributes"][1]["value"]
+                validator_fee = int(event_data[-2]["attributes"][1]["value"] / length_transaction)
                 treasury_fee = 0
             except IndexError:
                 validator_fee = 0
@@ -207,12 +215,12 @@ class Transaction(GraphObject):
         validator_account.update_balance(transferable=validator_fee)
         if validator_fee+treasury_fee:
             transaction.reward_validator.add(validator_account.get_current_balance())
-        total_fee = validator_fee+treasury_fee
+        total_fee = int((validator_fee+treasury_fee) / length_transaction)
         if extrinsic_function_name in ['bond', 'bond_extra']:
             from_account.update_balance(transferable=-(amount_transferred + total_fee),
                                         bonded=amount_transferred)
         else:
-            if from_account != to_account:
+            if from_account != to_account and to_account is not None:
                 to_account.update_balance(transferable=+amount_transferred)
                 from_account.update_balance(block.block_number, to_account,
                                             transferable=-(amount_transferred + total_fee))
@@ -275,7 +283,11 @@ class Transaction(GraphObject):
                 Validator.save(validator)
 
         amount_transferred = 0
-        return transaction, nominator_account, nominator_account, amount_transferred
+        from_account_address = transaction_data['address']
+        from_account = Account.get(from_account_address)
+        if from_account is None:
+            from_account = Account.create(from_account_address)
+        return transaction, from_account, from_account, amount_transferred
 
 
 class ExtrinsicFunction(GraphObject):
