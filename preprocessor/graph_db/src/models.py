@@ -81,6 +81,8 @@ class Transaction(GraphObject):
                                                           transaction_data["call"]["call_module"])
 
         transaction.has_extrinsic_function.add(extrinsic_function)
+        if transaction_data['call']['call_module'] in ['FinalityTracker', 'Parachains', 'ParaInherent']:
+            return transaction
         from_account_address = transaction_data['address']
         from_account = Account.get(from_account_address)
         if from_account is None:
@@ -97,9 +99,9 @@ class Transaction(GraphObject):
             Block.save(block)
             return transaction
         transaction.is_successful = True
-        if transaction_data['call']['call_module'] in ['FinalityTracker', 'Parachains']:
-            return transaction
-        if transaction_data['call']['call_module'] == 'Utility' and transaction_data['call']['call_function'] == 'batch':
+        if transaction_data['call']['call_module'] == 'Utility' and \
+                transaction_data['call']['call_function'] in ['batch', 'as_derivative', 'batch_all']:
+
             for transaction_batch in transaction_data['call']['call_args'][0]['value']:
                 transaction_structure = dict()
                 transaction_structure['extrinsic_hash'] = transaction_data['extrinsic_hash']
@@ -110,7 +112,8 @@ class Transaction(GraphObject):
 
         if batch_transaction is not None:
             transaction.is_batch.add(batch_transaction)
-        if transaction_data['call']['call_module'] == 'Utility' and transaction_data['call']['call_function'] == 'batch':
+        if transaction_data['call']['call_module'] == 'Utility' and \
+                transaction_data['call']['call_function'] in ['batch', 'as_derivative', 'batch_all']:
             Transaction.save(transaction)
             block.has_transaction.add(transaction)
             Block.save(block)
@@ -240,6 +243,11 @@ class Transaction(GraphObject):
         try:
             validator_fee = int(event_data[-2]["attributes"][1]["value"] / length_transaction)
             treasury_fee = int(event_data[-3]["attributes"][0]["value"] / length_transaction)
+            treasury_account.update_balance(transferable=treasury_fee)
+            transaction.reward_treasury.add(treasury_account.get_current_balance())
+        except TypeError: # todo: weird block 8200623
+            validator_fee = int(event_data[-2]["attributes"][1] / length_transaction)
+            treasury_fee = int(event_data[-3]["attributes"] / length_transaction)
             treasury_account.update_balance(transferable=treasury_fee)
             transaction.reward_treasury.add(treasury_account.get_current_balance())
         except IndexError:
