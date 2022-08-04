@@ -50,7 +50,7 @@ driver_singleton.add_driver(driver)
 print(driver_singleton)
 pg_driver = create_engine('postgresql://postgres:polkamap@172.23.149.214/raw_data')
 block_handler = Neo4jBlockHandler(driver)
-transaction_list = [6482159]
+transaction_list = [6499940]
 start = time.time()
 with Session(pg_driver) as session:
     for i in transaction_list:

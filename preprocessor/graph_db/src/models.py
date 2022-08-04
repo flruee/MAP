@@ -67,6 +67,7 @@ class Transaction(GraphObject):
     reward_treasury = RelatedTo("Balance")
     sender_account = RelatedTo("Account")
     is_proxy = RelatedTo("Transaction")
+    is_batch = RelatedTo("Transaction")
 
     @staticmethod
     def create(block: Block, transaction_data, event_data, length_transaction=1,
@@ -104,7 +105,11 @@ class Transaction(GraphObject):
                 transaction_structure['extrinsic_hash'] = transaction_data['extrinsic_hash']
                 transaction_structure['address'] = transaction_data['address']
                 transaction_structure['call'] = transaction_batch
-                Transaction.create(block, transaction_structure, event_data, len(transaction_data['call']['call_args'][0]['value']))
+                Transaction.create(block, transaction_structure, event_data,
+                                   len(transaction_data['call']['call_args'][0]['value']), batch_transaction=transaction)
+
+        if batch_transaction is not None:
+            transaction.is_batch.add(batch_transaction)
         if transaction_data['call']['call_module'] == 'Utility' and transaction_data['call']['call_function'] == 'batch':
             Transaction.save(transaction)
             block.has_transaction.add(transaction)
@@ -168,11 +173,7 @@ class Transaction(GraphObject):
         if not to_account:
             to_account = Account.create(transaction_data["call"]["call_args"][0]["value"].replace("0x", ""))
 
-        amount_transferred = 0
-        for event in event_data:
-            if event['event_id'] == 'Transfer':
-                amount_transferred = event['attributes'][2]['value']
-                break
+        amount_transferred = transaction_data['call']['call_args'][1]['value']
 
         transaction.amount_transferred = amount_transferred
         return transaction, from_account, to_account, amount_transferred
