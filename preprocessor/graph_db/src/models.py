@@ -1,3 +1,4 @@
+from pyparsing import cpp_style_comment
 from sqlalchemy import Column, Integer, JSON
 from sqlalchemy.orm import declarative_base
 from py2neo.ogm import GraphObject, Property, RelatedTo, RelatedFrom
@@ -210,6 +211,8 @@ class Transaction(GraphObject):
             controller_address = Utils.convert_public_key_to_polkadot_address(
                 transaction_data["call"]["call_args"][0]["value"])
             reward_destination = transaction_data["call"]["call_args"][2]["value"]
+            if "Account" in reward_destination:
+                reward_destination = reward_destination["Account"]
             if controller_address != Utils.convert_public_key_to_polkadot_address(transaction_data["address"]):
                 controller_account = Account.get(controller_address)
             else:
@@ -218,6 +221,7 @@ class Transaction(GraphObject):
                 controller_account = Account.create(controller_address)
             controller_account.controls.add(from_account)
             controller_account.reward_destination = reward_destination
+            print(controller_account)
             Account.save(controller_account)
             from_account = controller_account
         elif extrinsic_function.name == "bond_extra":
