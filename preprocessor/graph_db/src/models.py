@@ -3,6 +3,7 @@ from sqlalchemy.orm import declarative_base
 from py2neo.ogm import GraphObject, Property, RelatedTo, RelatedFrom
 from src.driver_singleton import Driver
 from typing import Dict
+from substrateinterface.utils import ss58
 Base = declarative_base()
 """
 Block
@@ -18,6 +19,13 @@ class RawData(Base):
 
     def __repr__(self):
         return f"Block {self.block_number}"
+
+class Utils:
+    @staticmethod
+    def convert_public_key_to_polkadot_address(address):
+        if address[0] == '1':
+            return address
+        return ss58.ss58_encode(ss58_format=0, address=address)
 
 
 class Block(GraphObject):
@@ -58,9 +66,11 @@ class Transaction(GraphObject):
     reward_validator = RelatedTo("Balance")
     reward_treasury = RelatedTo("Balance")
     sender_account = RelatedTo("Account")
+    is_proxy = RelatedTo("Transaction")
 
     @staticmethod
-    def create(block: Block, transaction_data, event_data, length_transaction=1) -> "Transaction":
+    def create(block: Block, transaction_data, event_data, length_transaction=1,
+               proxy_transaction=None, batch_transaction=None) -> "Transaction":
         transaction = Transaction(
             extrinsic_hash=transaction_data["extrinsic_hash"]
         )
@@ -75,10 +85,15 @@ class Transaction(GraphObject):
         if from_account is None:
             from_account = Account.create(from_account_address)
         transaction.sender_account.add(from_account)
-        # transaction failed so we don't include it
+        to_account = None
+        amount_transferred = 0
         if event_data[-1]["event_id"] != "ExtrinsicSuccess":
             transaction.is_successful = False
-            # todo: handle fees
+            Transaction.pay_fees(event_data, block, transaction, from_account, to_account, amount_transferred,
+                                 extrinsic_function.name, length_transaction)
+            Transaction.save(transaction)
+            block.has_transaction.add(transaction)
+            Block.save(block)
             return transaction
         transaction.is_successful = True
         if transaction_data['call']['call_module'] in ['FinalityTracker', 'Parachains']:
@@ -91,7 +106,9 @@ class Transaction(GraphObject):
                 transaction_structure['call'] = transaction_batch
                 Transaction.create(block, transaction_structure, event_data, len(transaction_data['call']['call_args'][0]['value']))
         if transaction_data['call']['call_module'] == 'Utility' and transaction_data['call']['call_function'] == 'batch':
-            # todo: connect with individual batch calls via extrinsic hash & blocknr
+            Transaction.save(transaction)
+            block.has_transaction.add(transaction)
+            Block.save(block)
             return transaction
 
         if transaction_data['call']['call_module'] == 'Proxy' and transaction_data['call']['call_function'] == 'proxy':
@@ -99,12 +116,13 @@ class Transaction(GraphObject):
             transaction_structure['extrinsic_hash'] = transaction_data['extrinsic_hash']
             transaction_structure['address'] = transaction_data['address']
             transaction_structure['call'] = transaction_data['call']['call_args'][2]['value']
-            Transaction.create(block, transaction_structure, event_data)
+            Transaction.create(block, transaction_structure, event_data, proxy_transaction=transaction)
             # todo: connect with proxy call
             return transaction
-        to_account = None
-        print(extrinsic_function.name)
-        amount_transferred = 0
+
+        if proxy_transaction is not None:
+            transaction.is_proxy.add(proxy_transaction)
+
         if extrinsic_function.name in ["transfer", "transfer_all", "transfer_keep_alive"]:
             transaction, from_account, to_account, amount_transferred = \
                 Transaction.handle_transfer(transaction_data, event_data, block, transaction)
@@ -125,11 +143,16 @@ class Transaction(GraphObject):
             transaction, from_account, to_account, amount_transferred = \
                 Transaction.handle_payout_stakers(transaction_data, event_data, block, transaction)
 
+        elif extrinsic_function.name == "tip":
+            transaction, from_account, to_account, amount_transferred = \
+                Transaction.handle_tip(transaction_data, event_data, block, transaction)
+
         Transaction.pay_fees(event_data, block, transaction, from_account, to_account, amount_transferred,
                              extrinsic_function.name, length_transaction)
         Transaction.save(transaction)
         block.has_transaction.add(transaction)
         Block.save(block)
+        return transaction
 
     @staticmethod
     def save(transaction: "Transaction"):
@@ -172,15 +195,18 @@ class Transaction(GraphObject):
 
     @staticmethod
     def handle_bond(transaction_data: Dict, event_data: Dict, block: Block, transaction: "Transaction", extrinsic_function: "ExtrinsicFunction"):
-        from_account = Account.get(transaction_data["address"].replace("0x", ""))
+        from_account_address = Utils.convert_public_key_to_polkadot_address(transaction_data["address"])
+        from_account = Account.get(from_account_address)
         if not from_account:
-            from_account = Account.create(transaction_data["address"].replace("0x", ""))
+            from_account = Account.create(from_account_address)
 
         if extrinsic_function.name == "bond":
             amount_transferred = transaction_data["call"]["call_args"][1]["value"]
-            controller_address = transaction_data["call"]["call_args"][0]["value"].replace("0x", "")
+
+            controller_address = Utils.convert_public_key_to_polkadot_address(
+                transaction_data["call"]["call_args"][0]["value"])
             reward_destination = transaction_data["call"]["call_args"][2]["value"]
-            if controller_address != transaction_data["address"].replace("0x", ""):
+            if controller_address != Utils.convert_public_key_to_polkadot_address(transaction_data["address"]):
                 controller_account = Account.get(controller_address)
             else:
                 controller_account = from_account
@@ -244,9 +270,10 @@ class Transaction(GraphObject):
 
     @staticmethod
     def handle_set_payee(transaction_data, event_data, block, transaction):
-        account = Account.get(transaction_data["address"].replace("0x", ""))
+        account_address = Utils.convert_public_key_to_polkadot_address(transaction_data["address"])
+        account = Account.get(account_address)
         if not account:
-            account = Account.create(transaction_data["address"].replace("0x", ""))
+            account = Account.create(account_address)
         reward_destination = transaction_data['call']['call_args'][0]['value']
         account.reward_destination = reward_destination
         Account.save(account)
@@ -299,6 +326,22 @@ class Transaction(GraphObject):
         if from_account is None:
             from_account = Account.create(from_account_address)
         return transaction, from_account, from_account, amount_transferred
+
+    @staticmethod
+    def handle_tip(transaction_data, event_data, block, transaction):
+        from_address = Utils.convert_public_key_to_polkadot_address(transaction_data["address"])
+        from_account = Account.get(from_address)
+        if from_account is None:
+            from_account = Account.create(from_address)
+        to_address = Utils.convert_public_key_to_polkadot_address(transaction_data["call"]["call_args"][0]["value"])
+        to_account = Account.get(to_address)
+        if not to_account:
+            to_account = Account.create(to_address)
+        amount_transferred = transaction_data['call']['call_args'][1]['value']
+        transaction.amount_transferred = amount_transferred
+        return transaction, from_account, to_account, amount_transferred
+
+
 
 
 class ExtrinsicFunction(GraphObject):

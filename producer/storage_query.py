@@ -3,7 +3,6 @@ import json
 import ssl
 from src.serializer import Serializer
 
-
 if __name__ == "__main__":
 
     with open("config.json","r") as f:
