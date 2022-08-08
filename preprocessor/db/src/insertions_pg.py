@@ -20,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from src.node_connection import handle_one_block
 from substrateinterface import SubstrateInterface
 import ssl
-
+import src.utils as utils
 class PGBlockHandler:
     def __init__(self, session):
         self.session = session
@@ -35,7 +35,11 @@ class PGBlockHandler:
 
     def handle_node_connection_blocks(self,start,end):
         for i in range(start, end+1):
+            
             block = handle_one_block(i)
+            with open(f"small_block_dataset/{i}.json", "w+") as f:
+                f.write(json.dumps(block, indent=4))
+            print("ey")
             self.handle_full_block(block)
 
     def handle_full_block(self,data):
@@ -96,7 +100,7 @@ class PGBlockHandler:
 
 
             #if event['event_id'] in ['EraPayout', 'EraPaid'] and event['module_id'] == 'Staking':
-
+            
             self.handle_special_extrinsics(block, extrinsic, events)
             """
 
@@ -226,7 +230,12 @@ class PGBlockHandler:
             self.__handle_set_payee(block, extrinsic, events)
         elif(extrinsic.module_name == "Staking") and extrinsic.function_name == "payout_stakers":
             self.__handle_payout_stakers(block, extrinsic, events)
-
+        #elif(extrinsic.module_name == "" and extrinsic.function_name == "Tip"):
+        #    self.__handle_tip(block, extrinsic, events)
+        #TODO Utiltiy(Batch)
+        elif (extrinsic.module_name == 'Utility' and extrinsic.function_name in ['batch', 'as_derivative', 'batch_all']):
+            self.__handle_batch(block, extrinsic, events)
+        #TODO Proxy(Proxy)
 
 
     def __handle_transfer(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
@@ -241,7 +250,7 @@ class PGBlockHandler:
             print(event.module_name)
             print(event.event_name)
             if event.event_name == 'Transfer':
-                amount_transferred = event.attributes[2]['value']
+                amount_transferred = utils.extract_event_attributes_from_object(event,2)
 
         # Create new balances
         from_balance = Balance.create(from_account, extrinsic, transferable=-(amount_transferred+extrinsic.fee), executing=True)
@@ -390,5 +399,44 @@ class PGBlockHandler:
             type_registry_preset=polkadot_config["type_registry_preset"],
             ws_options=sslopt
         )
-        
-        
+    """
+    def __handle_tip(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
+        from_address = utils.convert_public_key_to_polkadot_address(transaction_data["address"])
+        from_account = Account.get(from_address)
+        if from_account is None:
+            from_account = Account.create(from_address)
+        to_address = utils.convert_public_key_to_polkadot_address(transaction_data["call"]["call_args"][0]["value"])
+        to_account = Account.get(to_address)
+        if not to_account:
+            to_account = Account.create(to_address)
+        amount_transferred = transaction_data['call']['call_args'][1]['value']
+        transaction.amount_transferred = amount_transferred
+        return transaction, from_account, to_account, amount_transferred
+    """
+
+    def __handle_batch(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
+        """
+        Some extrinsic are of type batch, meaning they execute multiple function calls in one extrinsic.
+        This function iterates through those function calls,creates an extrinsic entry for them and calls
+        the handle_special_extrinsics function in case one is special. 
+        """
+        print("oi")
+        print(extrinsic.call_args)
+        event_start = 0
+        event_end = len(events)
+        for sub_extrinsic_data in extrinsic.call_args[0]["value"]:
+            for i in range(event_start, event_end):
+                if events[i].module_name == "Utility":
+                    if events[i].event_name == "ItemCompleted":
+                        was_successful = True
+                        break
+                    elif events[i].event_name == "ItemFailed":
+                        was_successful = False
+                        break
+            
+            sub_events = events[event_start:i+1]
+            event_start = i+1
+            sub_extrinsic = Extrinsic.create_from_batch(block, sub_extrinsic_data, events, extrinsic, was_successful)
+            self.handle_special_extrinsics(block, sub_extrinsic, sub_events)
+            print(sub_extrinsic)
+            print("\n")
