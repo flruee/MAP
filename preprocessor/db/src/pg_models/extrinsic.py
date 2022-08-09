@@ -40,7 +40,6 @@ class Extrinsic(Base):
         was_successful = event_data[-1]["event_id"] == "ExtrinsicSuccess"
         sender_account = Extrinsic.__extract_sender_account(extrinsic_data)
 
-        print(extrinsic_data["nonce"])
 
         extrinsic = Extrinsic(
             extrinsic_hash = extrinsic_data["extrinsic_hash"],
@@ -94,6 +93,38 @@ class Extrinsic(Base):
         return extrinsic
 
     @staticmethod
+    def create_from_proxy(block: Block, parent: "Extrinsic", events: List[Event]) -> "Extrinsic":
+        was_successful = False
+        if events[-1].module_name == "System" and events[-1].event_name == "ExtrinsicSuccess":
+            was_successful = True
+
+        address = parent.call_args[0]["value"]
+        account = Account.get_from_address(address)
+        if account is None:
+            account = Account.create(address)
+
+        extrinsic_data = parent.call_args[2]["value"]
+        extrinsic = Extrinsic(
+            extrinsic_hash = parent.extrinsic_hash,
+            extrinsic_length = None,
+            account = account.id,
+            signature = None,
+            era = None,
+            nonce = None,
+            tip = None,
+            module_name = extrinsic_data["call_module"],
+            function_name = extrinsic_data["call_function"],
+            call_args = extrinsic_data["call_args"],
+            success = was_successful,
+            block_number = block.block_number,
+            fee=0     
+        )
+
+        Extrinsic.save(extrinsic)
+        return extrinsic
+
+
+    @staticmethod
     def __clean_fields(extrinsic_data):
         """
         cleans various fields inplace
@@ -127,7 +158,6 @@ class Extrinsic(Base):
             return 0
         
         try:
-            print(event_data)
             validator_fee = int(extract_event_attributes(event_data[-2],1))
             validator_balance = validator_account.update_balance(extrinsic,transferable=validator_fee)
             author_balance = author_account.update_balance(extrinsic,transferable=-validator_fee)

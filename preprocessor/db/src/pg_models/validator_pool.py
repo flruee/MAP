@@ -15,7 +15,6 @@ class ValidatorPool(Base):
     treasury_payout = Column(BigInteger)
 
     def create(event: Event) -> "ValidatorPool":
-        print(event.attributes)
         try:
             validator_pool = ValidatorPool(
                 era = event.attributes[0]["value"],
