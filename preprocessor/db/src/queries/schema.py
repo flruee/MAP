@@ -62,11 +62,9 @@ class Query(graphene.ObjectType):
         return ExtrinsicModel.objects.all()
 
     def resolve_account(self, info):
-        print("yeee")
         return AccountModel.objects.all()
 
     def resolve_balance(self, info):
-        print("hoho")
         return BalanceModel.objects.all()
 
     def resolve_transfer(self, info):

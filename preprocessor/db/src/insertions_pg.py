@@ -20,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from src.node_connection import handle_one_block
 from substrateinterface import SubstrateInterface
 import ssl
-
+import src.utils as utils
 class PGBlockHandler:
     def __init__(self, session):
         self.session = session
@@ -35,7 +35,10 @@ class PGBlockHandler:
 
     def handle_node_connection_blocks(self,start,end):
         for i in range(start, end+1):
+            
             block = handle_one_block(i)
+            with open(f"small_block_dataset/{i}.json", "w+") as f:
+                f.write(json.dumps(block, indent=4))
             self.handle_full_block(block)
 
     def handle_full_block(self,data):
@@ -96,7 +99,7 @@ class PGBlockHandler:
 
 
             #if event['event_id'] in ['EraPayout', 'EraPaid'] and event['module_id'] == 'Staking':
-
+            
             self.handle_special_extrinsics(block, extrinsic, events)
             """
 
@@ -212,8 +215,7 @@ class PGBlockHandler:
         Since not all data relevant for us is contained in the event data (sometimes we additionally need to know the blocknumber or time)
         we use the whole block.
         """
-        print(extrinsic.module_name)
-        print(events)
+
         if(extrinsic.module_name == "Balances" and extrinsic.function_name in ["transfer", "transfer_keep_alive,transfer_all"]):
             self.__handle_transfer(block, extrinsic, events)
         
@@ -226,8 +228,14 @@ class PGBlockHandler:
             self.__handle_set_payee(block, extrinsic, events)
         elif(extrinsic.module_name == "Staking") and extrinsic.function_name == "payout_stakers":
             self.__handle_payout_stakers(block, extrinsic, events)
-
-
+        #elif(extrinsic.module_name == "" and extrinsic.function_name == "Tip"):
+        #    self.__handle_tip(block, extrinsic, events)
+        #TODO Utiltiy(Batch)
+        elif (extrinsic.module_name == 'Utility' and extrinsic.function_name in ['batch', 'as_derivative', 'batch_all']):
+            self.__handle_batch(block, extrinsic, events)
+        #TODO Proxy(Proxy)
+        elif (extrinsic.module_name == "Proxy" and extrinsic.function_name == "proxy"):
+            self.__handle_proxy(block, extrinsic, events)
 
     def __handle_transfer(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
         from_account = Account.get(extrinsic.account)
@@ -238,10 +246,9 @@ class PGBlockHandler:
         
         # Get amount transferred from 'Transfer' event
         for event in events:
-            print(event.module_name)
-            print(event.event_name)
+  
             if event.event_name == 'Transfer':
-                amount_transferred = event.attributes[2]['value']
+                amount_transferred = utils.extract_event_attributes_from_object(event,2)
 
         # Create new balances
         from_balance = Balance.create(from_account, extrinsic, transferable=-(amount_transferred+extrinsic.fee), executing=True)
@@ -265,7 +272,6 @@ class PGBlockHandler:
             amount_transferred = extrinsic.call_args[1]["value"]
             controller_address = extrinsic.call_args[0]["value"]
             controller_account = Account.get_from_address(controller_address)
-            print(extrinsic.call_args[2])
             from_account.reward_destination = extrinsic.call_args[2]["value"]
             if not controller_account:
                 controller_account = Account.create(controller_address)
@@ -299,8 +305,7 @@ class PGBlockHandler:
         Controller.create(controller_account, controlled_account)
     
     def __handle_set_payee(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
-        print("set_payee")
-        print(extrinsic.call_args)
+
         from_account = Account.get(extrinsic.account)
         from_account.reward_destination = extrinsic.call_args[0]["value"]
         Account.save(from_account)
@@ -312,13 +317,11 @@ class PGBlockHandler:
         # Denotes that a new era has started. Note that EraPayout and EraPaid are the same event, they just got
         # renamed after some time.
         # From the following event we get the total reward of the last era
-        print("handle_special_events")
-        print(event.event_name)
+
         if event.event_name in ['EraPayout', 'EraPaid'] and event.module_name == 'Staking':
             validator_pool = ValidatorPool.create(event)
             return
             substrate = self.create_substrate_connection()
-            print(validator_pool.era)
             result = substrate.query(
                 module='Staking',
                 storage_function='ErasRewardPoints',
@@ -390,5 +393,51 @@ class PGBlockHandler:
             type_registry_preset=polkadot_config["type_registry_preset"],
             ws_options=sslopt
         )
-        
-        
+    """
+    def __handle_tip(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
+        from_address = utils.convert_public_key_to_polkadot_address(transaction_data["address"])
+        from_account = Account.get(from_address)
+        if from_account is None:
+            from_account = Account.create(from_address)
+        to_address = utils.convert_public_key_to_polkadot_address(transaction_data["call"]["call_args"][0]["value"])
+        to_account = Account.get(to_address)
+        if not to_account:
+            to_account = Account.create(to_address)
+        amount_transferred = transaction_data['call']['call_args'][1]['value']
+        transaction.amount_transferred = amount_transferred
+        return transaction, from_account, to_account, amount_transferred
+    """
+
+    def __handle_batch(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
+        """
+        Some extrinsic are of type batch, meaning they execute multiple function calls in one extrinsic.
+        This function iterates through those function calls,creates an extrinsic entry for them and calls
+        the handle_special_extrinsics function in case one is special. 
+        """
+
+        event_start = 0
+        event_end = len(events)
+        for sub_extrinsic_data in extrinsic.call_args[0]["value"]:
+            for i in range(event_start, event_end):
+                if events[i].module_name == "Utility":
+                    if events[i].event_name == "ItemCompleted":
+                        was_successful = True
+                        break
+                    elif events[i].event_name == "ItemFailed":
+                        was_successful = False
+                        break
+            
+            sub_events = events[event_start:i+1]
+            event_start = i+1
+            sub_extrinsic = Extrinsic.create_from_batch(block, sub_extrinsic_data, events, extrinsic, was_successful)
+            self.handle_special_extrinsics(block, sub_extrinsic, sub_events)
+
+    def __handle_proxy(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
+        """
+        A proxy transaction, as the name suggest, executes an extrinsic from another account then the one
+        executing the proxy.
+        We extract the proxy 'call_args', create a new extrinsic with the other accounts address and call the
+        handle_special_extrinsic function.
+        """
+        proxied_extrinsic = Extrinsic.create_from_proxy(block, extrinsic,events)
+        self.handle_special_extrinsics(block, proxied_extrinsic, events)
