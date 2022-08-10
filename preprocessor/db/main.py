@@ -59,12 +59,12 @@ if __name__ == "__main__":
 
             if MODE == "json":
                 start = time.time()
-                block_handler.handle_blocks(1349471, 1349471)
+                block_handler.handle_blocks(276451, 276451)
                 print(time.time()-start)
             elif MODE == "node": 
                 with session.begin():
                     start = time.time()
-                    block_handler.handle_node_connection_blocks(9499610,9499610)
+                    block_handler.handle_node_connection_blocks(276451,276451)
                     #block_handler.handle_node_connection_blocks(6497886,6497886)
 
                     #block_handler.handle_node_connection_blocks(11360981,11360981)
