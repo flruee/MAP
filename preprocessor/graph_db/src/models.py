@@ -79,6 +79,7 @@ class Transaction(GraphObject):
     @staticmethod
     def create(block: Block, transaction_data, event_data, length_transaction=1,
                proxy_transaction=None, batch_transaction=None) -> "Transaction":
+        print(transaction_data)
         transaction = Transaction(
             extrinsic_hash=transaction_data["extrinsic_hash"]
         )
@@ -89,6 +90,14 @@ class Transaction(GraphObject):
 
         transaction.has_extrinsic_function.add(extrinsic_function)
         if transaction_data['call']['call_module'] in ['FinalityTracker', 'Parachains', 'ParaInherent']:
+            Transaction.save(transaction)
+            block.has_transaction.add(transaction)
+            Block.save(block)
+            return transaction
+        print(transaction_data['call']['call_module'])
+        if transaction_data['call']['call_module'] == 'Claims':
+            sender_account = Transaction.handle_claim(transaction_data, event_data)
+            transaction.sender_account.add(sender_account)
             Transaction.save(transaction)
             block.has_transaction.add(transaction)
             Block.save(block)
@@ -376,6 +385,16 @@ class Transaction(GraphObject):
         amount_transferred = 0
         return transaction, from_account, from_account, amount_transferred
 
+    @staticmethod
+    def handle_claim(transaction_data, event_data):
+        polkadot_address = transaction_data['call']['call_args'][0]['value']
+        polkadot_address_clean = Utils.convert_public_key_to_polkadot_address(polkadot_address)
+        polkadot_account = Account.get(polkadot_address_clean)
+        if polkadot_account is None:
+            polkadot_account = Account.create(polkadot_address_clean)
+        amount_claimed = event_data[-2]['attributes'][2]['value']
+        polkadot_account.update_balance(transferable=amount_claimed)
+        return polkadot_account
 
 
 
