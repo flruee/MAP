@@ -236,7 +236,13 @@ class PGBlockHandler:
         #TODO Proxy(Proxy)
         elif (extrinsic.module_name == "Proxy" and extrinsic.function_name == "proxy"):
             self.__handle_proxy(block, extrinsic, events)
+        elif (extrinsic.module_name == "Claims" and extrinsic.function_name == "claim"):
+            self.__handle_claim(block, extrinsic, events)
+        """
+        elif (extrinsic.module_name == "Treasury" and extrinsic.function_name == "proposeSpend"):
+            self.handle_propose_spend(block, extrinsic, events)
 
+        """
     def __handle_transfer(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
         from_account = Account.get(extrinsic.account)
         to_address = extrinsic.call_args[0]["value"]
@@ -441,3 +447,32 @@ class PGBlockHandler:
         """
         proxied_extrinsic = Extrinsic.create_from_proxy(block, extrinsic,events)
         self.handle_special_extrinsics(block, proxied_extrinsic, events)
+
+    def __handle_claim(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
+        """
+        Before polkadot was fully functional one could buy DOT with Ethereum. Using the Claims(claim) functionality
+        one can receive the bought DOT.
+        This function creates the new account in the DB and transfers the claimed DOT into it.
+        """
+
+        address = utils.convert_public_key_to_polkadot_address(extrinsic.call_args[0]["value"])
+        amount_transfered = 0
+        for event in events:
+            if event.module_name == "Claims" and event.event_name == "Claimed":
+                amount_transfered = utils.extract_event_attributes_from_object(event,2)
+                eth_address = utils.extract_event_attributes_from_object(event,1)
+                eth_account = Account.create(eth_address)
+                
+
+        account = Account.get_from_address(address)
+        if account is None:
+            account = Account.create(address)
+        
+        last_balance = Balance.get_last_balance(account)
+
+        new_balance = account.update_balance(
+            extrinsic,
+            transferable=amount_transfered,
+        )
+
+        Transfer.create(block.block_number,eth_account, account, last_balance,new_balance,amount_transfered,extrinsic, "Claim")

@@ -39,12 +39,12 @@ class Extrinsic(Base):
         Extrinsic.__clean_fields(extrinsic_data)
         was_successful = event_data[-1]["event_id"] == "ExtrinsicSuccess"
         sender_account = Extrinsic.__extract_sender_account(extrinsic_data)
-
+        
 
         extrinsic = Extrinsic(
             extrinsic_hash = extrinsic_data["extrinsic_hash"],
             extrinsic_length = extrinsic_data["extrinsic_length"],
-            account = sender_account.id,
+            account = sender_account.id if sender_account is not None else None,
             signature = extrinsic_data["signature"],
             era = extrinsic_data["era"],
             nonce = extrinsic_data["nonce"],
@@ -61,10 +61,12 @@ class Extrinsic(Base):
         # but the function needs the id from extrinsic which is only
         # created after saving
         Extrinsic.save(extrinsic)
-        if extrinsic.function_name not in ["set_heads"]:
-            fee = Extrinsic.__handle_fees(extrinsic, event_data,sender_account,block)
-            extrinsic.fee = fee
-            Extrinsic.save(extrinsic)
+        if extrinsic.function_name in ["set_heads"] or sender_account is None:
+            return extrinsic
+            
+        fee = Extrinsic.__handle_fees(extrinsic, event_data,sender_account,block)
+        extrinsic.fee = fee
+        Extrinsic.save(extrinsic)
 
         return extrinsic
 
