@@ -33,6 +33,29 @@ class Utils:
             if address[0] == '1':
                 return address
 
+    @staticmethod
+    def extract_event_attributes(event, treasury):
+        if treasury:
+            try:
+                if event[-3]['event_id'] == 'Transfer':
+                    return 0
+                result = event['attributes']
+                if result is Integer:
+                    return result
+                else:
+                    result1 = result[0]['value']
+                    if result1 is Integer:
+                        return result1
+                    else:
+                        return result[1]['value']
+            except KeyError:
+                return 0
+        else:
+            result = event['attributes'][1]
+            if isinstance(result, Dict):
+                return result['value']
+            else:
+                return result
 
 
 class Block(GraphObject):
@@ -79,7 +102,6 @@ class Transaction(GraphObject):
     @staticmethod
     def create(block: Block, transaction_data, event_data, length_transaction=1,
                proxy_transaction=None, batch_transaction=None) -> "Transaction":
-        print(transaction_data)
         transaction = Transaction(
             extrinsic_hash=transaction_data["extrinsic_hash"]
         )
@@ -89,12 +111,13 @@ class Transaction(GraphObject):
                                                           transaction_data["call"]["call_module"])
 
         transaction.has_extrinsic_function.add(extrinsic_function)
-        if transaction_data['call']['call_module'] in ['FinalityTracker', 'Parachains', 'ParaInherent']:
+        if transaction_data['call']['call_module'] in ['FinalityTracker', 'Parachains', 'ParaInherent', 'ImOnline',
+                                                       'ElectionProviderMultiPhase', 'Timestamp']:
             Transaction.save(transaction)
             block.has_transaction.add(transaction)
             Block.save(block)
             return transaction
-        print(transaction_data['call']['call_module'])
+        print(transaction_data['call']['call_module'], transaction_data['call']['call_function'])
         if transaction_data['call']['call_module'] == 'Claims':
             sender_account = Transaction.handle_claim(transaction_data, event_data)
             transaction.sender_account.add(sender_account)
@@ -262,16 +285,32 @@ class Transaction(GraphObject):
         validator_node = list(block.has_author.triples())[0][-1]
         validator_account = list(validator_node.account.triples())[0][-1]
         treasury_account = Account.get_treasury()
+
+
+        validator_fee = int(Utils.extract_event_attributes(event_data[-2], False) / length_transaction)
+        treasury_fee = int(Utils.extract_event_attributes(event_data[-3], True) / length_transaction)
+        treasury_account.update_balance(transferable=treasury_fee)
+        transaction.reward_treasury.add(treasury_account.get_current_balance())
+        """
         try:
             validator_fee = int(event_data[-2]["attributes"][1]["value"] / length_transaction)
             treasury_fee = int(event_data[-3]["attributes"][0]["value"] / length_transaction)
             treasury_account.update_balance(transferable=treasury_fee)
             transaction.reward_treasury.add(treasury_account.get_current_balance())
         except TypeError: # todo: weird block 8200623
-            validator_fee = int(event_data[-2]["attributes"][1] / length_transaction)
-            treasury_fee = int(event_data[-3]["attributes"] / length_transaction)
-            treasury_account.update_balance(transferable=treasury_fee)
-            transaction.reward_treasury.add(treasury_account.get_current_balance())
+            try:
+                validator_fee = int(event_data[-2]["attributes"][1] / length_transaction)
+                treasury_fee = int(event_data[-3]["attributes"][1] / length_transaction)
+                treasury_account.update_balance(transferable=treasury_fee)
+                transaction.reward_treasury.add(treasury_account.get_current_balance())
+            except TypeError:
+                try:
+                    validator_fee = int(event_data[-2]["attributes"][1]["value"] / length_transaction)
+                    treasury_fee = 0
+                except IndexError:
+                    validator_fee = 0
+                    treasury_fee = 0
+
         except IndexError:
             try:
                 validator_fee = int(event_data[-2]["attributes"][1]["value"] / length_transaction)
@@ -279,7 +318,7 @@ class Transaction(GraphObject):
             except IndexError:
                 validator_fee = 0
                 treasury_fee = 0
-
+            """
         validator_account.update_balance(transferable=validator_fee)
         if validator_fee+treasury_fee:
             transaction.reward_validator.add(validator_account.get_current_balance())
@@ -294,7 +333,7 @@ class Transaction(GraphObject):
                                             transferable=-(amount_transferred + total_fee))
             else:
                 from_account.update_balance(transferable=-(amount_transferred + total_fee))
-        if extrinsic_function_name in ["transfer", "transfer_all", "transfer_keep_alive"]:
+        if extrinsic_function_name in ["transfer", "transfer_all", "transfer_keep_alive"] and transaction.is_successful:
             transaction.from_balance.add(from_account.get_current_balance())
             transaction.to_balance.add(to_account.get_current_balance())
         return validator_fee+treasury_fee

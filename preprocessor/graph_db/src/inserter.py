@@ -104,7 +104,10 @@ class Neo4jBlockHandler:
             We further extract the previous validatorpool via era-index in order to establish the relation
             "previous_validator_pool" with the current validator_pool.
         """
-        if data['events'][1]['event_id'] not in ['EraPayout', 'EraPaid']:
+        try:
+            if data['events'][1]['event_id'] not in ['EraPayout', 'EraPaid']:
+                return
+        except IndexError:
             return
         for event in data['events']:
             if event['event_id'] in ['EraPayout', 'EraPaid'] and event['module_id'] == 'Staking':
