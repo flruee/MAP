@@ -2,6 +2,8 @@ import logging
 from typing import List
 import datetime
 import json
+from .driver_singleton import Driver
+from src.pg_models.aggregator import Aggregator
 from src.pg_models.validator_pool import ValidatorPool
 from src.pg_models.balance import Balance
 from src.event_handlers.utils import event_error_handling
@@ -39,9 +41,12 @@ class PGBlockHandler:
             block = handle_one_block(i)
             with open(f"small_block_dataset/{i}.json", "w+") as f:
                 f.write(json.dumps(block, indent=4))
-            self.handle_full_block(block)
+            with Driver().get_driver().begin():
+                self.handle_full_block(block)
+            Driver().get_driver().commit()
 
     def handle_full_block(self,data):
+        print(data["number"])
         block = self.insert_block(data)
         extrinsics= self.handle_extrinsics_and_events(block,data)
         
@@ -53,7 +58,7 @@ class PGBlockHandler:
         events_data = data["events"]
 
         extrinsics = []
-
+        events = []
 
         if len(data['extrinsics']) == 1 and len(events_data) > 2: # Todo: handle differently,
             """
@@ -91,64 +96,17 @@ class PGBlockHandler:
             #was_successful = current_events[-1].event_name == "ExtrinsicSuccess"
             extrinsic = Extrinsic.create(block, extrinsic_data,current_events_data)
             #events = [Event.create(event_data,extrinsic.id,block.block_number) for event_data in current_events_data]
-            events = []
+            current_events = []
             for event_data in current_events_data:
-                event = Event.create(event_data, extrinsic.id, block.block_number)
-                self.handle_special_events(event)
-                events.append(event)
+                current_event = Event.create(event_data, extrinsic.id, block.block_number)
+                self.handle_special_events(current_event)
+                current_events.append(current_event)
 
-
+            events.append(current_events)
             #if event['event_id'] in ['EraPayout', 'EraPaid'] and event['module_id'] == 'Staking':
             
-            self.handle_special_extrinsics(block, extrinsic, events)
-            """
-
-
-            # if no era create an empty list
-            if not "era" in extrinsic_data.keys():
-                extrinsic_data["era"] = [None]
-            # change immortal transactions "00" to -1
-            if extrinsic_data["era"] == "00":
-                extrinsic_data["era"] = [-1]
-
-            for key in ["address", "signature", "nonce", "tip"]:
-                if not key in extrinsic_data.keys():
-                    extrinsic_data[key] = None
-     
-            try:
-                extrinsic = Extrinsic(
-                    extrinsic_hash = extrinsic_data["extrinsic_hash"],
-                    block_number = data["number"],
-                    extrinsic_length = extrinsic_data["extrinsic_length"],
-                    address = extrinsic_data["address"],
-                    signature = extrinsic_data["signature"],
-                    era = extrinsic_data["era"],
-                    nonce = extrinsic_data["nonce"],
-                    tip = extrinsic_data["tip"],
-                    module_name = extrinsic_data["call"]["call_module"],
-                    function_name = extrinsic_data["call"]["call_function"],
-                    call_args = extrinsic_data["call"]["call_args"],
-                    was_successful = True,
-                    fee = 0
-                
-                )
-                self.session.add(extrinsic)
-                try:
-                    self.session.commit()
-                except IntegrityError:
-                    pass
-                    
-                for event in current_events:
-                    event.extrinsic = extrinsic.id
-                    event.block_number = data["number"]
-                    self.session.add(event)
-                try:
-                    self.session.commit()
-                except IntegrityError:
-                    pass
-            except IntegrityError:
-                pass
-            """
+            self.handle_special_extrinsics(block, extrinsic, current_events)
+           
             
             #self.special_event(block, extrinsic, current_events)
 
@@ -158,6 +116,7 @@ class PGBlockHandler:
 
         #if len(extrinsics)> 0:
         #    return extrinsics[0]
+        Aggregator.create(block, extrinsics, events)
         return extrinsics
 
 
@@ -215,7 +174,8 @@ class PGBlockHandler:
         Since not all data relevant for us is contained in the event data (sometimes we additionally need to know the blocknumber or time)
         we use the whole block.
         """
-
+        if not extrinsic.was_successful:
+            return
         if(extrinsic.module_name == "Balances" and extrinsic.function_name in ["transfer", "transfer_keep_alive,transfer_all"]):
             self.__handle_transfer(block, extrinsic, events)
         
@@ -476,3 +436,8 @@ class PGBlockHandler:
         )
 
         Transfer.create(block.block_number,eth_account, account, last_balance,new_balance,amount_transfered,extrinsic, "Claim")
+
+
+
+
+            

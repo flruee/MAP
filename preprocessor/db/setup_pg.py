@@ -10,6 +10,7 @@ from src.pg_models.validator import Validator
 from src.pg_models.nominator import Nominator
 from src.pg_models.validator_pool import ValidatorPool
 from src.pg_models.validator_to_nominator import ValidatorToNominator
+from src.pg_models.aggregator import Aggregator
 from dotenv import load_dotenv, find_dotenv
 import os
 import ast
