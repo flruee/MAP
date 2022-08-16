@@ -51,3 +51,11 @@ class Transfer(Base):
         session = Driver().get_driver()
         session.add(transfer)
         session.flush()
+    
+    @staticmethod
+    def count() -> int:
+        """
+        Returns the number of transfers stored in the db. Used for Aggregation.
+        """
+        session = Driver().get_driver()
+        return session.query(Transfer.id).count()

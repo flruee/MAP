@@ -59,17 +59,16 @@ if __name__ == "__main__":
 
             if MODE == "json":
                 start = time.time()
-                block_handler.handle_blocks(276451, 276451)
+                block_handler.handle_blocks(276451, 276551)
                 print(time.time()-start)
             elif MODE == "node": 
-                with session.begin():
-                    start = time.time()
-                    block_handler.handle_node_connection_blocks(276451,276451)
-                    #block_handler.handle_node_connection_blocks(6497886,6497886)
+                start = time.time()
+                block_handler.handle_node_connection_blocks(7000042,7000100)
+                #block_handler.handle_node_connection_blocks(6497886,6497886)
 
-                    #block_handler.handle_node_connection_blocks(11360981,11360981)
-                    #exit()
-                    print(time.time()-start)
+                #block_handler.handle_node_connection_blocks(11360981,11360981)
+                #exit()
+                print(time.time()-start)
 
             elif MODE == "kafka":
                 logging.info("2")

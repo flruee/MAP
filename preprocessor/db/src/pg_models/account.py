@@ -60,18 +60,23 @@ class Account(Base):
     def update_balance(self, extrinsic: "Extrinsic",transferable=0, reserved=0, bonded=0,
                        unbonding=0):
 
-        last_balance = Balance.get_last_balance(self)
 
         balance = Balance.create(
             account=self,
             extrinsic=extrinsic,
-            transferable=last_balance.transferable + transferable,
-            reserved=last_balance.reserved + reserved,
-            bonded=last_balance.bonded + bonded,
-            unbonding=last_balance.unbonding + unbonding,
+            transferable=transferable,
+            reserved=reserved,
+            bonded=bonded,
+            unbonding=unbonding,
         )
 
 
-        #Account.save(self)
         return balance
     
+    @staticmethod
+    def count() -> int:
+        """
+        Returns the number of accounts stored in the db, used for the Aggregator.
+        """
+        session = Driver().get_driver()
+        return session.query(Account.id).count()
