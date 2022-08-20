@@ -197,14 +197,12 @@ class Transaction(GraphObject):
                 Transaction.handle_set_payee(transaction_data, event_data, block, transaction)
 
         elif extrinsic_function.name == "payout_stakers":
-            return transaction, block, extrinsic_function, extrinsic_module
             transaction, from_account, to_account, amount_transferred, transfer = \
                 Transaction.handle_payout_stakers(transaction_data, event_data, block, transaction)
 
         elif extrinsic_function.name == "propose_spend": # todo: handle treasury extrinsics
             return transaction, block, extrinsic_function, extrinsic_module
-            transaction, from_account, to_account, amount_transferred = \
-                Transaction.handle_move_to_reserved(transaction_data, event_data, block, transaction)
+
 
         transaction, validator_account, treasury_account, from_account, to_account = \
             Transaction.pay_fees(
@@ -220,13 +218,15 @@ class Transaction(GraphObject):
 
     @staticmethod
     def handle_transfer(transaction_data: Dict, event_data: Dict, block: Block, transaction: "Transaction"):
-        from_account = Account.get(transaction_data["address"].replace("0x", ""))
+        from_account_address = Utils.convert_public_key_to_polkadot_address(transaction_data["address"])
+        from_account = Account.get(from_account_address)
         if not from_account:
-            from_account = Account.create(transaction_data["address"].replace("0x", "")) #todo: replace with new method
-        to_account = Account.get(transaction_data["call"]["call_args"][0]["value"].replace("0x", ""))
+            from_account = Account.create(from_account_address)
 
+        to_account_address = Utils.convert_public_key_to_polkadot_address(transaction_data["call"]["call_args"][0]["value"])
+        to_account = Account.get(to_account_address)
         if not to_account:
-            to_account = Account.create(transaction_data["call"]["call_args"][0]["value"].replace("0x", ""))
+            to_account = Account.create(to_account_address)
 
         amount_transferred = transaction_data['call']['call_args'][1]['value']
 
@@ -370,11 +370,12 @@ class Transaction(GraphObject):
                     nominator_account.update_balance(bonded=nominator_account)
                 nominator = Nominator.get_from_account(nominator_account)
                 nominator_account.is_nominator.add(nominator)
-                Account.save(nominator_account)
+                repository = Driver().get_driver()
+                repository.merge(nominator_account)
                 nominator.reward = nominator_reward
-                Nominator.save(nominator)
+                repository.merge(nominator)
                 validator.has_nominator.add(nominator)
-                Validator.save(validator)
+                repository.merge(validator)
 
         amount_transferred = 0
         from_account_address = transaction_data['address']
@@ -554,6 +555,7 @@ class Account(GraphObject):
 
         if other_account is not None and block_number is not None:
             self.transfer_to.add(other_account, {"block_number": block_number})
+        Driver().get_driver().merge(self)
 
 class Balance(GraphObject):
     __tablename__ = "balance"

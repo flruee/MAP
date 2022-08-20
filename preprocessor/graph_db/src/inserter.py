@@ -30,7 +30,6 @@ class Neo4jBlockHandler:
         #author = self.__add_fees_to_author(data["header"]["author"],block, events)
         for node in nodes:
             self.__merge_all(node)
-        #Driver().get_driver().save()
 
 
     @staticmethod
