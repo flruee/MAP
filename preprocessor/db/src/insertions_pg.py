@@ -46,7 +46,6 @@ class PGBlockHandler:
             Driver().get_driver().commit()
 
     def handle_full_block(self,data):
-        print(data["number"])
         block = self.insert_block(data)
         extrinsics= self.handle_extrinsics_and_events(block,data)
         
@@ -59,7 +58,7 @@ class PGBlockHandler:
 
         extrinsics = []
         events = []
-
+        staked_amount = 0
         if len(data['extrinsics']) == 1 and len(events_data) > 2: # Todo: handle differently,
             """
             This was done because some blocks contain 0 extrinsics, 
@@ -105,8 +104,9 @@ class PGBlockHandler:
             events.append(current_events)
             #if event['event_id'] in ['EraPayout', 'EraPaid'] and event['module_id'] == 'Staking':
             
-            self.handle_special_extrinsics(block, extrinsic, current_events)
-           
+            staked = self.handle_special_extrinsics(block, extrinsic, current_events)
+            if staked is not None:
+                staked_amount += staked
             
             #self.special_event(block, extrinsic, current_events)
 
@@ -116,7 +116,7 @@ class PGBlockHandler:
 
         #if len(extrinsics)> 0:
         #    return extrinsics[0]
-        Aggregator.create(block, extrinsics, events)
+        Aggregator.create(block, extrinsics, events, staked_amount)
         return extrinsics
 
 
@@ -174,6 +174,8 @@ class PGBlockHandler:
         Since not all data relevant for us is contained in the event data (sometimes we additionally need to know the blocknumber or time)
         we use the whole block.
         """
+
+        print(f"{extrinsic.module_name}({extrinsic.function_name})")
         if not extrinsic.was_successful:
             return
         if(extrinsic.module_name == "Balances" and extrinsic.function_name in ["transfer", "transfer_keep_alive,transfer_all"]):
