@@ -65,7 +65,7 @@ if __name__ == "__main__":
                 print(time.time()-start)
             elif MODE == "node": 
                 start = time.time()
-                block_handler.handle_node_connection_blocks(7000003,7000003)
+                block_handler.handle_node_connection_blocks(7000165,7000165)
                 #block_handler.handle_node_connection_blocks(6497886,6497886)
 
                 #block_handler.handle_node_connection_blocks(11360981,11360981)
