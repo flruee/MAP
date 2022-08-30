@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from src.driver_singleton import Driver
 from src.pg_models.block import Block
 DB = "postgres"
-MODE = "db"
+MODE = "node"
 if DB == "postgres":
 	from src.insertions_pg import PGBlockHandler
 else:
@@ -65,7 +65,7 @@ if __name__ == "__main__":
                 print(time.time()-start)
             elif MODE == "node": 
                 start = time.time()
-                block_handler.handle_node_connection_blocks(7000042,7000100)
+                block_handler.handle_node_connection_blocks(7000003,7000003)
                 #block_handler.handle_node_connection_blocks(6497886,6497886)
 
                 #block_handler.handle_node_connection_blocks(11360981,11360981)

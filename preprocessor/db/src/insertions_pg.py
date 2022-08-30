@@ -43,7 +43,7 @@ class PGBlockHandler:
                 f.write(json.dumps(block, indent=4))
             with Driver().get_driver().begin():
                 self.handle_full_block(block)
-            Driver().get_driver().commit()
+            #Driver().get_driver().commit()
 
     def handle_full_block(self,data):
         block = self.insert_block(data)
@@ -206,6 +206,7 @@ class PGBlockHandler:
 
         """
     def __handle_transfer(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
+        print("in")
         from_account = Account.get(extrinsic.account)
         to_address = extrinsic.call_args[0]["value"]
         to_account = Account.get_from_address(to_address)
@@ -221,7 +222,7 @@ class PGBlockHandler:
         # Create new balances
         from_balance = Balance.create(from_account, extrinsic, transferable=-(amount_transferred+extrinsic.fee), executing=True)
         to_balance = Balance.create(to_account, extrinsic,transferable=amount_transferred)
-
+        
         transfer = Transfer.create(
             block_number=block.block_number,
             from_account=from_account,
