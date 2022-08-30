@@ -402,6 +402,9 @@ class PGBlockHandler:
                     elif events[i].event_name == "BatchInterrupted":
                         was_successful = False
                         break
+                    elif events[i].event_name == "BatchCompleted":
+                        was_successful = True
+                        break
             
             sub_events = events[event_start:i+1]
             event_start = i+1
