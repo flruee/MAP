@@ -65,7 +65,7 @@ if __name__ == "__main__":
                 print(time.time()-start)
             elif MODE == "node": 
                 start = time.time()
-                block_handler.handle_node_connection_blocks(7000165,7000165)
+                block_handler.handle_node_connection_blocks(7000391,7000391)
                 #block_handler.handle_node_connection_blocks(6497886,6497886)
 
                 #block_handler.handle_node_connection_blocks(11360981,11360981)
@@ -76,6 +76,7 @@ if __name__ == "__main__":
                 with Session(raw_data_engine) as raw_data_session:
                     print("rey")
                     for i in range(7000000,7001000):
+                        print(i)
                         data =raw_data_session.query(RawData.data).filter(RawData.block_number==i).first()[0]
                         block_handler.handle_full_block(data)
                         session.commit()

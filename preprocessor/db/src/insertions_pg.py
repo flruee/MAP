@@ -276,7 +276,11 @@ class PGBlockHandler:
     def __handle_set_payee(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
 
         from_account = Account.get(extrinsic.account)
-        from_account.reward_destination = extrinsic.call_args[0]["value"]
+        reward_destination = extrinsic.call_args[0]["value"]
+        if type(reward_destination) is dict:
+            reward_destination = reward_destination["Account"]
+        from_account.reward_destination = reward_destination
+        
         Account.save(from_account)
 
     def handle_special_events(self,event: Event):
