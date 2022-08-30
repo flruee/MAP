@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from src.driver_singleton import Driver
 from src.pg_models.block import Block
 DB = "postgres"
-MODE = "node"
 if DB == "postgres":
 	from src.insertions_pg import PGBlockHandler
 else:
@@ -44,6 +43,7 @@ DATABASE_PASSWORD = env('DATABASE_PASSWORD')
 DATABASE_URL = env('DATABASE_URL')
 DATABASE_NAME = env("DATABASE_NAME")
 RAW_DATA_DATABASE_NAME = env("RAW_DATA_DATABASE_NAME")
+MODE = env("MODE")
 if __name__ == "__main__":
     #TODO: crrrreate logging object
     logging.basicConfig(filename='db.log', level=logging.INFO,format='%(asctime)s,%(levelname)s :%(message)s')
@@ -76,7 +76,7 @@ if __name__ == "__main__":
                 with Session(raw_data_engine) as raw_data_session:
                     print("rey")
                     for i in range(7000000,7001000):
-                        data =raw_data_session.query(RawData.data).filter(RawData.block_number==i).first()
+                        data =raw_data_session.query(RawData.data).filter(RawData.block_number==i).first()[0]
                         block_handler.handle_full_block(data)
                         session.commit()
             elif MODE == "kafka":
