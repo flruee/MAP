@@ -23,7 +23,7 @@ class Aggregator(Base):
     total_staked = Column(BigInteger)
 
 
-    def create(block: Block, extrinsics: List[Extrinsic], events: List[List[Event]]):
+    def create(block: Block, extrinsics: List[Extrinsic], events: List[List[Event]], staked_amount: int):
         previous_aggregator = Aggregator.get(block.block_number-1)
 
         n_extrinsics = previous_aggregator.total_extrinsics + len(extrinsics)
@@ -31,7 +31,7 @@ class Aggregator(Base):
         n_accounts = Account.count()
         n_transfers = Transfer.count()
         n_currency = 0
-        n_staked = 0
+        n_staked = previous_aggregator.total_staked + staked_amount
         
         aggregator = Aggregator(
             block_number = block.block_number,
@@ -40,13 +40,20 @@ class Aggregator(Base):
             total_accounts = n_accounts,
             total_transfers = n_transfers,
             total_currency =  n_currency,# how?
-            total_staked = n_staked
+            total_staked = n_staked 
 
         )
 
         Aggregator.save(aggregator)
         return aggregator
-
+    
+    """
+    @staticmethod
+    def __handle_total_staked(extrinsics: List[Extrinsic]):
+        for extrinsic in extrinsics:
+    """
+            
+            
     @staticmethod
     def get(block_number: int) -> "Aggregator":
         session = Driver().get_driver()

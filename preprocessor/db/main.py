@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from src.driver_singleton import Driver
 from src.pg_models.block import Block
 DB = "postgres"
-MODE = "node"
 if DB == "postgres":
 	from src.insertions_pg import PGBlockHandler
 else:
@@ -19,7 +18,7 @@ else:
 from src.queries.schema import schema
 import logging
 import traceback
-
+from src.pg_models.raw_data import RawData
 
 load_dotenv(find_dotenv())
 
@@ -43,6 +42,8 @@ DATABASE_USERNAME = env('DATABASE_USERNAME')
 DATABASE_PASSWORD = env('DATABASE_PASSWORD')
 DATABASE_URL = env('DATABASE_URL')
 DATABASE_NAME = env("DATABASE_NAME")
+RAW_DATA_DATABASE_NAME = env("RAW_DATA_DATABASE_NAME")
+MODE = env("MODE")
 if __name__ == "__main__":
     #TODO: crrrreate logging object
     logging.basicConfig(filename='db.log', level=logging.INFO,format='%(asctime)s,%(levelname)s :%(message)s')
@@ -50,6 +51,7 @@ if __name__ == "__main__":
     if DB == "postgres":
         #engine = create_engine('postgresql://mapUser:mapmap@localhost/map')
         engine = create_engine(f'postgresql://{DATABASE_USERNAME}:{DATABASE_PASSWORD}@{DATABASE_URL}/{DATABASE_NAME}')
+        raw_data_engine = create_engine(f"postgresql://{DATABASE_USERNAME}:{DATABASE_PASSWORD}@{DATABASE_URL}/{RAW_DATA_DATABASE_NAME}")
         with Session(engine) as session:
             driver = Driver()
             driver.add_driver(session)
@@ -63,13 +65,21 @@ if __name__ == "__main__":
                 print(time.time()-start)
             elif MODE == "node": 
                 start = time.time()
-                block_handler.handle_node_connection_blocks(7000042,7000100)
+                block_handler.handle_node_connection_blocks(7000391,7000391)
                 #block_handler.handle_node_connection_blocks(6497886,6497886)
 
                 #block_handler.handle_node_connection_blocks(11360981,11360981)
                 #exit()
                 print(time.time()-start)
-
+            elif MODE == "db":
+                print("ey")
+                with Session(raw_data_engine) as raw_data_session:
+                    print("rey")
+                    for i in range(7000000,7001000):
+                        print(i)
+                        data =raw_data_session.query(RawData.data).filter(RawData.block_number==i).first()[0]
+                        block_handler.handle_full_block(data)
+                        session.commit()
             elif MODE == "kafka":
                 logging.info("2")
                 with open("config.json","r") as f:

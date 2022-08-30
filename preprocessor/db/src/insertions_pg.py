@@ -43,10 +43,9 @@ class PGBlockHandler:
                 f.write(json.dumps(block, indent=4))
             with Driver().get_driver().begin():
                 self.handle_full_block(block)
-            Driver().get_driver().commit()
+            #Driver().get_driver().commit()
 
     def handle_full_block(self,data):
-        print(data["number"])
         block = self.insert_block(data)
         extrinsics= self.handle_extrinsics_and_events(block,data)
         
@@ -59,7 +58,7 @@ class PGBlockHandler:
 
         extrinsics = []
         events = []
-
+        staked_amount = 0
         if len(data['extrinsics']) == 1 and len(events_data) > 2: # Todo: handle differently,
             """
             This was done because some blocks contain 0 extrinsics, 
@@ -105,8 +104,9 @@ class PGBlockHandler:
             events.append(current_events)
             #if event['event_id'] in ['EraPayout', 'EraPaid'] and event['module_id'] == 'Staking':
             
-            self.handle_special_extrinsics(block, extrinsic, current_events)
-           
+            staked = self.handle_special_extrinsics(block, extrinsic, current_events)
+            if staked is not None:
+                staked_amount += staked
             
             #self.special_event(block, extrinsic, current_events)
 
@@ -116,7 +116,7 @@ class PGBlockHandler:
 
         #if len(extrinsics)> 0:
         #    return extrinsics[0]
-        Aggregator.create(block, extrinsics, events)
+        Aggregator.create(block, extrinsics, events, staked_amount)
         return extrinsics
 
 
@@ -174,6 +174,8 @@ class PGBlockHandler:
         Since not all data relevant for us is contained in the event data (sometimes we additionally need to know the blocknumber or time)
         we use the whole block.
         """
+
+        print(f"{extrinsic.module_name}({extrinsic.function_name})")
         if not extrinsic.was_successful:
             return
         if(extrinsic.module_name == "Balances" and extrinsic.function_name in ["transfer", "transfer_keep_alive,transfer_all"]):
@@ -204,6 +206,7 @@ class PGBlockHandler:
 
         """
     def __handle_transfer(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
+        print("in")
         from_account = Account.get(extrinsic.account)
         to_address = extrinsic.call_args[0]["value"]
         to_account = Account.get_from_address(to_address)
@@ -219,7 +222,7 @@ class PGBlockHandler:
         # Create new balances
         from_balance = Balance.create(from_account, extrinsic, transferable=-(amount_transferred+extrinsic.fee), executing=True)
         to_balance = Balance.create(to_account, extrinsic,transferable=amount_transferred)
-
+        
         transfer = Transfer.create(
             block_number=block.block_number,
             from_account=from_account,
@@ -273,7 +276,11 @@ class PGBlockHandler:
     def __handle_set_payee(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
 
         from_account = Account.get(extrinsic.account)
-        from_account.reward_destination = extrinsic.call_args[0]["value"]
+        reward_destination = extrinsic.call_args[0]["value"]
+        if type(reward_destination) is dict:
+            reward_destination = reward_destination["Account"]
+        from_account.reward_destination = reward_destination
+        
         Account.save(from_account)
 
     def handle_special_events(self,event: Event):
@@ -391,6 +398,12 @@ class PGBlockHandler:
                         break
                     elif events[i].event_name == "ItemFailed":
                         was_successful = False
+                        break
+                    elif events[i].event_name == "BatchInterrupted":
+                        was_successful = False
+                        break
+                    elif events[i].event_name == "BatchCompleted":
+                        was_successful = True
                         break
             
             sub_events = events[event_start:i+1]

@@ -12,7 +12,9 @@ class Validator(Base):
     __tablename__ = "validator"
     id = Column(Integer, primary_key=True)
     account = Column(Integer, ForeignKey("account.id"))
-    era = Column(Integer, ForeignKey("validator_pool.era"))
+    era = Column(Integer, 
+        #ForeignKey("validator_pool.era")
+        )
 
 
     def create(account: Account, era: int) -> "Validator":

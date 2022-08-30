@@ -52,7 +52,7 @@ class Extrinsic(Base):
             module_name = extrinsic_data["call"]["call_module"],
             function_name = extrinsic_data["call"]["call_function"],
             call_args = extrinsic_data["call"]["call_args"],
-            success = was_successful,
+            was_successful = was_successful,
             block_number = block.block_number,
             
         )
