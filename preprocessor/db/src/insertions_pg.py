@@ -198,7 +198,7 @@ class PGBlockHandler:
         #TODO Proxy(Proxy)
         elif (extrinsic.module_name == "Proxy" and extrinsic.function_name == "proxy"):
             self.__handle_proxy(block, extrinsic, events)
-        elif (extrinsic.module_name == "Claims" and extrinsic.function_name == "claim"):
+        elif (extrinsic.module_name == "Claims" and extrinsic.function_name in ["claim", "attest"]):
             self.__handle_claim(block, extrinsic, events)
         """
         elif (extrinsic.module_name == "Treasury" and extrinsic.function_name == "proposeSpend"):
@@ -427,14 +427,18 @@ class PGBlockHandler:
         one can receive the bought DOT.
         This function creates the new account in the DB and transfers the claimed DOT into it.
         """
-
-        address = utils.convert_public_key_to_polkadot_address(extrinsic.call_args[0]["value"])
+        #if extrinsic.function_name != "Attest":
+        #    address = utils.convert_public_key_to_polkadot_address(extrinsic.call_args[0]["value"])
+        #else:
+        #    address = events[-1]
         amount_transfered = 0
         for event in events:
             if event.module_name == "Claims" and event.event_name == "Claimed":
                 amount_transfered = utils.extract_event_attributes_from_object(event,2)
                 eth_address = utils.extract_event_attributes_from_object(event,1)
                 eth_account = Account.create(eth_address)
+                address = utils.extract_event_attributes_from_object(event,0)
+            
                 
 
         account = Account.get_from_address(address)
