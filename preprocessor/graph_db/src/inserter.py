@@ -1,69 +1,59 @@
 import logging
-import time
 from typing import Dict, List
 import datetime
 import json
-
 from src.models import Block,Transaction, Account, Balance, Transaction, Validator, ValidatorPool, Nominator
 from src.driver_singleton import Driver
 from py2neo.ogm import Repository
-from py2neo import Subgraph
 
 
 
 class Neo4jBlockHandler:
     def __init__(self, driver: Repository):
         self.driver = driver
-        self.handled_call_modules = ['Balances',
-                                     'Staking',
-                                     'Treasury'
-                                     ]
         self.current_era = None
         self.block_author = None
 
     def handle_full_block(self, data, tx):
-        block, author_account, validator = self.__handle_block_data(data, tx)
-        nodes = \
-            self.__handle_transaction_data(data, block, author_account, validator,tx)
-        #events = self.__handle_event_data(data, transactions, block)
-        #events = self.__insert_events(data, extrinsics)
-        #author = self.__add_fees_to_author(data["header"]["author"],block, events)
-        repository = Driver().get_driver()
+        block, author_account, validator, tx = self.__handle_block_data(data, tx)
+        nodes = self.__handle_transaction_data(data, block, author_account, validator, tx)
+        """
         for node in nodes:
             tx.create(node)
+        """
 
-    @staticmethod
-    def __commit_all(node):
-        pass
-
-
-    def __handle_block_data(self,data, tx):
+    def __handle_block_data(self, data, tx):
         """
         Creates new block node and connects it to previous block node
         """
-        timestamp = data["extrinsics"][0]["call"]["call_args"][0]["value"]
-        timestamp = datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=timestamp)
-        last_block = Block.match(Driver().get_driver(), data["number"]-1).first()
-        block = Block.match(Driver().get_driver(), data["number"]).first()
+        timestamp       = data["extrinsics"][0]["call"]["call_args"][0]["value"]
+        timestamp       = datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=timestamp)
+        last_block      = Block.match(Driver().get_driver(), data["number"]-1).first()
+        block           = Block.match(Driver().get_driver(), data["number"]).first()
         if block is None:
-            block = Block.create(data, timestamp)
-        author_account = Account.get(data["header"]["author"])
+            block = Block.create(data, timestamp, tx)
+
+        author_address = data["header"]["author"]
+        author_account = Account.get(author_address)
         if not author_account:
-            author_account = Account.create(data["header"]["author"])
+            author_account = Account.create(author_address, tx)
         validator = Validator.get_from_account(author_account)
         if not validator:
-            validator = Validator.create(account=author_account)
+            validator = Validator.create(amount_staked=0, self_staked=0, nominator_staked=0,
+                                         account=author_account, tx=tx)
         block.has_author.add(validator)
         try:
             block.previous_block.add(last_block)
         except TypeError:  # Only a problem for the first block
             pass
-        return block, author_account, validator
+        tx.create(block)
+        return block, author_account, validator, tx
 
     def __handle_transaction_data(self, data, block, author_account, validator, tx):
         transactions = []
         elements = []
         events_data = data["events"]
+        treasury_account = Account.get_treasury()
 
         if len(data['extrinsics']) == 1 and len(data["events"]) > 2:  # Todo: handle differently,
             """
@@ -85,7 +75,7 @@ class Neo4jBlockHandler:
 
             transaction, *element = \
                 self.__handle_transaction(block, extrinsic_data, current_events,
-                                                    author_account, validator, tx)
+                                                    author_account, validator, tx, treasury_account)
             if not transaction:
                 continue
             block.has_transaction.add(transaction)
@@ -97,12 +87,28 @@ class Neo4jBlockHandler:
         flat_list = [item for sublist in fat_list for item in sublist if item is not None]
         return flat_list
 
-    def __handle_transaction(self, block, transaction_data, event_data,
-                                    author_account, validator, tx):
+    def __handle_transaction(self,
+                             block,
+                             transaction_data,
+                             event_data,
+                             author_account,
+                             validator,
+                             tx,
+                             treasury_account):
         """
         creates a transaction node, 
         """
-        return Transaction.create(block, transaction_data, event_data, author_account, validator, tx=tx)
+        return Transaction.create(block=block,
+                                  transaction_data=transaction_data,
+                                  event_data=event_data,
+                                  author_account=author_account,
+                                  validator=validator,
+                                  tx=tx,
+                                  treasury_account=treasury_account,
+                                  length_transaction=1,
+                                  proxy_transaction=None,
+                                  batch_transaction=None
+                                  )
 
     def __handle_event_data(self, data, transactions, block):
         """
@@ -178,40 +184,6 @@ class Neo4jBlockHandler:
         block.has_author.add(author)
 
         return author
-
-
-    def special_event(self,block, extrinsic, events):
-        """
-        Each event has some implications on the overall data model. This function here differentiates between
-        the different modules and then uses a event handler class to handle the specific event.
-        e.g. the event "NewAccount" of the "Systems" module means that we have to create a new Account entry.
-
-        Since not all data relevant for us is contained in the event data (sometimes we additionally need to know the blocknumber or time)
-        we use the whole block.
-        """
-        for event in events:
-                print(f"{event.module_name}: {event.event_name}")
-                if event.module_name == "System":
-                    handler= SystemEventHandler(self.session)
-                    handler.handle_event(block, extrinsic, event)
-
-              
-                elif event.module_name == "Balances":
-                    handler = BalancesEventHandler(self.session)
-                    handler.handle_event(block, extrinsic, event)
-
-                
-                elif event.module_name == "Staking":
-                    handler = StakingEventHandler(self.session)
-                    handler.handle_event(block, extrinsic, event)
-                
-                elif event.module_name == "Claims":
-                    handler = ClaimsEventHandler(self.session)
-                    handler.handle_event(block, extrinsic, event)
-                
-                
-                #handler.handle_event(block, extrinsic, event)
-            
 
     def handle_events(self,events, extrinsic_idx) -> List:
             """
