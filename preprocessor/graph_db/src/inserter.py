@@ -4,10 +4,10 @@ from typing import Dict, List
 import datetime
 import json
 
-import py2neo.ogm
 from src.models import Block,Transaction, Account, Balance, Transaction, Validator, ValidatorPool, Nominator
 from src.driver_singleton import Driver
-from py2neo.ogm import Repository, RelatedObjects
+from py2neo.ogm import Repository
+from py2neo import Subgraph
 
 
 
@@ -21,33 +21,23 @@ class Neo4jBlockHandler:
         self.current_era = None
         self.block_author = None
 
-    def handle_full_block(self, data):
-        block, author_account, author_balance, validator = self.__handle_block_data(data)
+    def handle_full_block(self, data, tx):
+        block, author_account, validator = self.__handle_block_data(data, tx)
         nodes = \
-            self.__handle_transaction_data(data, block, author_account, author_balance, validator)
+            self.__handle_transaction_data(data, block, author_account, validator,tx)
         #events = self.__handle_event_data(data, transactions, block)
         #events = self.__insert_events(data, extrinsics)
         #author = self.__add_fees_to_author(data["header"]["author"],block, events)
+        repository = Driver().get_driver()
         for node in nodes:
-            self.__merge_all(node)
-
-
-    @staticmethod
-    def __merge_all(node):
-
-        Driver().get_driver().merge(node)
-
+            tx.create(node)
 
     @staticmethod
-    def __commit_all(*objects):
-        start = time.time()
-
-        Driver().get_driver().save(objects)
-        end = time.time()
-        print(end-start)
+    def __commit_all(node):
+        pass
 
 
-    def __handle_block_data(self,data):
+    def __handle_block_data(self,data, tx):
         """
         Creates new block node and connects it to previous block node
         """
@@ -60,18 +50,17 @@ class Neo4jBlockHandler:
         author_account = Account.get(data["header"]["author"])
         if not author_account:
             author_account = Account.create(data["header"]["author"])
-        author_balance = author_account.current_balance
         validator = Validator.get_from_account(author_account)
         if not validator:
-            validator = Validator.create(author_account)
+            validator = Validator.create(account=author_account)
         block.has_author.add(validator)
         try:
             block.previous_block.add(last_block)
         except TypeError:  # Only a problem for the first block
             pass
-        return block, author_account, author_balance, validator
+        return block, author_account, validator
 
-    def __handle_transaction_data(self, data, block, author_account, author_balance, validator):
+    def __handle_transaction_data(self, data, block, author_account, validator, tx):
         transactions = []
         elements = []
         events_data = data["events"]
@@ -96,7 +85,7 @@ class Neo4jBlockHandler:
 
             transaction, *element = \
                 self.__handle_transaction(block, extrinsic_data, current_events,
-                                                    author_account, author_balance, validator)
+                                                    author_account, validator, tx)
             if not transaction:
                 continue
             block.has_transaction.add(transaction)
@@ -109,11 +98,11 @@ class Neo4jBlockHandler:
         return flat_list
 
     def __handle_transaction(self, block, transaction_data, event_data,
-                                    author_account, author_balance, validator):
+                                    author_account, validator, tx):
         """
         creates a transaction node, 
         """
-        return Transaction.create(block, transaction_data, event_data, author_account, author_balance, validator)
+        return Transaction.create(block, transaction_data, event_data, author_account, validator, tx=tx)
 
     def __handle_event_data(self, data, transactions, block):
         """

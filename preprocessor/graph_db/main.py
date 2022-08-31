@@ -1,22 +1,11 @@
 from dotenv import load_dotenv, find_dotenv
-
-from neo4j import GraphDatabase, basic_auth
-from neo4j.exceptions import Neo4jError
 from py2neo.ogm import Repository
-#from py2neo import Graph
 from src.inserter import Neo4jBlockHandler
 from src.models import RawData
 from src.driver_singleton import Driver
 import time
-import json
-import logging
-#from kafka import KafkaConsumer
-#from sqlalchemy import create_engine, select
-#from sqlalchemy.orm import Session
-#from src import RawData
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
-import logging
 import os
 import ast
 
@@ -53,28 +42,34 @@ driver_singleton = Driver()
 driver_singleton.add_driver(driver)
 pg_driver = create_engine('postgresql://postgres:polkamap@172.23.149.214/raw_data')
 block_handler = Neo4jBlockHandler(driver)
-transaction_list = range(5000000,10000000)
-transaction_list = [1349471]
+transaction_list = range(7028260,10000000)
+#transaction_list = [5499975] # free floating balance node
+#transaction_list = [5499979]
+#transaction_list = [7028260]
 counter = 0
 average_time = 0
+repository = Driver().get_driver()
+tx = repository.graph.begin()
 
 with Session(pg_driver) as session:
-    for i in transaction_list:
-        print(i)
-        stmt = select(RawData).where(RawData.block_number == i)
-        db_data = session.execute(stmt).fetchone()[0]
-        block_handler.handle_full_block(db_data.data)
+        for i in transaction_list:
+            tx = repository.graph.begin()
+            print(i)
+            start = time.time()
 
-"""while True:
-    counter += 1
-    if counter == 5:
-        counter = 0
-        average_time = average_time/1000
-        print(average_time)
-        average_time = 0
-    start = time.time()
-
-    end = time.time()
-    average_time += end - start"""
+            if counter == 1000:
+                counter = 0
+                average_time = average_time / 1000
+                print(average_time)
+                average_time = 0
+                #repository.graph.commit(tx)
+                #tx = repository.graph.begin()
+            counter += 1
+            stmt = select(RawData).where(RawData.block_number == i)
+            db_data = session.execute(stmt).fetchone()[0]
+            block_handler.handle_full_block(db_data.data, tx)
+            repository.graph.commit(tx)
+            end = time.time()
+            average_time += end - start
 
 
