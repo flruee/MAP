@@ -13,7 +13,7 @@ class ValidatorToNominator(Base):
     __tablename__ = "validator_to_nominator"
     nominator = Column(Integer, ForeignKey("nominator.id"), primary_key=True)
     validator = Column(Integer, ForeignKey("validator.id"), primary_key=True)
-    era = Column(Integer)
+    era = Column(Integer, primary_key=True)
 
     def create(nominator: Nominator, validator: Validator, era: int ) -> "ValidatorToNominator":
         vtn = ValidatorToNominator(
