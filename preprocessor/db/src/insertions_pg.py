@@ -405,6 +405,9 @@ class PGBlockHandler:
                     elif events[i].event_name == "BatchCompleted":
                         was_successful = True
                         break
+                elif block.block_number == 198072 and events[i].event_name == "ProxyExecuted" and events[i].module_name == 'Proxy':
+                    was_successful = True
+                    break
             
             sub_events = events[event_start:i+1]
             event_start = i+1
