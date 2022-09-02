@@ -1,3 +1,4 @@
+from ctypes import util
 from multiprocessing import Event
 from charset_normalizer import from_bytes
 from sqlalchemy import Column
@@ -12,7 +13,7 @@ from src.pg_models.account import Account
 from src.pg_models.balance import Balance
 from src.pg_models.event import Event
 from src.pg_models.transfer import Transfer
-from src.utils import extract_event_attributes
+from src.utils import extract_event_attributes, convert_public_key_to_polkadot_address
 class Extrinsic(Base):
     __tablename__ = "extrinsic"
     id = Column(Integer,primary_key=True)
@@ -26,7 +27,6 @@ class Extrinsic(Base):
     module_name = Column(String)
     function_name = Column(String)
     call_args = Column(JSON)
-    success = Column(Boolean)
     block_number = Column(Integer, ForeignKey(Block.block_number))
     #treasury_balance = Column(Integer, ForeignKey("balance.id"))
     #validator_balance = Column(Integer, ForeignKey("balance.id"))
@@ -83,7 +83,7 @@ class Extrinsic(Base):
             module_name = data["call_module"],
             function_name = data["call_function"],
             call_args = data["call_args"],
-            success = was_successful,
+            was_successful = was_successful,
             block_number = block.block_number,
             fee=0
             
@@ -117,7 +117,7 @@ class Extrinsic(Base):
             module_name = extrinsic_data["call_module"],
             function_name = extrinsic_data["call_function"],
             call_args = extrinsic_data["call_args"],
-            success = was_successful,
+            was_successful = was_successful,
             block_number = block.block_number,
             fee=0     
         )
@@ -190,9 +190,16 @@ class Extrinsic(Base):
     @staticmethod
     def __extract_sender_account(extrinsic_data):
         if extrinsic_data["call"]["call_function"] not in ["final_hint"]:
-            sender_account = Account.get_from_address(extrinsic_data["address"])
+            address = extrinsic_data["address"]
+            if address is None:
+                return None
+
+            # Extrinsic in batches have the 0x prefix
+            if "0x" in address:
+                address = address[2:]
+            sender_account = Account.get_from_address(address)
             if sender_account is None:
-                sender_account = Account.create(extrinsic_data["address"])
+                sender_account = Account.create(address)
             return sender_account
         else:
             return None
