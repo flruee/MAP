@@ -71,7 +71,7 @@ class Block(GraphObject):
     has_aggregator = RelatedTo("Aggregator")
 
     @staticmethod
-    def create(data, timestamp, tx):
+    def create(data, timestamp):
         block = Block(
             block_number=data["number"],
             hash=data["hash"],
@@ -101,15 +101,15 @@ class Transaction(GraphObject):
                event_data,
                author_account,
                validator,
-               tx,
                treasury_account,
                length_transaction=1,
                proxy_transaction=None,
-               batch_transaction=None):
+               batch_transaction=None,
+               batch_from_account=None):
 
         call_function           = transaction_data["call"]["call_function"]
         call_module             = transaction_data["call"]["call_module"]
-        # print(call_module, call_function)
+        #print(call_module, call_function)
         transaction             = Transaction(extrinsic_hash=transaction_data["extrinsic_hash"])
         extrinsic_function      = ExtrinsicFunction.get(call_function)
 
@@ -125,8 +125,6 @@ class Transaction(GraphObject):
             Simply return transaction since no balance shift takes place in these modules.
             """
             block.has_transaction.add(transaction)
-            tx.create(block)
-            tx.create(transaction)
             return transaction, block, extrinsic_function
 
 
@@ -134,17 +132,44 @@ class Transaction(GraphObject):
             sender_account = Transaction.handle_claim(transaction_data, event_data)
             transaction.sender_account.add(sender_account)
             block.has_transaction.add(transaction)
-            tx.create(block)
-            tx.create(transaction)
+            #tx.create(block)
+            #tx.create(transaction)
             return transaction, block, extrinsic_function, sender_account
+        """
+        For batch calls we handle the individual extrinsics as seperate transactions. The fee paid is split up evenly
+        between the individual calls.
+        """
+        if call_module == 'Utility' and call_function in ['batch', 'as_derivative', 'batch_all', 'force_batch']:
+            from_account_address = transaction_data['address']
+            from_account = Account.get(from_account_address)
+            if from_account is None:
+                from_account = Account.create(from_account_address)
+            for transaction_batch in transaction_data['call']['call_args'][0]['value']:
+                transaction_structure = dict()
+                transaction_structure['extrinsic_hash'] = transaction_data['extrinsic_hash']
+                transaction_structure['address'] = transaction_data['address']
+                transaction_structure['call'] = transaction_batch
 
+                Transaction.create(block=block,
+                                   transaction_data=transaction_structure,
+                                   event_data=event_data,
+                                   author_account=author_account,
+                                   validator=validator,
+                                   treasury_account=treasury_account,
+                                   length_transaction=len(transaction_data['call']['call_args'][0]['value']),
+                                   batch_transaction=transaction,
+                                   batch_from_account=from_account)
         """
         Get account which triggered the transaction and set initial values of variables required for further processing
         """
         from_account_address = Utils.convert_public_key_to_polkadot_address(transaction_data['address'])
-        from_account = Account.get(from_account_address)
-        if from_account is None:
-            from_account = Account.create(from_account_address)
+        if batch_from_account is None:
+            #print(f'batch is None so this is adddress: {from_account_address}')
+            from_account = Account.get(from_account_address)
+            if from_account is None:
+                from_account = Account.create(from_account_address)
+        else:
+            from_account = batch_from_account
         transaction.sender_account.add(from_account)
         to_account = None
         amount_transferred = 0
@@ -168,31 +193,12 @@ class Transaction(GraphObject):
                                      author_account=author_account,
                                      transfer=transfer,
                                      treasury_account=treasury_account)
+
             block.has_transaction.add(transaction)
-            tx.create(block)
-            tx.create(transaction)
             return transaction, block, extrinsic_function, validator_account, treasury_account, from_account, to_account
         transaction.is_successful = True
 
-        """
-        For batch calls we handle the individual extrinsics as seperate transactions. The fee paid is split up evenly
-        between the individual calls.
-        """
-        if call_module == 'Utility' and call_function in ['batch', 'as_derivative', 'batch_all', 'force_batch']:
-            for transaction_batch in transaction_data['call']['call_args'][0]['value']:
-                transaction_structure = dict()
-                transaction_structure['extrinsic_hash'] = transaction_data['extrinsic_hash']
-                transaction_structure['address'] = transaction_data['address']
-                transaction_structure['call'] = transaction_batch
-                Transaction.create(block=block,
-                                   transaction_data=transaction_structure,
-                                   event_data=event_data,
-                                   author_account=author_account,
-                                   validator=validator,
-                                   tx=tx,
-                                   treasury_account=treasury_account,
-                                   length_transaction=len(transaction_data['call']['call_args'][0]['value']),
-                                   batch_transaction=transaction)
+
         if batch_transaction is not None:
             transaction.is_batch.add(batch_transaction)
         """
@@ -200,8 +206,6 @@ class Transaction(GraphObject):
         """
         if call_module == 'Utility' and call_function in ['batch', 'as_derivative', 'batch_all', 'force_batch']:
             block.has_transaction.add(transaction)
-            tx.create(block)
-            tx.create(transaction)
             return transaction, block, extrinsic_function
 
         """
@@ -218,15 +222,12 @@ class Transaction(GraphObject):
                                event_data=event_data,
                                author_account=author_account,
                                validator=validator,
-                               tx=tx,
                                proxy_transaction=transaction)
             # todo: connect with proxy call
             return transaction, block, extrinsic_function
         if proxy_transaction is not None:
             transaction.is_proxy.add(proxy_transaction)
             block.has_transaction.add(transaction)
-            tx.create(block)
-            tx.create(transaction)
 
 
         """
@@ -234,49 +235,44 @@ class Transaction(GraphObject):
         """
         transfer = False
         if extrinsic_function.name in ["transfer", "transfer_all", "transfer_keep_alive"]:
-            transaction, from_account, to_account, amount_transferred, transfer, tx = \
+            transaction, from_account, to_account, amount_transferred, transfer = \
                 Transaction.handle_transfer(transaction_data=transaction_data,
                                             event_data=event_data,
                                             block=block,
                                             transaction=transaction,
-                                            from_account=from_account,
-                                            tx=tx)
+                                            from_account=from_account)
 
         elif extrinsic_function.name in ["bond", "bond_extra"]:
-            transaction, from_account, controller_account, amount_transferred, transfer, tx = \
+            transaction, from_account, controller_account, amount_transferred, transfer= \
                 Transaction.handle_bond(transaction_data=transaction_data,
                                         event_data=event_data,
                                         block=block,
                                         transaction=transaction,
                                         extrinsic_function=extrinsic_function,
-                                        from_account=from_account,
-                                        tx=tx)
+                                        from_account=from_account)
 
         elif extrinsic_function.name == "set_controller":
-            transaction, from_account, controller_account, amount_transferred, transfer, tx = \
+            transaction, from_account, controller_account, amount_transferred, transfer = \
                 Transaction.handle_set_controller(transaction_data=transaction_data,
                                                   event_data=event_data,
                                                   block=block,
                                                   transaction=transaction,
-                                                  from_account=from_account,
-                                                  tx=tx)
+                                                  from_account=from_account)
 
         elif extrinsic_function.name == "set_payee":
-            transaction, from_account, to_account, amount_transferred, transfer, tx = \
+            transaction, from_account, to_account, amount_transferred, transfer = \
                 Transaction.handle_set_payee(transaction_data=transaction_data,
                                              event_data=event_data,
                                              block=block,
                                              transaction=transaction,
-                                             from_account=from_account,
-                                             tx=tx)
+                                             from_account=from_account)
 
         elif extrinsic_function.name == "payout_stakers":
             transaction, from_account, to_account, amount_transferred, transfer = \
                 Transaction.handle_payout_stakers(transaction_data=transaction_data,
                                                   event_data=event_data,
                                                   block=block,
-                                                  transaction=transaction,
-                                                  tx=tx)
+                                                  transaction=transaction)
 
         elif extrinsic_function.name == "propose_spend": # todo: handle treasury extrinsics
             return transaction, block, extrinsic_function
@@ -295,11 +291,10 @@ class Transaction(GraphObject):
                                  length_transaction=length_transaction,
                                  author_account=author_account,
                                  transfer=transfer,
-                                 treasury_account=treasury_account,
-                                 tx=tx)
+                                 treasury_account=treasury_account)
         block.has_transaction.add(transaction)
-        return transaction, block, extrinsic_function, validator_account, \
-               treasury_account, from_account, to_account
+
+        return transaction, block, extrinsic_function, validator_account, treasury_account, from_account, to_account
 
 
     @staticmethod
@@ -307,40 +302,38 @@ class Transaction(GraphObject):
                         event_data,
                         block,
                         transaction,
-                        from_account,
-                        tx):
+                        from_account):
 
         to_account_address = Utils.convert_public_key_to_polkadot_address(transaction_data["call"]["call_args"][0]["value"])
         to_account = Account.get(to_account_address)
         if not to_account:
-            to_account = Account.create(to_account_address, tx)
+            to_account = Account.create(to_account_address)
 
         amount_transferred = transaction_data['call']['call_args'][1]['value']
 
         transaction.amount_transferred = amount_transferred
         transfer = True
-        return transaction, from_account, to_account, amount_transferred, transfer, tx
+        return transaction, from_account, to_account, amount_transferred, transfer
 
     @staticmethod
     def handle_set_controller(transaction_data,
                               event_data,
                               block,
                               transaction,
-                              from_account,
-                              tx):
+                              from_account):
 
         controller_address = Utils.convert_public_key_to_polkadot_address(
                                 transaction_data["call"]["call_args"][0]["value"])
         controller_account = Account.get(controller_address)
         if not controller_account:
-            controller_account = Account.create(controller_address, tx)
+            controller_account = Account.create(controller_address)
         controller_account.controls.add(from_account)
-        tx.create(controller_account)
+        #tx.create(controller_account)
 
         amount_transferred = 0
         transaction.amount_transferred = amount_transferred
         transfer = False
-        return transaction, from_account, controller_account, amount_transferred, transfer, tx
+        return transaction, from_account, controller_account, amount_transferred, transfer
 
     @staticmethod
     def handle_bond(transaction_data,
@@ -348,8 +341,7 @@ class Transaction(GraphObject):
                     block,
                     transaction,
                     extrinsic_function,
-                    from_account,
-                    tx):
+                    from_account):
 
         if extrinsic_function.name == "bond":
             amount_transferred = transaction_data["call"]["call_args"][1]["value"]
@@ -364,10 +356,10 @@ class Transaction(GraphObject):
             else:
                 controller_account = from_account
             if not controller_account:
-                controller_account = Account.create(controller_address, tx)
+                controller_account = Account.create(controller_address)
             controller_account.controls.add(from_account)
             controller_account.reward_destination = reward_destination
-            tx.create(controller_account)
+            #tx.create(controller_account)
             from_account = controller_account
         elif extrinsic_function.name == "bond_extra":
             amount_transferred = transaction_data["call"]["call_args"][0]["value"]
@@ -378,7 +370,7 @@ class Transaction(GraphObject):
         transaction.amount_transferred = amount_transferred
         transfer = False
         # controller is the same as from account, else everything updated gets overwritten in update balance.
-        return transaction, from_account, controller_account, amount_transferred, transfer, tx
+        return transaction, from_account, controller_account, amount_transferred, transfer
 
 
     @staticmethod
@@ -392,8 +384,7 @@ class Transaction(GraphObject):
                  length_transaction,
                  author_account,
                  transfer,
-                 treasury_account,
-                 tx):
+                 treasury_account):
         """
         This function handles the settlement of transaction fees (validator and treasury).
         There exist some blocks where there are no fees. (i.e. first blocks of era)
@@ -404,9 +395,9 @@ class Transaction(GraphObject):
             treasury_fee = int(Utils.extract_event_attributes(event_data[-3], True) / length_transaction)
         except IndexError:
             treasury_fee = 0
-        treasury_account.update_balance(transferable=treasury_fee, tx=tx)
+        treasury_account.update_balance(transferable=treasury_fee)
         transaction.reward_treasury.add(treasury_account.get_current_balance())
-        author_account.update_balance(transferable=validator_fee, tx=tx)
+        author_account.update_balance(transferable=validator_fee)
         if validator_fee+treasury_fee:
             transaction.reward_validator.add(author_account.get_current_balance())
         total_fee = int((validator_fee+treasury_fee) / length_transaction)
@@ -430,23 +421,21 @@ class Transaction(GraphObject):
                          event_data,
                          block,
                          transaction,
-                         from_account,
-                         tx):
+                         from_account):
         reward_destination = transaction_data['call']['call_args'][0]['value']
         if isinstance(reward_destination, Dict):
             reward_destination = reward_destination['Account']
         from_account.reward_destination = reward_destination
-        tx.create(from_account)
+        #tx.create(from_account)
         amount_transferred = 0
         transfer = False
-        return transaction, from_account, from_account, amount_transferred, transfer, tx
+        return transaction, from_account, from_account, amount_transferred, transfer
 
     @staticmethod
     def handle_payout_stakers(transaction_data,
                               event_data,
                               block,
-                              transaction,
-                              tx):
+                              transaction):
         # todo: involve tx
         """
         handles Staking(Reward) event by creating a nominator node, checking their payout preferences (reward_destination)
@@ -612,26 +601,24 @@ class Account(GraphObject):
 
     def get_current_balance(self):
         triples = list(self.current_balance.triples())
-        if not len(triples):
-            balance = Balance.create(0,0,0,0)
-        else:
-            balance = triples[0][-1]
+        balance = triples[0][-1]
         return balance
 
 
     @staticmethod
-    def create(address: str, tx):
+    def create(address: str):
         account = Account(
             address=address
         )
         null_balance = Balance.create(0,0,0,0)
         account.has_balances.add(null_balance)
         account.current_balance.add(null_balance)
-        tx.create(account)
         return account
 
     @staticmethod
     def get(address: str):
+        result = Account.match(Driver().get_driver(), primary_value=address).first()
+        #print(f'this is what i found: {result} for this address: {address}')
         return Account.match(Driver().get_driver(), primary_value=address).first()
 
     
@@ -649,18 +636,15 @@ class Account(GraphObject):
                        transferable=0,
                        reserved=0,
                        bonded=0,
-                       unbonding=0,
-                       tx=None):
+                       unbonding=0):
 
         current_balance= self.get_current_balance()
-
         current_balance.transferable += transferable
         current_balance.reserved += reserved
         current_balance.bonded += bonded
         current_balance.unbonding += unbonding
 
         from_balance = Balance.createFromObject(current_balance, current_balance)
-
         self.has_balances.add(from_balance)
         self.current_balance.remove(current_balance)
         self.current_balance.add(from_balance)
@@ -668,7 +652,7 @@ class Account(GraphObject):
         if other_account is not None and block_number is not None:
             self.transfer_to.add(other_account, {"block_number": block_number})
 
-        tx.create(self)
+        #tx.create(self)
 
 class Balance(GraphObject):
     __tablename__ = "balance"
@@ -752,13 +736,14 @@ class Validator(GraphObject):
         return validator
         
     @staticmethod
-    def create(amount_staked=0, self_staked=0, nominator_staked=0, account:"Account"=None, tx=None):
+    def create(amount_staked=0, self_staked=0, nominator_staked=0, account:"Account"=None):
         validator = Validator(
             amount_staked=amount_staked,
             self_staked=self_staked,
             nominator_staked=nominator_staked
         )
         account.is_validator.add(validator)
+        #tx.create(validator)
         return validator
         
 

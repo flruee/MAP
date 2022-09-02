@@ -45,15 +45,16 @@ block_handler = Neo4jBlockHandler(driver)
 transaction_list = range(7028260,10000000)
 #transaction_list = [5499975] # free floating balance node
 #transaction_list = [5499979]
-transaction_list = [7499977]
+#transaction_list = [7499977]
+transaction_list = [5499948]
 counter = 0
 average_time = 0
 repository = Driver().get_driver()
-tx = repository.graph.begin()
+#tx = repository.graph.begin()
 
 with Session(pg_driver) as session:
         for i in transaction_list:
-            tx = repository.graph.begin()
+            #tx = repository.graph.begin()
             print(i)
             start = time.time()
 
@@ -67,8 +68,8 @@ with Session(pg_driver) as session:
             counter += 1
             stmt = select(RawData).where(RawData.block_number == i)
             db_data = session.execute(stmt).fetchone()[0]
-            block_handler.handle_full_block(db_data.data, tx)
-            repository.graph.commit(tx)
+            block_handler.handle_full_block(db_data.data)
+            #repository.graph.commit(tx)
             end = time.time()
             average_time += end - start
 
