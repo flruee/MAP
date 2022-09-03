@@ -416,7 +416,7 @@ class PGBlockHandler:
                 
                 # True Horror, an encapsulation of type Sudo->Batch gives no indication as to which events
                 # belong to which item of the batch. we have to handle those by hand.
-                elif block.block_number == 240853:
+                elif block.block_number in [240853,240984]:
                     was_successful=True
                     i=i+2 #take 3 events
                     break
