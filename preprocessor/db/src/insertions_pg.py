@@ -178,7 +178,7 @@ class PGBlockHandler:
         print(f"{extrinsic.module_name}({extrinsic.function_name})")
         if not extrinsic.was_successful:
             return
-        if(extrinsic.module_name == "Balances" and extrinsic.function_name in ["transfer", "transfer_keep_alive,transfer_all"]):
+        if(extrinsic.module_name == "Balances" and extrinsic.function_name in ["transfer", "transfer_keep_alive,transfer_all","force_transfer"]):
             self.__handle_transfer(block, extrinsic, events)
         
         elif(extrinsic.module_name == "Staking" and extrinsic.function_name in ["bond", "bond_extra"]):
@@ -200,13 +200,12 @@ class PGBlockHandler:
             self.__handle_proxy(block, extrinsic, events)
         elif (extrinsic.module_name == "Claims" and extrinsic.function_name in ["claim", "attest"]):
             self.__handle_claim(block, extrinsic, events)
-        """
-        elif (extrinsic.module_name == "Treasury" and extrinsic.function_name == "proposeSpend"):
-            self.handle_propose_spend(block, extrinsic, events)
+        
+        elif (extrinsic.module_name == "Sudo" and extrinsic.function_name == "sudo"):
+            self.__handle_sudo(block, extrinsic, events)
 
-        """
+        
     def __handle_transfer(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
-        print("in")
         from_account = Account.get(extrinsic.account)
         to_address = extrinsic.call_args[0]["value"]
         to_account = Account.get_from_address(to_address)
@@ -217,6 +216,12 @@ class PGBlockHandler:
         for event in events:
   
             if event.event_name == 'Transfer':
+                from_address = utils.extract_event_attributes_from_object(event,0)
+                #In case of a proxy or sudo call the sender of dot is not the creator of the extrinsic
+                if(from_account.address is not from_address):
+                    from_account = Account.get_from_address(from_address)
+                    if from_account is None:
+                        from_account = Account.create(from_address)
                 amount_transferred = utils.extract_event_attributes_from_object(event,2)
 
         # Create new balances
@@ -457,7 +462,13 @@ class PGBlockHandler:
 
         Transfer.create(block.block_number,eth_account, account, last_balance,new_balance,amount_transfered,extrinsic, "Claim")
 
-
+    def __handle_sudo(self,block: Block, extrinsic: Extrinsic, events: Event):
+        """
+        A sudo call wraps around another call. We extract the call inside the sudo call and create a new extrinsic
+        object out of it. Then we also execute handle_special_extrinsics if needed.
+        """
+        proxied_extrinsic = Extrinsic.create_from_sudo(block, extrinsic,events)
+        self.handle_special_extrinsics(block, proxied_extrinsic, events)
 
 
             
