@@ -107,6 +107,7 @@ class Transaction(GraphObject):
                batch_transaction=None,
                batch_from_account=None):
 
+        tx = Driver().get_driver().graph.begin()
         call_function           = transaction_data["call"]["call_function"]
         call_module             = transaction_data["call"]["call_module"]
         #print(call_module, call_function)
@@ -125,16 +126,28 @@ class Transaction(GraphObject):
             Simply return transaction since no balance shift takes place in these modules.
             """
             block.has_transaction.add(transaction)
-            return transaction, block, extrinsic_function
+            from_account = None
+            to_account = None
+            nodes = [transaction, block, extrinsic_function,  validator, treasury_account, from_account, to_account]
+            no_none_nodes = [node for node in nodes if node is not None]
+            for node in no_none_nodes:
+                print(node)
+                tx.create(node)
+            tx.commit()
 
 
         if call_module == 'Claims':
+            return
             sender_account = Transaction.handle_claim(transaction_data, event_data)
             transaction.sender_account.add(sender_account)
             block.has_transaction.add(transaction)
             #tx.create(block)
             #tx.create(transaction)
-            return transaction, block, extrinsic_function, sender_account
+            nodes = [transaction, block, extrinsic_function,  validator, treasury_account, from_account, to_account]
+            no_none_nodes = [node for node in nodes if node is not None]
+            for node in no_none_nodes:
+                tx.create(node)
+            tx.commit()
         """
         For batch calls we handle the individual extrinsics as seperate transactions. The fee paid is split up evenly
         between the individual calls.
@@ -195,7 +208,11 @@ class Transaction(GraphObject):
                                      treasury_account=treasury_account)
 
             block.has_transaction.add(transaction)
-            return transaction, block, extrinsic_function, validator_account, treasury_account, from_account, to_account
+            nodes = [transaction, block, extrinsic_function,  validator, treasury_account, from_account, to_account]
+            no_none_nodes = [node for node in nodes if node is not None]
+            for node in no_none_nodes:
+                tx.create(node)
+            tx.commit()
         transaction.is_successful = True
 
 
@@ -206,7 +223,7 @@ class Transaction(GraphObject):
         """
         if call_module == 'Utility' and call_function in ['batch', 'as_derivative', 'batch_all', 'force_batch']:
             block.has_transaction.add(transaction)
-            return transaction, block, extrinsic_function
+            return transaction, block, extrinsic_function,  validator, treasury_account, from_account, to_account
 
         """
         Similarly to the batch calls we treat the individual proxy calls as separate transactions and connect them
@@ -224,7 +241,12 @@ class Transaction(GraphObject):
                                validator=validator,
                                proxy_transaction=transaction)
             # todo: connect with proxy call
-            return transaction, block, extrinsic_function
+            nodes = [transaction, block, extrinsic_function,  validator, treasury_account, from_account, to_account]
+            no_none_nodes = [node for node in nodes if node is not None]
+            for node in no_none_nodes:
+                tx.create(node)
+            tx.commit()
+
         if proxy_transaction is not None:
             transaction.is_proxy.add(proxy_transaction)
             block.has_transaction.add(transaction)
@@ -293,8 +315,11 @@ class Transaction(GraphObject):
                                  transfer=transfer,
                                  treasury_account=treasury_account)
         block.has_transaction.add(transaction)
-
-        return transaction, block, extrinsic_function, validator_account, treasury_account, from_account, to_account
+        nodes = [transaction, block, extrinsic_function, validator, treasury_account, from_account, to_account]
+        no_none_nodes = [node for node in nodes if node is not None]
+        for node in no_none_nodes:
+            tx.create(node)
+        tx.commit()
 
 
     @staticmethod
@@ -618,7 +643,7 @@ class Account(GraphObject):
     @staticmethod
     def get(address: str):
         result = Account.match(Driver().get_driver(), primary_value=address).first()
-        #print(f'this is what i found: {result} for this address: {address}')
+        print(f'this is what i found: {result} for this address: {address}')
         return Account.match(Driver().get_driver(), primary_value=address).first()
 
     
@@ -651,7 +676,9 @@ class Account(GraphObject):
 
         if other_account is not None and block_number is not None:
             self.transfer_to.add(other_account, {"block_number": block_number})
-
+        tx = Driver().get_driver().graph.begin()
+        tx.create(self)
+        tx.commit()
         #tx.create(self)
 
 class Balance(GraphObject):

@@ -42,6 +42,11 @@ class Neo4jBlockHandler:
             block.previous_block.add(last_block)
         except TypeError:  # Only a problem for the first block
             pass
+        tx = Driver().get_driver().graph.begin()
+        tx.create(author_account)
+        tx.create(block)
+        tx.create(validator)
+        tx.commit()
         return block, author_account, validator
 
     def __handle_transaction_data(self, data, block, author_account, validator):
@@ -60,7 +65,6 @@ class Neo4jBlockHandler:
         else:
             start = 1
         for i in range(start, len(data["extrinsics"])):
-            tx = repository.graph.begin()
             # TODO make a parainherent check here
             extrinsic_data = data["extrinsics"][i]
             current_events = self.handle_events(events_data, i)
@@ -68,32 +72,17 @@ class Neo4jBlockHandler:
             # an extrinsic_hash of None indicates ParaInherent transactions or Timestamp transactions
             # timestamp is already handled above
 
-            transaction, *element = Transaction.create(block=block,
-                                  transaction_data=extrinsic_data,
-                                  event_data=current_events,
-                                  author_account=author_account,
-                                  validator=validator,
-                                  treasury_account=treasury_account,
-                                  length_transaction=1,
-                                  proxy_transaction=None,
-                                  batch_transaction=None
-                                  )
-            if not transaction:
-                continue
-            block.has_transaction.add(transaction)
-            print(element)
-            nodes = element+[transaction]
-            #flat_node = [item for sublist in nodes for item in sublist if item is not None]
-            for node in nodes:
-                tx.merge(node)
-            tx.commit()
+            Transaction.create(block=block,
+                              transaction_data=extrinsic_data,
+                              event_data=current_events,
+                              author_account=author_account,
+                              validator=validator,
+                              treasury_account=treasury_account,
+                              length_transaction=1,
+                              proxy_transaction=None,
+                              batch_transaction=None
+                              )
 
-            #transactions.append(transaction)
-            #elements.append(element)
-
-        #fat_list = elements+[transactions]
-        #flat_list = [item for sublist in fat_list for item in sublist if item is not None]
-        return #flat_list
 
     def __handle_transaction(self,
                              block,
