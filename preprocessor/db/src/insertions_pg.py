@@ -413,6 +413,13 @@ class PGBlockHandler:
                 elif events[i].event_name == "ProxyExecuted" and events[i].module_name == 'Proxy':
                     was_successful = True
                     break
+                
+                # True Horror, an encapsulation of type Sudo->Batch gives no indication as to which events
+                # belong to which item of the batch. we have to handle those by hand.
+                elif block.block_number == 240853:
+                    was_successful=True
+                    i=i+2 #take 3 events
+                    break
             
             sub_events = events[event_start:i+1]
             event_start = i+1

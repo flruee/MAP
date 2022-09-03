@@ -214,6 +214,7 @@ class Extrinsic(Base):
             if event.module_name == "Sudo" and event.event_name == "Sudid":
                 if event.attributes[0]["value"] != "Ok":
                     was_successful = False
+                break
         extrinsic_data = parent.call_args[0]["value"]
         extrinsic = Extrinsic(
             extrinsic_hash = parent.extrinsic_hash,
@@ -226,7 +227,7 @@ class Extrinsic(Base):
             module_name = extrinsic_data["call_module"],
             function_name = extrinsic_data["call_function"],
             call_args = extrinsic_data["call_args"],
-            was_successful = was_successful, #sudo call is always successful
+            was_successful = was_successful, 
             block_number = block.block_number,
             fee=0     
         )
