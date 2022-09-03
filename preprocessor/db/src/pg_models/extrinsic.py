@@ -97,7 +97,8 @@ class Extrinsic(Base):
     @staticmethod
     def create_from_proxy(block: Block, parent: "Extrinsic", events: List[Event]) -> "Extrinsic":
         was_successful = False
-        if events[-1].module_name == "System" and events[-1].event_name == "ExtrinsicSuccess":
+        if  (events[-1].module_name == "System" and events[-1].event_name == "ExtrinsicSuccess") or \
+            (events[-1].module_name == "Proxy" and events[-1].event_name == "ProxyExecuted"):
             was_successful = True
 
         address = parent.call_args[0]["value"]
@@ -203,3 +204,33 @@ class Extrinsic(Base):
             return sender_account
         else:
             return None
+
+    @staticmethod
+    def create_from_sudo(block: Block, parent: "Extrinsic", events: List[Event]) -> "Extrinsic":
+        
+
+        was_successful = True
+        for event in events:
+            if event.module_name == "Sudo" and event.event_name == "Sudid":
+                if event.attributes[0]["value"] != "Ok":
+                    was_successful = False
+                break
+        extrinsic_data = parent.call_args[0]["value"]
+        extrinsic = Extrinsic(
+            extrinsic_hash = parent.extrinsic_hash,
+            extrinsic_length = None,
+            account = parent.account,
+            signature = None,
+            era = None,
+            nonce = None,
+            tip = None,
+            module_name = extrinsic_data["call_module"],
+            function_name = extrinsic_data["call_function"],
+            call_args = extrinsic_data["call_args"],
+            was_successful = was_successful, 
+            block_number = block.block_number,
+            fee=0     
+        )
+
+        Extrinsic.save(extrinsic)
+        return extrinsic
