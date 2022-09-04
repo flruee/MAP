@@ -207,11 +207,21 @@ class PGBlockHandler:
         
     def __handle_transfer(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
         from_account = Account.get(extrinsic.account)
-        to_address = extrinsic.call_args[0]["value"]
+
+        # another sudo edge case. The sudo module can send money from an unowned account to another
+        # sometimes it sends from account a to account a which doesn't make any sense.
+        if extrinsic.function_name == "force_transfer":
+            to_address = extrinsic.call_args[1]["value"]
+            #sending itself money, no need to handle that
+            if to_address == extrinsic.call_args[0]["value"]:
+                return
+        else:
+            to_address = extrinsic.call_args[0]["value"]
+        
+        
         to_account = Account.get_from_address(to_address)
         if not to_account:
             to_account = Account.create(to_address)
-        
         # Get amount transferred from 'Transfer' event
         for event in events:
   
