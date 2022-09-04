@@ -343,7 +343,7 @@ class PGBlockHandler:
                         Transfer.create(block.block_number, validator_account,nominator_account,from_balance,to_balance,nominator_reward,extrinsic,"Reward")
                     elif nominator_account.reward_destination in ['Staked']:
                         from_balance = validator_account.update_balance(extrinsic, transferable=-nominator_reward)
-                        to_balance = nominator_account.update_balance(extrinsic,bonded=nominator_account)
+                        to_balance = nominator_account.update_balance(extrinsic,bonded=nominator_reward)
                         Transfer.create(block.block_number, validator_account,nominator_account,from_balance,to_balance,nominator_reward,extrinsic,"Reward")
 
                 nominator = Nominator.get_from_account(nominator_account)
