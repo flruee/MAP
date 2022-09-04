@@ -363,7 +363,9 @@ class PGBlockHandler:
                 nominator.reward = nominator_reward
                 Nominator.save(nominator)
                 Validator.save(validator)
-                ValidatorToNominator.create(nominator, validator, era)
+                vtn = ValidatorToNominator.get(validator,nominator,era)
+                if vtn is None:
+                    ValidatorToNominator.create(nominator, validator, era)
 
     def create_substrate_connection(self):
         exit()

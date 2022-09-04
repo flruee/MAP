@@ -2,6 +2,7 @@
 from requests import session
 from sqlalchemy import BigInteger, Column, ForeignKey, null
 from sqlalchemy import Integer
+from sqlalchemy.exc import IntegrityError
 from src.driver_singleton import Driver
 from src.pg_models.account import Account
 from src.pg_models.event import Event
@@ -15,6 +16,16 @@ class ValidatorToNominator(Base):
     validator = Column(Integer, ForeignKey("validator.id"), primary_key=True)
     era = Column(Integer, primary_key=True)
 
+
+    def get(validator: Validator, nominator: Nominator, era:int):
+        session = Driver().get_driver()
+        
+        
+        return session.query(ValidatorToNominator).where(
+            ValidatorToNominator.nominator == nominator.id,
+            ValidatorToNominator.validator == validator.id,
+            ValidatorToNominator.era == era
+            ).first()
     def create(nominator: Nominator, validator: Validator, era: int ) -> "ValidatorToNominator":
         vtn = ValidatorToNominator(
             nominator=nominator.id,
