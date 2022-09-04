@@ -14,15 +14,11 @@ class Neo4jBlockHandler:
         self.current_era = None
         self.block_author = None
 
-    def handle_full_block(self, data, tx):
-        block, author_account, validator, tx = self.__handle_block_data(data, tx)
-        nodes = self.__handle_transaction_data(data, block, author_account, validator, tx)
-        """
-        for node in nodes:
-            tx.create(node)
-        """
+    def handle_full_block(self, data):
+        block, author_account, validator = self.__handle_block_data(data)
+        self.__handle_transaction_data(data, block, author_account, validator)
 
-    def __handle_block_data(self, data, tx):
+    def __handle_block_data(self, data):
         """
         Creates new block node and connects it to previous block node
         """
@@ -31,30 +27,34 @@ class Neo4jBlockHandler:
         last_block      = Block.match(Driver().get_driver(), data["number"]-1).first()
         block           = Block.match(Driver().get_driver(), data["number"]).first()
         if block is None:
-            block = Block.create(data, timestamp, tx)
+            block = Block.create(data, timestamp)
 
         author_address = data["header"]["author"]
         author_account = Account.get(author_address)
         if not author_account:
-            author_account = Account.create(author_address, tx)
+            author_account = Account.create(author_address)
         validator = Validator.get_from_account(author_account)
         if not validator:
             validator = Validator.create(amount_staked=0, self_staked=0, nominator_staked=0,
-                                         account=author_account, tx=tx)
+                                         account=author_account)
         block.has_author.add(validator)
         try:
             block.previous_block.add(last_block)
         except TypeError:  # Only a problem for the first block
             pass
+        tx = Driver().get_driver().graph.begin()
+        tx.create(author_account)
         tx.create(block)
-        return block, author_account, validator, tx
+        tx.create(validator)
+        tx.commit()
+        return block, author_account, validator
 
-    def __handle_transaction_data(self, data, block, author_account, validator, tx):
+    def __handle_transaction_data(self, data, block, author_account, validator):
         transactions = []
         elements = []
         events_data = data["events"]
         treasury_account = Account.get_treasury()
-
+        repository = Driver().get_driver()
         if len(data['extrinsics']) == 1 and len(data["events"]) > 2:  # Todo: handle differently,
             """
             This was done because some blocks contain 0 extrinsics, 
@@ -65,7 +65,6 @@ class Neo4jBlockHandler:
         else:
             start = 1
         for i in range(start, len(data["extrinsics"])):
-
             # TODO make a parainherent check here
             extrinsic_data = data["extrinsics"][i]
             current_events = self.handle_events(events_data, i)
@@ -73,19 +72,17 @@ class Neo4jBlockHandler:
             # an extrinsic_hash of None indicates ParaInherent transactions or Timestamp transactions
             # timestamp is already handled above
 
-            transaction, *element = \
-                self.__handle_transaction(block, extrinsic_data, current_events,
-                                                    author_account, validator, tx, treasury_account)
-            if not transaction:
-                continue
-            block.has_transaction.add(transaction)
+            Transaction.create(block=block,
+                              transaction_data=extrinsic_data,
+                              event_data=current_events,
+                              author_account=author_account,
+                              validator=validator,
+                              treasury_account=treasury_account,
+                              length_transaction=1,
+                              proxy_transaction=None,
+                              batch_transaction=None
+                              )
 
-            transactions.append(transaction)
-            elements.append(element)
-
-        fat_list = elements+[transactions]
-        flat_list = [item for sublist in fat_list for item in sublist if item is not None]
-        return flat_list
 
     def __handle_transaction(self,
                              block,
@@ -93,22 +90,11 @@ class Neo4jBlockHandler:
                              event_data,
                              author_account,
                              validator,
-                             tx,
                              treasury_account):
         """
         creates a transaction node, 
         """
-        return Transaction.create(block=block,
-                                  transaction_data=transaction_data,
-                                  event_data=event_data,
-                                  author_account=author_account,
-                                  validator=validator,
-                                  tx=tx,
-                                  treasury_account=treasury_account,
-                                  length_transaction=1,
-                                  proxy_transaction=None,
-                                  batch_transaction=None
-                                  )
+        return
 
     def __handle_event_data(self, data, transactions, block):
         """
