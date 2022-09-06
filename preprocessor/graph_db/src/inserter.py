@@ -2,10 +2,10 @@ import logging
 from typing import Dict, List
 import datetime
 import json
-from src.models import Block,Transaction, Account, Balance, Transaction, Validator, ValidatorPool, Nominator
+from src.models import Block, Transaction, Account, Transaction, Validator, ValidatorPool, Nominator
 from src.driver_singleton import Driver
 from py2neo.ogm import Repository
-
+from py2neo import Subgraph, Node, Relationship
 
 
 class Neo4jBlockHandler:
@@ -22,39 +22,30 @@ class Neo4jBlockHandler:
         """
         Creates new block node and connects it to previous block node
         """
-        timestamp       = data["extrinsics"][0]["call"]["call_args"][0]["value"]
-        timestamp       = datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=timestamp)
-        last_block      = Block.match(Driver().get_driver(), data["number"]-1).first()
-        block           = Block.match(Driver().get_driver(), data["number"]).first()
+        timestamp = data["extrinsics"][0]["call"]["call_args"][0]["value"]
+        timestamp = datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=timestamp)
+        last_block = Block.match(Driver().get_driver(), data["number"] - 1).first()
+        block = Block.match(Driver().get_driver(), data["number"]).first()
         if block is None:
             block = Block.create(data, timestamp)
-
         author_address = data["header"]["author"]
-        author_account = Account.get(author_address)
+        author_account = Account.get(block, author_address)
         if not author_account:
             author_account = Account.create(author_address)
         validator = Validator.get_from_account(author_account)
         if not validator:
             validator = Validator.create(amount_staked=0, self_staked=0, nominator_staked=0,
                                          account=author_account)
-        block.has_author.add(validator)
-        try:
+        block_validator = Relationship(block, ":HAS_AUTHOR", validator)
+        if last_block is not None:
             block.previous_block.add(last_block)
-        except TypeError:  # Only a problem for the first block
-            pass
-        tx = Driver().get_driver().graph.begin()
-        tx.create(author_account)
-        tx.create(block)
-        tx.create(validator)
-        tx.commit()
-        return block, author_account, validator
+
+        subgraph = block_validator | author_account | validator
+        return subgraph
 
     def __handle_transaction_data(self, data, block, author_account, validator):
-        transactions = []
-        elements = []
         events_data = data["events"]
         treasury_account = Account.get_treasury()
-        repository = Driver().get_driver()
         if len(data['extrinsics']) == 1 and len(data["events"]) > 2:  # Todo: handle differently,
             """
             This was done because some blocks contain 0 extrinsics, 
@@ -73,16 +64,12 @@ class Neo4jBlockHandler:
             # timestamp is already handled above
 
             Transaction.create(block=block,
-                              transaction_data=extrinsic_data,
-                              event_data=current_events,
-                              author_account=author_account,
-                              validator=validator,
-                              treasury_account=treasury_account,
-                              length_transaction=1,
-                              proxy_transaction=None,
-                              batch_transaction=None
-                              )
-
+                               transaction_data=extrinsic_data,
+                               event_data=current_events,
+                               proxy_transaction=None,
+                               batch_from_account=None,
+                               batch_transaction=None
+                               )
 
     def __handle_transaction(self,
                              block,
@@ -139,15 +126,14 @@ class Neo4jBlockHandler:
                     validator_pool.hasValidators.add(list(block.has_author.triples())[0][2])
         return validator_pool
 
-
     def __add_fees_to_author(self, address, block, events: List):
-        
+
         author = Account.match(self.driver, address).first()
         if author is None:
             author = Account.create_account(address)
 
-        author_balance =  list(author.has_balances.triples())[-1][-1]
-                
+        author_balance = list(author.has_balances.triples())[-1][-1]
+
         fees = 0
         for event in events:
             if event.module_name == "Balances" and event.event_name == "Deposit":
@@ -157,10 +143,10 @@ class Neo4jBlockHandler:
                 fees += attributes[1]["value"]
         if fees != 0:
             new_balance = Balance(
-                transferable = author_balance.transferable + fees,
-                reserved = author_balance.reserved,
-                bonded = author_balance.bonded,
-                unbonding = author_balance.unbonding
+                transferable=author_balance.transferable + fees,
+                reserved=author_balance.reserved,
+                bonded=author_balance.bonded,
+                unbonding=author_balance.unbonding
             )
 
             author.has_balances.add(new_balance)
@@ -171,8 +157,8 @@ class Neo4jBlockHandler:
 
         return author
 
-    def handle_events(self,events, extrinsic_idx) -> List:
-            """
+    def handle_events(self, events, extrinsic_idx) -> List:
+        """
                 Iterates through events, selects those that have the same extrinsic_idx as the given one
                 stores them in the db and returns all found events
 
@@ -182,12 +168,11 @@ class Neo4jBlockHandler:
                 an extrinsic (lets say it was extrinsic n) that sends DOT to an other account has multiple events (all with the same extrinic_id = n-1)
 
             """
-            current_events = []
-            for event_data in events:
-                if extrinsic_idx == 0:
-                    extrinsic_idx = None
-                if event_data["extrinsic_idx"] == extrinsic_idx:
-                    current_events.append(event_data)
+        current_events = []
+        for event_data in events:
+            if extrinsic_idx == 0:
+                extrinsic_idx = None
+            if event_data["extrinsic_idx"] == extrinsic_idx:
+                current_events.append(event_data)
 
-
-            return current_events
+        return current_events
