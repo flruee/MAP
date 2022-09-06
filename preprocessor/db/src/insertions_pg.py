@@ -211,7 +211,7 @@ class PGBlockHandler:
         # another sudo edge case. The sudo module can send money from an unowned account to another
         # sometimes it sends from account a to account a which doesn't make any sense.
         if extrinsic.function_name == "force_transfer":
-            to_address = extrinsic.call_args[1]["value"]
+            to_address = extrinsic.call_args[1]["value"].replace("0x","")
             #sending itself money, no need to handle that
             if to_address == extrinsic.call_args[0]["value"]:
                 return
@@ -235,6 +235,8 @@ class PGBlockHandler:
                 amount_transferred = utils.extract_event_attributes_from_object(event,2)
 
         # Create new balances
+        if extrinsic.function_name == "force_transfer":
+            amount_transferred = int(extrinsic.call_args[2]["value"])
         from_balance = Balance.create(from_account, extrinsic, transferable=-(amount_transferred+extrinsic.fee), executing=True)
         to_balance = Balance.create(to_account, extrinsic,transferable=amount_transferred)
         
@@ -428,7 +430,7 @@ class PGBlockHandler:
                 
                 # True Horror, an encapsulation of type Sudo->Batch gives no indication as to which events
                 # belong to which item of the batch. we have to handle those by hand.
-                elif block.block_number in [240853,240984,372203]:
+                elif block.block_number in [240853,240984,372203,500796]:
                     was_successful=True
                     i=i+2 #take 3 events
                     break
