@@ -208,18 +208,29 @@ class Extrinsic(Base):
     @staticmethod
     def create_from_sudo(block: Block, parent: "Extrinsic", events: List[Event]) -> "Extrinsic":
         
-
+        account = Account.get(parent.account)
         was_successful = True
         for event in events:
             if event.module_name == "Sudo" and event.event_name == "Sudid":
                 if event.attributes[0]["value"] != "Ok":
                     was_successful = False
                 break
-        extrinsic_data = parent.call_args[0]["value"]
+
+        # In case of 'SudoAs' the sudo account makes a call on behalf of another account
+        # Get the correct account and select the real call data
+        if parent.call_args[0]["name"] == "who":
+            extrinsic_data = parent.call_args[1]["value"]
+            address = parent.call_args[0]["value"][2:]
+            account = Account.get_from_address(address)
+            if account is None:
+                account = Account.create(address)
+        else:
+            extrinsic_data = parent.call_args[0]["value"]
+
         extrinsic = Extrinsic(
             extrinsic_hash = parent.extrinsic_hash,
             extrinsic_length = None,
-            account = parent.account,
+            account = account.id,
             signature = None,
             era = None,
             nonce = None,
