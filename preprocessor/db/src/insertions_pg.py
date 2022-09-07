@@ -198,10 +198,12 @@ class PGBlockHandler:
         #TODO Proxy(Proxy)
         elif (extrinsic.module_name == "Proxy" and extrinsic.function_name == "proxy"):
             self.__handle_proxy(block, extrinsic, events)
+        elif (extrinsic.module_name == "Proxy" and extrinsic.function_name == "add_proxy"):
+            self.__handle_add_proxy(block, extrinsic,events)
         elif (extrinsic.module_name == "Claims" and extrinsic.function_name in ["claim", "attest"]):
             self.__handle_claim(block, extrinsic, events)
         
-        elif (extrinsic.module_name == "Sudo" and extrinsic.function_name == "sudo"):
+        elif (extrinsic.module_name == "Sudo" and extrinsic.function_name in ["sudo","sudo_as"]):
             self.__handle_sudo(block, extrinsic, events)
 
         
@@ -434,6 +436,9 @@ class PGBlockHandler:
                     was_successful=True
                     i=i+2 #take 3 events
                     break
+                elif events[i].module_name == "Sudo" and events[i].event_name == "SudoAsDone":
+                    was_successful = utils.extract_event_attributes_from_object(events[i],0)
+                    break
             
             sub_events = events[event_start:i+1]
             event_start = i+1
@@ -447,6 +452,9 @@ class PGBlockHandler:
         We extract the proxy 'call_args', create a new extrinsic with the other accounts address and call the
         handle_special_extrinsic function.
         """
+        for event in events:
+            if event.module_name == "Balances" and event.event_name == "Reserved":
+                print("ey")
         proxied_extrinsic = Extrinsic.create_from_proxy(block, extrinsic,events)
         self.handle_special_extrinsics(block, proxied_extrinsic, events)
 
@@ -483,7 +491,7 @@ class PGBlockHandler:
 
         Transfer.create(block.block_number,eth_account, account, last_balance,new_balance,amount_transfered,extrinsic, "Claim")
 
-    def __handle_sudo(self,block: Block, extrinsic: Extrinsic, events: Event):
+    def __handle_sudo(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
         """
         A sudo call wraps around another call. We extract the call inside the sudo call and create a new extrinsic
         object out of it. Then we also execute handle_special_extrinsics if needed.
@@ -492,4 +500,31 @@ class PGBlockHandler:
         self.handle_special_extrinsics(block, proxied_extrinsic, events)
 
 
-            
+    def __handle_add_proxy(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
+        """
+        A proxy account reserves 20.008 DOT (https://wiki.polkadot.network/docs/learn-proxies#proxy-deposits)
+
+        """
+        #TODO handle proxy relation
+        for event in events:
+            if event.module_name == "Balances" and event.event_name == "Reserved":
+                account = Account.get(extrinsic.account)
+                amount = utils.extract_event_attributes_from_object(event,1)
+                
+                last_balance = Balance.get_last_balance(account)
+                new_balance = account.update_balance(
+                    extrinsic,
+                    transferable=-amount,
+                    reserved=amount
+                    )
+                Transfer.create(
+                    block.block_number,
+                    account,
+                    account,
+                    last_balance,
+                    new_balance,
+                    amount,
+                    extrinsic,
+                    "Reserved"
+                    )
+                break
