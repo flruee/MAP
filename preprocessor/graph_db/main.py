@@ -42,11 +42,11 @@ driver_singleton = Driver()
 driver_singleton.add_driver(driver)
 pg_driver = create_engine('postgresql://postgres:polkamap@172.23.149.214/raw_data')
 block_handler = Neo4jBlockHandler(driver)
-transaction_list = range(7000000,10000000)
+transaction_list = range(7011056,10000000)
 #transaction_list = [5499975] # free floating balance node
 #transaction_list = [5499979]
 #transaction_list = [7499977]
-#transaction_list = [7000001]
+transaction_list = [328745, 331050]
 counter = 0
 average_time = 0
 
@@ -54,9 +54,9 @@ with Session(pg_driver) as session:
         for i in transaction_list:
             print(i)
             start = time.time()
-            if counter == 100:
+            if counter == 1000:
                 counter = 0
-                average_time = average_time / 100
+                average_time = average_time / 1000
                 print(average_time)
                 average_time = 0
             counter += 1
