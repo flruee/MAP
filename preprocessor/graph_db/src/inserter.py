@@ -2,7 +2,7 @@ import logging
 from typing import Dict, List
 import datetime
 import json
-from src.models import Block, Transaction, Account, Transaction, Validator, ValidatorPool, Nominator
+from src.models import Block, Transaction, Account, Transaction, Validator, ValidatorPool, Nominator, Utils
 from src.driver_singleton import Driver
 from py2neo.ogm import Repository
 from py2neo import Subgraph, Node, Relationship
@@ -15,8 +15,19 @@ class Neo4jBlockHandler:
         self.block_author = None
 
     def handle_full_block(self, data):
-        block, author_account, validator = self.__handle_block_data(data)
-        self.__handle_transaction_data(data, block, author_account, validator)
+        block, subgraph = self.__handle_block_data(data)
+        subgraphs = self.__handle_transaction_data(data, block, subgraph)
+        if not len(subgraphs):
+            return
+        if not len(subgraphs) == 1:
+            subgraph = subgraphs[0]
+            for sub in subgraphs[1:]:
+                subgraph = Utils.merge_subgraph(subgraph, sub)
+        else:
+            subgraph = subgraphs[0]
+        tx = Driver().get_driver().graph.begin()
+        tx.create(subgraph)
+        tx.commit()
 
     def __handle_block_data(self, data):
         """
@@ -25,27 +36,42 @@ class Neo4jBlockHandler:
         timestamp = data["extrinsics"][0]["call"]["call_args"][0]["value"]
         timestamp = datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=timestamp)
         last_block = Block.match(Driver().get_driver(), data["number"] - 1).first()
+        if last_block is not None:
+            last_block = last_block.__node__
         block = Block.match(Driver().get_driver(), data["number"]).first()
+        if block is not None:
+            block = block.__node__
         if block is None:
             block = Block.create(data, timestamp)
         author_address = data["header"]["author"]
-        author_account = Account.get(block, author_address)
+        subgraph = Subgraph()
+        author_account = Account.get(subgraph, author_address)
         if not author_account:
             author_account = Account.create(author_address)
         validator = Validator.get_from_account(author_account)
         if not validator:
             validator = Validator.create(amount_staked=0, self_staked=0, nominator_staked=0,
                                          account=author_account)
-        block_validator = Relationship(block, ":HAS_AUTHOR", validator)
+
         if last_block is not None:
-            block.previous_block.add(last_block)
+            block_lastblock_relationship = Relationship(block, "PREVIOUS_BLOCK", last_block)
+            subgraph = Utils.merge_subgraph(subgraph, block_lastblock_relationship)
 
-        subgraph = block_validator | author_account | validator
-        return subgraph
+        block_validator_relationship = Relationship(block, "HAS_AUTHOR", validator)
+        account_validator_relationship = Relationship(author_account, "IS_VALIDATOR", validator)
 
-    def __handle_transaction_data(self, data, block, author_account, validator):
+        subgraph = Utils.merge_subgraph(subgraph, block, author_account, validator, block_validator_relationship,
+                             account_validator_relationship)
+        return block, subgraph
+
+    def __handle_transaction_data(self, data, block, subgraph):
         events_data = data["events"]
-        treasury_account = Account.get_treasury()
+        subgraphs = []
+        last_event_module = events_data[-1]['module_id']
+        last_event_function = events_data[-1]['event_id']
+        if last_event_function == 'NewAuthorities' and last_event_module == 'Grandpa':
+            subgraph = self.handle_validatorpool(events_data[-1], subgraph, block)
+            subgraphs.append(subgraph)
         if len(data['extrinsics']) == 1 and len(data["events"]) > 2:  # Todo: handle differently,
             """
             This was done because some blocks contain 0 extrinsics, 
@@ -63,13 +89,17 @@ class Neo4jBlockHandler:
             # an extrinsic_hash of None indicates ParaInherent transactions or Timestamp transactions
             # timestamp is already handled above
 
-            Transaction.create(block=block,
+            subgraph = Transaction.create(block=block,
                                transaction_data=extrinsic_data,
                                event_data=current_events,
                                proxy_transaction=None,
                                batch_from_account=None,
-                               batch_transaction=None
+                               batch_transaction=None,
+                               subgraph=subgraph
                                )
+            subgraphs.append(subgraph)
+        return subgraphs
+
 
     def __handle_transaction(self,
                              block,
@@ -79,9 +109,30 @@ class Neo4jBlockHandler:
                              validator,
                              treasury_account):
         """
-        creates a transaction node, 
+        creates a transaction node,
         """
         return
+
+    @staticmethod
+    def handle_validatorpool(event, subgraph, block):
+        #validatorpool.from_block.add(block)
+        last_validator_pool_node = None
+        if block['block_number'] == 328745:
+            era = 0
+        else:
+            last_validator_pool = ValidatorPool.get()[-1]
+            last_validator_pool_node = last_validator_pool.__node__
+            era = last_validator_pool.era + 1
+        current_validatorpool = ValidatorPool.create(era=era,
+                             total_staked=0,
+                             total_reward=0)
+        if last_validator_pool_node is not None:
+            current_previous_relationship = Relationship(current_validatorpool, "PREVIOUS_POOL", last_validator_pool_node)
+            subgraph = Utils.merge_subgraph(subgraph, current_previous_relationship)
+        currentpool_block_relationship = Relationship(current_validatorpool, "FROM_BLOCK", block)
+
+        return Utils.merge_subgraph(subgraph, current_validatorpool, currentpool_block_relationship)
+
 
     def __handle_event_data(self, data, transactions, block):
         """
