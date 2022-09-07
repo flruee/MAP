@@ -257,7 +257,10 @@ class PGBlockHandler:
         from_account = Account.get(extrinsic.account)
         
         if extrinsic.function_name == "bond":
-            amount_transferred = extrinsic.call_args[1]["value"]
+            #amount_transferred = extrinsic.call_args[1]["value"]
+            for event in events:
+                if event.module_name == "Staking" and event.event_name == "Bonded":
+                    amount_transferred = utils.extract_event_attributes_from_object(event,1)
             controller_address = extrinsic.call_args[0]["value"]
             controller_account = Account.get_from_address(controller_address)
             from_account.reward_destination = extrinsic.call_args[2]["value"]
