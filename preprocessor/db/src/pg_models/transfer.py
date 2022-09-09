@@ -34,9 +34,9 @@ class Transfer(Base):
         ) -> "Transfer":
         transfer = Transfer(
             block_number=block_number,
-            from_account=from_account.id,
+            from_account=from_account.id if from_account else None,
             to_account=to_account.id,
-            from_balance=from_balance.id,
+            from_balance=from_balance.id if from_balance else None,
             to_balance=to_balance.id,
             value=value,
             extrinsic=extrinsic.id,
