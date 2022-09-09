@@ -126,7 +126,6 @@ class Transaction(GraphObject):
 
         call_function = transaction_data["call"]["call_function"]
         call_module = transaction_data["call"]["call_module"]
-        #print(call_module, call_function)
         transaction = Node("Transaction",
                            extrinsic_hash=transaction_data["extrinsic_hash"])
         subgraph = Utils.merge_subgraph(subgraph, transaction)
@@ -143,6 +142,10 @@ class Transaction(GraphObject):
             """
             Simply return transaction since no balance shift takes place in these modules.
             """
+            block_transaction_relationship = Relationship(block, "HAS_TRANSACTION", transaction)
+            return Utils.merge_subgraph(subgraph, block_transaction_relationship)
+
+        if call_module in ["Staking"] and call_function in ['submit_election_solution_unsigned']:
             block_transaction_relationship = Relationship(block, "HAS_TRANSACTION", transaction)
             return Utils.merge_subgraph(subgraph, block_transaction_relationship)
         """
