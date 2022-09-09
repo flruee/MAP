@@ -13,7 +13,8 @@ class Nominator(Base):
     id = Column(Integer, primary_key=True)
     account = Column(Integer, ForeignKey("account.id"))
     validator = Column(Integer, ForeignKey("validator.id"))
-    stake = Column(BigInteger)
+    reward = Column(BigInteger)
+    reward_transfer = Column(ForeignKey("transfer.id"))
     era = Column(Integer, ForeignKey("validator_pool.era"))
 
 
@@ -23,11 +24,12 @@ class Nominator(Base):
         return session.query(Nominator).filter(Nominator.account == account.id).first()
 
 
-    def create(account: Account, validator: Validator, stake: int,era: int) -> "Nominator":
+    def create(account: Account, validator: Validator,reward: int, reward_transfer: "Transfer", era: int) -> "Nominator":
         nominator = Nominator(
             account = account.id,
             validator = validator.id,
-            stake = stake,
+            reward = reward,
+            reward_transfer = reward_transfer.id,
             era = era
         )
         Nominator.save(nominator)

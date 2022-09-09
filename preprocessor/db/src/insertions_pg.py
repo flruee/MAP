@@ -257,7 +257,10 @@ class PGBlockHandler:
         from_account = Account.get(extrinsic.account)
         
         if extrinsic.function_name == "bond":
-            amount_transferred = extrinsic.call_args[1]["value"]
+            #amount_transferred = extrinsic.call_args[1]["value"]
+            for event in events:
+                if event.module_name == "Staking" and event.event_name == "Bonded":
+                    amount_transferred = utils.extract_event_attributes_from_object(event,1)
             controller_address = extrinsic.call_args[0]["value"]
             controller_account = Account.get_from_address(controller_address)
             from_account.reward_destination = extrinsic.call_args[2]["value"]
@@ -339,32 +342,37 @@ class PGBlockHandler:
                     nominator_account = Account.create(nominator_address)
                 from_balance = Balance.get_last_balance(validator_account)
                 
-                
+                transfer = None
                 if nominator_address == validator_stash:
                     if validator_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
                         to_balance = validator_account.update_balance(extrinsic,transferable=nominator_reward)
-                        transfer = Transfer.create(block.block_number, validator_account,nominator_account,from_balance,to_balance,nominator_reward,extrinsic,"Reward")
+                        transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
                         from_balance = to_balance
                     elif validator_account.reward_destination in ['Staked']:
                         to_balance = validator_account.update_balance(extrinsic,bonded=nominator_reward)
-                        Transfer.create(block.block_number, validator_account,nominator_account,from_balance,to_balance,nominator_reward,extrinsic,"Reward")
+                        transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
                         from_balance = to_balance
 
                 else:
                     if nominator_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
                         from_balance = validator_account.update_balance(extrinsic, transferable=-nominator_reward)
                         to_balance = nominator_account.update_balance(extrinsic, transferable=nominator_reward)
-                        Transfer.create(block.block_number, validator_account,nominator_account,from_balance,to_balance,nominator_reward,extrinsic,"Reward")
+                        transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
                     elif nominator_account.reward_destination in ['Staked']:
                         from_balance = validator_account.update_balance(extrinsic, transferable=-nominator_reward)
                         to_balance = nominator_account.update_balance(extrinsic,bonded=nominator_reward)
-                        Transfer.create(block.block_number, validator_account,nominator_account,from_balance,to_balance,nominator_reward,extrinsic,"Reward")
+                        transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
 
                 nominator = Nominator.get_from_account(nominator_account)
                 if nominator is None:
-                    nominator = Nominator.create(nominator_account,validator,0,era)
+                    nominator = Nominator.create(
+                        nominator_account,
+                        validator,
+                        nominator_reward,
+                        transfer,
+                        era
+                        )
                 Account.save(nominator_account)
-                nominator.reward = nominator_reward
                 Nominator.save(nominator)
                 Validator.save(validator)
                 vtn = ValidatorToNominator.get(validator,nominator,era)
