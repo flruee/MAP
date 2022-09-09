@@ -126,7 +126,7 @@ class Transaction(GraphObject):
 
         call_function = transaction_data["call"]["call_function"]
         call_module = transaction_data["call"]["call_module"]
-        # print(call_module, call_function)
+        #print(call_module, call_function)
         transaction = Node("Transaction",
                            extrinsic_hash=transaction_data["extrinsic_hash"])
         subgraph = Utils.merge_subgraph(subgraph, transaction)
@@ -207,10 +207,11 @@ class Transaction(GraphObject):
             transaction_structure['extrinsic_hash'] = transaction_data['extrinsic_hash']
             transaction_structure['address'] = transaction_data['address']
             transaction_structure['call'] = transaction_data['call']['call_args'][2]['value']
-            Transaction.create(block=block,
+            subgraph = Transaction.create(block=block,
                                transaction_data=transaction_structure,
                                event_data=event_data,
-                               proxy_transaction=transaction)
+                               proxy_transaction=transaction,
+                                          subgraph=subgraph)
             # todo: connect with proxy call
 
         if proxy_transaction is not None:
@@ -261,9 +262,6 @@ class Transaction(GraphObject):
                                                   block=block,
                                                   transaction=transaction,
                                                      subgraph=subgraph)
-
-        elif extrinsic_function['name'] == "propose_spend":  # todo: handle treasury extrinsics
-            return transaction, block, extrinsic_function
 
         return subgraph
 
@@ -419,7 +417,6 @@ class Transaction(GraphObject):
                               block,
                               transaction,
                               subgraph):
-        # todo: involve tx
         """
         handles Staking(Reward) event by creating a nominator node, checking their payout preferences (reward_destination)
         adjusting their transferable/bonded balance respectively.
@@ -437,34 +434,17 @@ class Transaction(GraphObject):
             if event['event_id'] == 'Reward':
                 nominator_reward = event['attributes'][1]['value']
                 nominator_address = event['attributes'][0]['value']
-                if nominator_address == validator_stash:
-                    if author_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
-                        author_account.update_balance(transferable=nominator_reward)
-                    elif author_account.reward_destination in ['Staked']:
-                        author_account.update_balance(bonded=nominator_reward)
-                    continue
-                nominator_account = Account.get(nominator_address)
+                nominator_account = Account.get(subgraph, nominator_address)
                 if nominator_account is None:
                     nominator_account = Account.create(nominator_address)
-                if nominator_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
-                    nominator_account.update_balance(transferable=nominator_reward)
-                elif nominator_account.reward_destination in ['Staked']:
-                    nominator_account.update_balance(bonded=nominator_account)
                 nominator = Nominator.get_from_account(nominator_account)
-                nominator_account.is_nominator.add(nominator)
-                repository = Driver().get_driver()
-                # repository.merge(nominator_account)
-                nominator.reward = nominator_reward
-                # repository.merge(nominator)
-                validator.has_nominator.add(nominator)
-                # repository.merge(validator)
+                nominator_account_relationship = Relationship(nominator_account, "IS_NOMINATOR", nominator)
+                nominator['reward'] = nominator_reward
+                validator_nominator_relationship = Relationship(validator, "HAS_NOMINATOR", nominator)
+                subgraph = Utils.merge_subgraph(subgraph, nominator, nominator_account_relationship,
+                                                validator_nominator_relationship, nominator_account)
 
-        amount_transferred = 0
-        from_account_address = transaction_data['address']
-        from_account = Account.get(subgraph, from_account_address)
-        if from_account is None:
-            from_account = Account.create(from_account_address)
-        return Utils.merge_subgraph(subgraph, from_account, Transaction.finish_transaction(block, transaction))
+        return Utils.merge_subgraph(subgraph, Transaction.finish_transaction(block, transaction))
 
     @staticmethod
     def handle_tip(transaction_data, event_data, block, transaction):
@@ -648,12 +628,10 @@ class ValidatorPool(GraphObject):
         )
         return validatorpool
 
-    @staticmethod
-    def save(validatorpool: "ValidatorPool"):
-        Driver().get_driver().save(validatorpool)
-
 
 class Validator(GraphObject):
+    __primarykey__ = "account"
+
     amount_staked = Property()
     self_staked = Property()
     nominator_staked = Property()
@@ -669,12 +647,12 @@ class Validator(GraphObject):
     @staticmethod
     def get_from_account(account: "Account") -> "Validator":
 
-        validator_list = account['IS_VALIDATOR']
-
-        if validator_list is None:
+        res = Driver().get_driver().graph.run(
+            "Match (v:Validator)<-[:IS_VALIDATOR]-(a:Account {address: '" + str(account['address']) + "'}) return v").evaluate()
+        if res is None:
             validator = Validator.create(account=account)
         else:
-            validator = validator_list[0][-1]
+            validator = res
         return validator
 
     @staticmethod
@@ -686,10 +664,6 @@ class Validator(GraphObject):
                          )
         return validator
 
-    @staticmethod
-    def save(validator: "Validator"):
-        Driver().get_driver().save(validator)
-
 
 class Nominator(GraphObject):
     total_staked = Property()
@@ -697,25 +671,18 @@ class Nominator(GraphObject):
 
     @staticmethod
     def get_from_account(account: "Account") -> "Nominator":
-        nominator_list = list(account.is_nominator.triples())
-        if not len(nominator_list):
+        res = Driver().get_driver().graph.run(
+            "Match (n:Nominator)<-[:IS_NOMINATOR]-(a:Account {address: '" + str(account['address']) + "'}) return n").evaluate()
+        if res is None:
             nominator = Nominator.create(account=account)
         else:
-            nominator = nominator_list[0][-1]
+            nominator = res
         return nominator
 
     @staticmethod
     def create(total_staked=0, reward=0, account: "Account" = None):
-        nominator = Nominator(
+        nominator = Node("Nominator",
             total_staked=total_staked,
             reward=reward
         )
-
-        Nominator.save(nominator)
-        account.is_nominator.add(nominator)
-        Account.save(account)
         return nominator
-
-    @staticmethod
-    def save(nominator: "Nominator"):
-        Driver().get_driver().save(nominator)
