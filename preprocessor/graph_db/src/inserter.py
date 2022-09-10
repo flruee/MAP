@@ -130,7 +130,16 @@ class Neo4jBlockHandler:
             current_previous_relationship = Relationship(current_validatorpool, "PREVIOUS_POOL", last_validator_pool_node)
             subgraph = Utils.merge_subgraph(subgraph, current_previous_relationship)
         currentpool_block_relationship = Relationship(current_validatorpool, "FROM_BLOCK", block)
-
+        for validator in event['attributes'][0]['value']:
+            validator_address = Utils.convert_public_key_to_polkadot_address(validator['authority_id'])
+            validator_account = Account.get(subgraph, validator_address)
+            if validator_account is None:
+                validator_account = Account.create(validator_address)
+            validator_node = Validator.get_from_account(validator_account)
+            account_validator_relationship = Relationship(validator_account, "IS_VALIDATOR", validator_node)
+            validatorpool_validatornode_relationship = Relationship(current_validatorpool, "HAS_VALIDATOR", validator_node)
+            subgraph = Utils.merge_subgraph(subgraph, validator_node, validator_account,
+                                            validatorpool_validatornode_relationship, account_validator_relationship)
         return Utils.merge_subgraph(subgraph, current_validatorpool, currentpool_block_relationship)
 
 

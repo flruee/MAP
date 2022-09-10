@@ -1,7 +1,7 @@
 from dotenv import load_dotenv, find_dotenv
 from py2neo.ogm import Repository
 from src.inserter import Neo4jBlockHandler
-from src.models import RawData
+from src.models import RawData, Utils
 from src.driver_singleton import Driver
 import time
 from sqlalchemy import create_engine, select
@@ -42,28 +42,31 @@ driver_singleton = Driver()
 driver_singleton.add_driver(driver)
 pg_driver = create_engine('postgresql://postgres:polkamap@172.23.149.214/raw_data')
 block_handler = Neo4jBlockHandler(driver)
-transaction_list = range(7011056,10000000)
+transaction_list = range(328745,1328745)
 #transaction_list = [5499975] # free floating balance node
 #transaction_list = [5499979]
 #transaction_list = [7499977]
-transaction_list = [328745, 331050]
+#transaction_list = [330907]
 counter = 0
 average_time = 0
 
 with Session(pg_driver) as session:
-        for i in transaction_list:
-            print(i)
-            start = time.time()
-            if counter == 1000:
-                counter = 0
-                average_time = average_time / 1000
-                print(average_time)
-                average_time = 0
-            counter += 1
-            stmt = select(RawData).where(RawData.block_number == i)
-            db_data = session.execute(stmt).fetchone()[0]
-            block_handler.handle_full_block(db_data.data)
-            end = time.time()
-            average_time += end - start
+    subgraphs = []
+    start = time.time()
+    for i in transaction_list:
+        print(i)
+
+        """        if counter == 1000:
+            counter = 0
+            average_time = average_time / 1000
+            print(average_time)
+            average_time = 0"""
+        counter += 1
+        stmt = select(RawData).where(RawData.block_number == i)
+        db_data = session.execute(stmt).fetchone()[0]
+        block_handler.handle_full_block(db_data.data)
+        end = time.time()
+        average_time += end - start
+    print(end - start)
 
 
