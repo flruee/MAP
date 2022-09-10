@@ -227,6 +227,7 @@ class PGBlockHandler:
         if not to_account:
             to_account = Account.create(to_address)
         # Get amount transferred from 'Transfer' event
+        amount_transferred = None
         for event in events:
   
             if event.event_name == 'Transfer':
@@ -243,6 +244,8 @@ class PGBlockHandler:
             amount_transferred = int(extrinsic.call_args[2]["value"])
         if from_account.id == to_account.id:
             amount_transferred = 0
+        if amount_transferred is None:
+            amount_transferred = extrinsic.call_args[1]["value"]
         from_balance = Balance.create(from_account, extrinsic, transferable=-(amount_transferred+extrinsic.fee), executing=True)
         to_balance = Balance.create(to_account, extrinsic,transferable=amount_transferred)
         
