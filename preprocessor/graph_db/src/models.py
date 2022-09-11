@@ -620,7 +620,7 @@ class ValidatorPool(GraphObject):
 
     @staticmethod
     def get():
-        return ValidatorPool.match(Driver().get_driver()).all()
+        return ValidatorPool.match(Driver().get_driver()).all()[-1]
 
     @staticmethod
     def create(era, total_staked=0, total_reward=0):
@@ -629,6 +629,9 @@ class ValidatorPool(GraphObject):
             total_staked=total_staked,
             total_reward=total_reward
         )
+        tx = Driver().get_driver().graph.begin()
+        tx.create(validatorpool)
+        Driver().get_driver().graph.commit(tx)
         return validatorpool
 
 

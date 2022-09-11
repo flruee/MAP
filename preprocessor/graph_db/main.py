@@ -55,7 +55,6 @@ with Session(pg_driver) as session:
     start = time.time()
     for i in transaction_list:
         print(i)
-
         if counter == 100000:
             counter = 0
             average_time = average_time / 100000

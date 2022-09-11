@@ -121,7 +121,7 @@ class Neo4jBlockHandler:
         if block['block_number'] == 328745:
             era = 0
         else:
-            last_validator_pool = ValidatorPool.get()[-1]
+            last_validator_pool = ValidatorPool.get()
             last_validator_pool_node = last_validator_pool.__node__
             era = last_validator_pool.era + 1
         current_validatorpool = ValidatorPool.create(era=era,
