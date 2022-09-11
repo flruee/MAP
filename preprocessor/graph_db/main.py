@@ -55,16 +55,18 @@ with Session(pg_driver) as session:
     start = time.time()
     for i in transaction_list:
         print(i)
-        if counter == 100000:
+        if counter == 1000:
             counter = 0
-            average_time = average_time / 100000
+            average_time = average_time / 1000
             print(average_time)
             average_time = 0
+            subgraph = subgraphs[0]
             for sub in subgraphs[1:]:
-                subgraph = Utils.merge_subgraph(subgraphs[0], sub)
+                subgraph = Utils.merge_subgraph(subgraph, sub)
             tx = Driver().get_driver().graph.begin()
             tx.create(subgraph)
             Driver().get_driver().graph.commit(tx)
+            exit()
             subgraphs = []
         counter += 1
         stmt = select(RawData).where(RawData.block_number == i)
