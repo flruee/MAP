@@ -59,6 +59,8 @@ class PGBlockHandler:
         extrinsics = []
         events = []
         staked_amount = 0
+        #Aggregator.create(block, extrinsics, events, staked_amount)
+
         if len(data['extrinsics']) == 1 and len(events_data) > 2: # Todo: handle differently,
             """
             This was done because some blocks contain 0 extrinsics, 
@@ -179,32 +181,32 @@ class PGBlockHandler:
         if not extrinsic.was_successful:
             return
         if(extrinsic.module_name == "Balances" and extrinsic.function_name in ["transfer", "transfer_keep_alive,transfer_all","force_transfer"]):
-            self.__handle_transfer(block, extrinsic, events)
+            return self.__handle_transfer(block, extrinsic, events)
         
         elif(extrinsic.module_name == "Staking" and extrinsic.function_name in ["bond", "bond_extra"]):
-            self.__handle_bond(block, extrinsic, events)
+            return self.__handle_bond(block, extrinsic, events)
 
         elif(extrinsic.module_name == "Staking" and extrinsic.function_name == "set_controller"):
-            self.__handle_set_controller(block, extrinsic, events)
+            return self.__handle_set_controller(block, extrinsic, events)
         elif(extrinsic.module_name == "Staking" and extrinsic.function_name == "set_payee"):
-            self.__handle_set_payee(block, extrinsic, events)
+            return self.__handle_set_payee(block, extrinsic, events)
         elif(extrinsic.module_name == "Staking") and extrinsic.function_name == "payout_stakers":
-            self.__handle_payout_stakers(block, extrinsic, events)
+            return self.__handle_payout_stakers(block, extrinsic, events)
         #elif(extrinsic.module_name == "" and extrinsic.function_name == "Tip"):
         #    self.__handle_tip(block, extrinsic, events)
         #TODO Utiltiy(Batch)
         elif (extrinsic.module_name == 'Utility' and extrinsic.function_name in ['batch', 'as_derivative', 'batch_all']):
-            self.__handle_batch(block, extrinsic, events)
+            return self.__handle_batch(block, extrinsic, events)
         #TODO Proxy(Proxy)
         elif (extrinsic.module_name == "Proxy" and extrinsic.function_name == "proxy"):
-            self.__handle_proxy(block, extrinsic, events)
+            return self.__handle_proxy(block, extrinsic, events)
         elif (extrinsic.module_name == "Proxy" and extrinsic.function_name == "add_proxy"):
-            self.__handle_add_proxy(block, extrinsic,events)
+            return self.__handle_add_proxy(block, extrinsic,events)
         elif (extrinsic.module_name == "Claims" and extrinsic.function_name in ["claim", "attest"]):
-            self.__handle_claim(block, extrinsic, events)
+            return self.__handle_claim(block, extrinsic, events)
         
         elif (extrinsic.module_name == "Sudo" and extrinsic.function_name in ["sudo","sudo_as"]):
-            self.__handle_sudo(block, extrinsic, events)
+            return self.__handle_sudo(block, extrinsic, events)
 
         
     def __handle_transfer(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
@@ -218,13 +220,14 @@ class PGBlockHandler:
             if to_address == extrinsic.call_args[0]["value"]:
                 return
         else:
-            to_address = extrinsic.call_args[0]["value"]
+            to_address = extrinsic.call_args[0]["value"].replace("0x","")
         
-        
+
         to_account = Account.get_from_address(to_address)
         if not to_account:
             to_account = Account.create(to_address)
         # Get amount transferred from 'Transfer' event
+        amount_transferred = None
         for event in events:
   
             if event.event_name == 'Transfer':
@@ -239,6 +242,10 @@ class PGBlockHandler:
         # Create new balances
         if extrinsic.function_name == "force_transfer":
             amount_transferred = int(extrinsic.call_args[2]["value"])
+        if from_account.id == to_account.id:
+            amount_transferred = 0
+        if amount_transferred is None:
+            amount_transferred = extrinsic.call_args[1]["value"]
         from_balance = Balance.create(from_account, extrinsic, transferable=-(amount_transferred+extrinsic.fee), executing=True)
         to_balance = Balance.create(to_account, extrinsic,transferable=amount_transferred)
         
