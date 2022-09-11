@@ -55,9 +55,9 @@ with Session(pg_driver) as session:
     start = time.time()
     for i in transaction_list:
         print(i)
-        if counter == 1000:
+        if counter == 100000:
             counter = 0
-            average_time = average_time / 1000
+            average_time = average_time / 100000
             print(average_time)
             average_time = 0
             subgraph = subgraphs[0]
