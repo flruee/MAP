@@ -18,7 +18,7 @@ queries_postgres = {
 }
 
 queries_neo4j = {
-    ""
+    "get_transfers_all": "match(t:Transfer) return t"
 }
 
 

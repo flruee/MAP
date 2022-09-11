@@ -25,9 +25,10 @@ class Neo4jBlockHandler:
                 subgraph = Utils.merge_subgraph(subgraph, sub)
         else:
             subgraph = subgraphs[0]
-        tx = Driver().get_driver().graph.begin()
+        return subgraph
+        """        tx = Driver().get_driver().graph.begin()
         tx.create(subgraph)
-        tx.commit()
+        tx.commit()"""
 
     def __handle_block_data(self, data):
         """
