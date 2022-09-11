@@ -359,6 +359,12 @@ class PGBlockHandler:
                         to_balance = validator_account.update_balance(extrinsic,bonded=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
                         from_balance = to_balance
+                    else:
+                        external_account = Account.get_from_address(nominator_account.reward_destination)
+                        if external_account is None:
+                            external_account = Account.create(nominator_account.reward_destination)
+                        external_account.update_balance(extrinsic, transferable=nominator_reward)
+                        transfer = Transfer.create(block.block_number, None,external_account,None,to_balance,nominator_reward,extrinsic,"Reward")
 
                 else:
                     if nominator_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
@@ -369,6 +375,12 @@ class PGBlockHandler:
                         from_balance = validator_account.update_balance(extrinsic, transferable=-nominator_reward)
                         to_balance = nominator_account.update_balance(extrinsic,bonded=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
+                    else:
+                        external_account = Account.get_from_address(nominator_account.reward_destination)
+                        if external_account is None:
+                            external_account = Account.create(nominator_account.reward_destination)
+                        external_account.update_balance(extrinsic, transferable=nominator_reward)
+                        transfer = Transfer.create(block.block_number, None,external_account,None,to_balance,nominator_reward,extrinsic,"Reward")
 
                 nominator = Nominator.get_from_account(nominator_account)
                 if nominator is None:
