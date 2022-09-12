@@ -514,10 +514,9 @@ class ExtrinsicFunction(GraphObject):
 
     @staticmethod
     def get(function_name, module_name):
-        extrinsic_function = ExtrinsicFunction.match(Driver().get_driver(), function_name).first()
+        extrinsic_function = Driver().get_driver().graph.run(
+            "Match (n:ExtrinsicFunction {function_name: '" + str(function_name) + "'}) return n").evaluate()
         extrinsic_module = ExtrinsicModule.get(module_name)
-        if extrinsic_function is not None:
-            extrinsic_function = extrinsic_function.__node__
         return extrinsic_function, extrinsic_module
 
     @staticmethod
@@ -543,12 +542,11 @@ class ExtrinsicModule(GraphObject):
 
     @staticmethod
     def get(name):
-        extrinsic_module = ExtrinsicModule.match(Driver().get_driver(), name).first()
+        extrinsic_module = Driver().get_driver().graph.run(
+            "Match (n:ExtrinsicModule {name: '" + str(name) + "'}) return n").evaluate()
 
         if extrinsic_module is None:
             return ExtrinsicModule.create(name)
-        else:
-            return extrinsic_module.__node__
 
     @staticmethod
     def create(module_name: str) -> "ExtrinsicModule":
@@ -604,15 +602,15 @@ class Account(GraphObject):
 
     @staticmethod
     def get(subgraph, address: str):
+        return None
         for node in subgraph.nodes:
             if node.has_label('Account'):
                 if node['address'] == address:
                     return node
-        account = Account.match(Driver().get_driver(), primary_value=address).first()
+        account = Driver().get_driver().graph.run(
+            "Match (n:Account {address: '" + str(address) + "'}) return n").evaluate()
         if account is None:
             return account
-        else:
-            return account.__node__
 
     @staticmethod
     def save(account: "Account"):
@@ -620,7 +618,8 @@ class Account(GraphObject):
 
     @staticmethod
     def get_treasury():
-        treasury = Account.match(Driver().get_driver(), treasury_address).first()
+        treasury = Driver().get_driver().graph.run(
+            "Match (n:Account {address: " + str(treasury_address) + "}) return n").evaluate()
         if not treasury:
             treasury = Account.create(treasury_address)
         return treasury
