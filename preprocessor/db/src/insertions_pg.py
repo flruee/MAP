@@ -270,7 +270,11 @@ class PGBlockHandler:
                     amount_transferred = utils.extract_event_attributes_from_object(event,1)
             controller_address = extrinsic.call_args[0]["value"]
             controller_account = Account.get_from_address(controller_address)
-            from_account.reward_destination = extrinsic.call_args[2]["value"]
+            reward_destination = extrinsic.call_args[2]["value"]
+            if isinstance(reward_destination,dict):
+                reward_destination = reward_destination["Account"]
+
+
             if not controller_account:
                 controller_account = Account.create(controller_address)
             Controller.create(controller_account, from_account)
@@ -359,6 +363,12 @@ class PGBlockHandler:
                         to_balance = validator_account.update_balance(extrinsic,bonded=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
                         from_balance = to_balance
+                    else:
+                        external_account = Account.get_from_address(nominator_account.reward_destination)
+                        if external_account is None:
+                            external_account = Account.create(nominator_account.reward_destination)
+                        to_balance = external_account.update_balance(extrinsic, transferable=nominator_reward)
+                        transfer = Transfer.create(block.block_number, None,external_account,None,to_balance,nominator_reward,extrinsic,"Reward")
 
                 else:
                     if nominator_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
@@ -369,6 +379,12 @@ class PGBlockHandler:
                         from_balance = validator_account.update_balance(extrinsic, transferable=-nominator_reward)
                         to_balance = nominator_account.update_balance(extrinsic,bonded=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
+                    else:
+                        external_account = Account.get_from_address(nominator_account.reward_destination)
+                        if external_account is None:
+                            external_account = Account.create(nominator_account.reward_destination)
+                        to_balance = external_account.update_balance(extrinsic, transferable=nominator_reward)
+                        transfer = Transfer.create(block.block_number, None,external_account,None,to_balance,nominator_reward,extrinsic,"Reward")
 
                 nominator = Nominator.get_from_account(nominator_account)
                 if nominator is None:
