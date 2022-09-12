@@ -270,7 +270,11 @@ class PGBlockHandler:
                     amount_transferred = utils.extract_event_attributes_from_object(event,1)
             controller_address = extrinsic.call_args[0]["value"]
             controller_account = Account.get_from_address(controller_address)
-            from_account.reward_destination = extrinsic.call_args[2]["value"]
+            reward_destination = extrinsic.call_args[2]["value"]
+            if isinstance(reward_destination,dict):
+                reward_destination = reward_destination["Account"]
+
+
             if not controller_account:
                 controller_account = Account.create(controller_address)
             Controller.create(controller_account, from_account)
