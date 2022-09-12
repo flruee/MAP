@@ -65,6 +65,26 @@ class Utils:
             subgraph = subgraph | element
         return subgraph
 
+    @staticmethod
+    def merge(res_list):
+        new_list = []
+        for i in range(int(len(res_list))):
+            if len(res_list) == 1:
+                new_list.append(res_list[0])
+                return new_list
+            elif len(res_list) == 0:
+                return new_list
+            else:
+                try:
+                    x = res_list.pop()
+                except IndexError:
+                    x = Subgraph()
+                try:
+                    y = res_list.pop()
+                except IndexError:
+                    y = Subgraph()
+            new_list.append(Utils.merge_subgraph(x, y))
+        return new_list
 
 class Block(GraphObject):
     __primarykey__ = "block_number"

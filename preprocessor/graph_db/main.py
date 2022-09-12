@@ -60,13 +60,17 @@ with Session(pg_driver) as session:
             average_time = average_time / 100000
             print(average_time)
             average_time = 0
+            print(len(subgraphs))
             subgraph = subgraphs[0]
-            for sub in subgraphs[1:]:
-                subgraph = Utils.merge_subgraph(subgraph, sub)
+            merge_counter = 0
+            while len(subgraphs) and not len(subgraphs) == 1:
+                subgraphs = Utils.merge(subgraphs)
+                print(len(subgraphs))
+            print('merge_done')
             tx = Driver().get_driver().graph.begin()
-            tx.create(subgraph)
+            tx.create(subgraphs[0])
             Driver().get_driver().graph.commit(tx)
-            exit()
+            print("push done")
             subgraphs = []
         counter += 1
         stmt = select(RawData).where(RawData.block_number == i)
