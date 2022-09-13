@@ -146,6 +146,7 @@ class Transaction(GraphObject):
 
         call_function = transaction_data["call"]["call_function"]
         call_module = transaction_data["call"]["call_module"]
+
         transaction = Node("Transaction",
                            extrinsic_hash=transaction_data["extrinsic_hash"])
         subgraph = Utils.merge_subgraph(subgraph, transaction)
@@ -166,6 +167,10 @@ class Transaction(GraphObject):
             return Utils.merge_subgraph(subgraph, block_transaction_relationship)
 
         if call_module in ["Staking"] and call_function in ['submit_election_solution_unsigned']:
+            block_transaction_relationship = Relationship(block, "HAS_TRANSACTION", transaction)
+            return Utils.merge_subgraph(subgraph, block_transaction_relationship)
+
+        if call_module in ["Grandpa"] and call_function in ['report_equivocation_unsigned']:
             block_transaction_relationship = Relationship(block, "HAS_TRANSACTION", transaction)
             return Utils.merge_subgraph(subgraph, block_transaction_relationship)
         """
