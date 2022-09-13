@@ -54,6 +54,10 @@ with Session(pg_driver) as session:
     stmt = select(RawData).where(RawData.block_number == 330907)
     db_data = session.execute(stmt).fetchone()[0]
     subgraph = block_handler.handle_full_block(db_data.data)
+    tx = Driver().get_driver().graph.begin()
+    tx.create(subgraph)
+    Driver().get_driver().graph.commit(tx)
+
 
 counter = 0
 average_time = 0
