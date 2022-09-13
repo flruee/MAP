@@ -46,7 +46,15 @@ transaction_list = range(829839,1328745)
 #transaction_list = [5499975] # free floating balance node
 #transaction_list = [5499979]
 #transaction_list = [7499977]
+
+
 #transaction_list = [330907]
+# create first validatorpool for testing
+with Session(pg_driver) as session:
+    stmt = select(RawData).where(RawData.block_number == 330907)
+    db_data = session.execute(stmt).fetchone()[0]
+    subgraph = block_handler.handle_full_block(db_data.data)
+
 counter = 0
 average_time = 0
 
@@ -55,7 +63,7 @@ with Session(pg_driver) as session:
     start = time.time()
     for i in transaction_list:
         print(i)
-        if counter == 100000:
+        if counter == 10000000:
             counter = 0
             average_time = average_time / 100000
             print(average_time)
