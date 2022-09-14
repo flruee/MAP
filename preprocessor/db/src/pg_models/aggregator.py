@@ -2,7 +2,7 @@ from multiprocessing.context import set_spawning_popen
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer,BigInteger
-
+from sqlalchemy.orm import relationship
 from .account import Account
 from .extrinsic import Extrinsic
 from src.pg_models.base import Base
@@ -14,7 +14,8 @@ from src.pg_models.transfer import Transfer
 
 class Aggregator(Base):
     __tablename__ = "aggregator"
-    block_number = Column(Integer, ForeignKey(Block.block_number), primary_key=True)
+    block_number = Column(Integer, ForeignKey(Block.block_number,ondelete="CASCADE"), primary_key=True, index=True)
+    #block_number = relationship(Block,)
     total_extrinsics = Column(Integer)
     total_events = Column(Integer)
     total_accounts = Column(Integer)
@@ -23,13 +24,13 @@ class Aggregator(Base):
     total_staked = Column(BigInteger)
 
 
-    def create(block: Block, extrinsics: List[Extrinsic], events: List[List[Event]], staked_amount: int):
+    def create(block: Block, extrinsics: List[Extrinsic], events: List[List[Event]],staked_amount):
         previous_aggregator = Aggregator.get(block.block_number-1)
 
         n_extrinsics = previous_aggregator.total_extrinsics + len(extrinsics)
         n_events = sum([len(e) for e in events]) + previous_aggregator.total_events
         n_accounts = Account.count()
-        n_transfers = Transfer.count()
+        n_transfers = Transfer.count(block)+previous_aggregator.total_transfers
         n_currency = 0
         n_staked = previous_aggregator.total_staked + staked_amount
         
@@ -47,6 +48,7 @@ class Aggregator(Base):
         Aggregator.save(aggregator)
         return aggregator
     
+
     """
     @staticmethod
     def __handle_total_staked(extrinsics: List[Extrinsic]):

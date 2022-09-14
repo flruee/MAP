@@ -12,13 +12,13 @@ from src.pg_models.account import Account
 class Transfer(Base):
     __tablename__ = "transfer"
     id = Column(Integer, primary_key=True)
-    block_number = Column(Integer, ForeignKey(Block.block_number))
-    from_account = Column(Integer, ForeignKey(Account.id))
-    to_account = Column(Integer, ForeignKey(Account.id))
-    from_balance = Column(Integer, ForeignKey(Balance.id))
-    to_balance = Column(Integer, ForeignKey(Balance.id))
+    block_number = Column(Integer, ForeignKey(Block.block_number,ondelete="CASCADE"))
+    from_account = Column(Integer, ForeignKey(Account.id,ondelete="CASCADE"))
+    to_account = Column(Integer, ForeignKey(Account.id,ondelete="CASCADE"))
+    from_balance = Column(Integer, ForeignKey(Balance.id,ondelete="CASCADE"))
+    to_balance = Column(Integer, ForeignKey(Balance.id,ondelete="CASCADE"))
     value = Column(BigInteger)
-    extrinsic = Column(Integer, ForeignKey("extrinsic.id"))
+    extrinsic = Column(Integer, ForeignKey("extrinsic.id",ondelete="CASCADE"))
     type = Column(String)
 
     @staticmethod
@@ -53,9 +53,9 @@ class Transfer(Base):
         session.flush()
     
     @staticmethod
-    def count() -> int:
+    def count(block: "Block") -> int:
         """
         Returns the number of transfers stored in the db. Used for Aggregation.
         """
         session = Driver().get_driver()
-        return session.query(Transfer.id).count()
+        return session.query(Transfer.id).filter(Transfer.block_number == block.block_number).count()
