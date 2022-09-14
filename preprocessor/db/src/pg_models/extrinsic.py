@@ -19,7 +19,7 @@ class Extrinsic(Base):
     id = Column(Integer,primary_key=True)
     extrinsic_hash = Column(String)
     extrinsic_length = Column(Integer)
-    account = Column(Integer, ForeignKey(Account.id))
+    account = Column(Integer, ForeignKey(Account.id,ondelete="CASCADE"))
     signature = Column(JSON)
     era = Column(JSON)
     nonce = Column(Integer)
@@ -27,7 +27,7 @@ class Extrinsic(Base):
     module_name = Column(String)
     function_name = Column(String)
     call_args = Column(JSON)
-    block_number = Column(Integer, ForeignKey(Block.block_number))
+    block_number = Column(Integer, ForeignKey(Block.block_number,ondelete="CASCADE"),index=True)
     #treasury_balance = Column(Integer, ForeignKey("balance.id"))
     #validator_balance = Column(Integer, ForeignKey("balance.id"))
     
@@ -97,9 +97,14 @@ class Extrinsic(Base):
     @staticmethod
     def create_from_proxy(block: Block, parent: "Extrinsic", events: List[Event]) -> "Extrinsic":
         was_successful = False
-        if  (events[-1].module_name == "System" and events[-1].event_name == "ExtrinsicSuccess") or \
-            (events[-1].module_name == "Proxy" and events[-1].event_name == "ProxyExecuted"):
-            was_successful = True
+        for event in events:
+            if event.module_name == "Proxy" and event.event_name == "ProxyExecuted":
+                if event.attributes[0]["value"] == "Ok":
+                    was_successful = True
+                break
+            elif event.module_name == "System" and event.event_name == "ExtrinsicSuccess":
+                was_successful = True
+                
 
         address = parent.call_args[0]["value"]
         account = Account.get_from_address(address)
