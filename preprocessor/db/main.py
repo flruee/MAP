@@ -22,6 +22,38 @@ from src.pg_models.raw_data import RawData
 
 load_dotenv(find_dotenv())
 
+
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+import time
+import logging
+
+logging.basicConfig(filename="db.log")
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+logger = logging.getLogger("sqlalchemy.engine")
+fh = logging.FileHandler("sql.log")
+logger.addHandler(fh)
+logger.setLevel(logging.DEBUG)
+
+@event.listens_for(Engine, "before_cursor_execute")
+def before_cursor_execute(conn, cursor, statement, 
+                        parameters, context, executemany):
+    context._query_start_time = time.time()
+    logger.debug("Start Query:\n%s" % statement)
+    # Modification for StackOverflow answer:
+    # Show parameters, which might be too verbose, depending on usage..
+    logger.debug("Parameters:\n%r" % (parameters,))
+
+
+@event.listens_for(Engine, "after_cursor_execute")
+def after_cursor_execute(conn, cursor, statement, 
+                        parameters, context, executemany):
+    total = time.time() - context._query_start_time
+    logger.debug("Query Complete!")
+
+    # Modification for StackOverflow: times in milliseconds
+    logger.debug("Total Time: %.02fms" % (total*1000))
+
 def env(key, default=None, required=True):
     """
     Retrieves environment variables and returns Python natives. The (optional)
@@ -46,7 +78,7 @@ RAW_DATA_DATABASE_NAME = env("RAW_DATA_DATABASE_NAME")
 MODE = env("MODE")
 if __name__ == "__main__":
     #TODO: crrrreate logging object
-    logging.basicConfig(filename='db.log', level=logging.INFO,format='%(asctime)s,%(levelname)s :%(message)s')
+    #logging.basicConfig(filename='db.log', level=logging.INFO,format='%(asctime)s,%(levelname)s :%(message)s')
 
     if DB == "postgres":
         #engine = create_engine('postgresql://mapUser:mapmap@localhost/map')
@@ -61,21 +93,22 @@ if __name__ == "__main__":
 
             if MODE == "json":
                 start = time.time()
-                block_handler.handle_blocks(276451, 276551)
+                block_handler.handle_blocks(1785, 1785)
                 print(time.time()-start)
             elif MODE == "node": 
                 start = time.time()
-                block_handler.handle_node_connection_blocks(7000391,7000391)
+                block_handler.handle_node_connection_blocks(2000000,2000100) #1411
+                exit()
                 #block_handler.handle_node_connection_blocks(6497886,6497886)
 
                 #block_handler.handle_node_connection_blocks(11360981,11360981)
-                #exit()
                 print(time.time()-start)
             elif MODE == "db":
                 print("ey")
                 with Session(raw_data_engine) as raw_data_session:
+
                     print("rey")
-                    for i in range(7000000,7001000):
+                    for i in range(0,11000000):
                         print(i)
                         data =raw_data_session.query(RawData.data).filter(RawData.block_number==i).first()[0]
                         block_handler.handle_full_block(data)
