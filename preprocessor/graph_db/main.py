@@ -42,11 +42,23 @@ driver_singleton = Driver()
 driver_singleton.add_driver(driver)
 pg_driver = create_engine('postgresql://postgres:polkamap@172.23.149.214/raw_data')
 block_handler = Neo4jBlockHandler(driver)
-transaction_list = range(328745,1328745)
+transaction_list = range(829839,1328745)
 #transaction_list = [5499975] # free floating balance node
 #transaction_list = [5499979]
 #transaction_list = [7499977]
+
+
 #transaction_list = [330907]
+# create first validatorpool for testing
+with Session(pg_driver) as session:
+    stmt = select(RawData).where(RawData.block_number == 330907)
+    db_data = session.execute(stmt).fetchone()[0]
+    subgraph = block_handler.handle_full_block(db_data.data)
+    tx = Driver().get_driver().graph.begin()
+    tx.create(subgraph)
+    Driver().get_driver().graph.commit(tx)
+
+
 counter = 0
 average_time = 0
 
@@ -55,18 +67,22 @@ with Session(pg_driver) as session:
     start = time.time()
     for i in transaction_list:
         print(i)
-        if counter == 100000:
+        if counter == 10000000:
             counter = 0
             average_time = average_time / 100000
             print(average_time)
             average_time = 0
+            print(len(subgraphs))
             subgraph = subgraphs[0]
-            for sub in subgraphs[1:]:
-                subgraph = Utils.merge_subgraph(subgraph, sub)
+            merge_counter = 0
+            while len(subgraphs) and not len(subgraphs) == 1:
+                subgraphs = Utils.merge(subgraphs)
+                print(len(subgraphs))
+            print('merge_done')
             tx = Driver().get_driver().graph.begin()
-            tx.create(subgraph)
+            tx.create(subgraphs[0])
             Driver().get_driver().graph.commit(tx)
-            exit()
+            print("push done")
             subgraphs = []
         counter += 1
         stmt = select(RawData).where(RawData.block_number == i)

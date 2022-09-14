@@ -36,9 +36,10 @@ class Neo4jBlockHandler:
         """
         timestamp = data["extrinsics"][0]["call"]["call_args"][0]["value"]
         timestamp = datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=timestamp)
-        last_block = Block.match(Driver().get_driver(), data["number"] - 1).first()
-        if last_block is not None:
-            last_block = last_block.__node__
+
+        last_block = Driver().get_driver().graph.run(
+            "Match (n:Block{block_number:" + str(data['number']-1) + "}) return n").evaluate()
+
         block = Block.match(Driver().get_driver(), data["number"]).first()
         if block is not None:
             block = block.__node__

@@ -65,6 +65,26 @@ class Utils:
             subgraph = subgraph | element
         return subgraph
 
+    @staticmethod
+    def merge(res_list):
+        new_list = []
+        for i in range(int(len(res_list))):
+            if len(res_list) == 1:
+                new_list.append(res_list[0])
+                return new_list
+            elif len(res_list) == 0:
+                return new_list
+            else:
+                try:
+                    x = res_list.pop()
+                except IndexError:
+                    x = Subgraph()
+                try:
+                    y = res_list.pop()
+                except IndexError:
+                    y = Subgraph()
+            new_list.append(Utils.merge_subgraph(x, y))
+        return new_list
 
 class Block(GraphObject):
     __primarykey__ = "block_number"
@@ -126,6 +146,7 @@ class Transaction(GraphObject):
 
         call_function = transaction_data["call"]["call_function"]
         call_module = transaction_data["call"]["call_module"]
+
         transaction = Node("Transaction",
                            extrinsic_hash=transaction_data["extrinsic_hash"])
         subgraph = Utils.merge_subgraph(subgraph, transaction)
@@ -146,6 +167,10 @@ class Transaction(GraphObject):
             return Utils.merge_subgraph(subgraph, block_transaction_relationship)
 
         if call_module in ["Staking"] and call_function in ['submit_election_solution_unsigned']:
+            block_transaction_relationship = Relationship(block, "HAS_TRANSACTION", transaction)
+            return Utils.merge_subgraph(subgraph, block_transaction_relationship)
+
+        if call_module in ["Grandpa"] and call_function in ['report_equivocation_unsigned']:
             block_transaction_relationship = Relationship(block, "HAS_TRANSACTION", transaction)
             return Utils.merge_subgraph(subgraph, block_transaction_relationship)
         """
@@ -494,10 +519,9 @@ class ExtrinsicFunction(GraphObject):
 
     @staticmethod
     def get(function_name, module_name):
-        extrinsic_function = ExtrinsicFunction.match(Driver().get_driver(), function_name).first()
+        extrinsic_function = Driver().get_driver().graph.run(
+            "Match (n:ExtrinsicFunction {function_name: '" + str(function_name) + "'}) return n").evaluate()
         extrinsic_module = ExtrinsicModule.get(module_name)
-        if extrinsic_function is not None:
-            extrinsic_function = extrinsic_function.__node__
         return extrinsic_function, extrinsic_module
 
     @staticmethod
@@ -523,12 +547,11 @@ class ExtrinsicModule(GraphObject):
 
     @staticmethod
     def get(name):
-        extrinsic_module = ExtrinsicModule.match(Driver().get_driver(), name).first()
+        extrinsic_module = Driver().get_driver().graph.run(
+            "Match (n:ExtrinsicModule {name: '" + str(name) + "'}) return n").evaluate()
 
         if extrinsic_module is None:
             return ExtrinsicModule.create(name)
-        else:
-            return extrinsic_module.__node__
 
     @staticmethod
     def create(module_name: str) -> "ExtrinsicModule":
@@ -584,15 +607,15 @@ class Account(GraphObject):
 
     @staticmethod
     def get(subgraph, address: str):
+        return None
         for node in subgraph.nodes:
             if node.has_label('Account'):
                 if node['address'] == address:
                     return node
-        account = Account.match(Driver().get_driver(), primary_value=address).first()
+        account = Driver().get_driver().graph.run(
+            "Match (n:Account {address: '" + str(address) + "'}) return n").evaluate()
         if account is None:
             return account
-        else:
-            return account.__node__
 
     @staticmethod
     def save(account: "Account"):
@@ -600,7 +623,8 @@ class Account(GraphObject):
 
     @staticmethod
     def get_treasury():
-        treasury = Account.match(Driver().get_driver(), treasury_address).first()
+        treasury = Driver().get_driver().graph.run(
+            "Match (n:Account {address: " + str(treasury_address) + "}) return n").evaluate()
         if not treasury:
             treasury = Account.create(treasury_address)
         return treasury
