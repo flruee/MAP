@@ -58,8 +58,7 @@ class PGBlockHandler:
 
         extrinsics = []
         events = []
-        staked_amount = 0
-        #Aggregator.create(block, extrinsics, events, staked_amount)
+        self.staked_this_block = 0
 
         if len(data['extrinsics']) == 1 and len(events_data) > 2: # Todo: handle differently,
             """
@@ -106,9 +105,8 @@ class PGBlockHandler:
             events.append(current_events)
             #if event['event_id'] in ['EraPayout', 'EraPaid'] and event['module_id'] == 'Staking':
             
-            staked = self.handle_special_extrinsics(block, extrinsic, current_events)
-            if staked is not None:
-                staked_amount += staked
+            self.handle_special_extrinsics(block, extrinsic, current_events)
+         
             
             #self.special_event(block, extrinsic, current_events)
 
@@ -118,7 +116,7 @@ class PGBlockHandler:
 
         #if len(extrinsics)> 0:
         #    return extrinsics[0]
-        Aggregator.create(block, extrinsics, events, staked_amount)
+        Aggregator.create(block, extrinsics, events, self.staked_this_block)
         return extrinsics
 
 
@@ -192,12 +190,8 @@ class PGBlockHandler:
             return self.__handle_set_payee(block, extrinsic, events)
         elif(extrinsic.module_name == "Staking") and extrinsic.function_name == "payout_stakers":
             return self.__handle_payout_stakers(block, extrinsic, events)
-        #elif(extrinsic.module_name == "" and extrinsic.function_name == "Tip"):
-        #    self.__handle_tip(block, extrinsic, events)
-        #TODO Utiltiy(Batch)
         elif (extrinsic.module_name == 'Utility' and extrinsic.function_name in ['batch', 'as_derivative', 'batch_all']):
             return self.__handle_batch(block, extrinsic, events)
-        #TODO Proxy(Proxy)
         elif (extrinsic.module_name == "Proxy" and extrinsic.function_name == "proxy"):
             return self.__handle_proxy(block, extrinsic, events)
         elif (extrinsic.module_name == "Proxy" and extrinsic.function_name == "add_proxy"):
@@ -296,6 +290,7 @@ class PGBlockHandler:
             extrinsic=extrinsic,
             type=extrinsic.function_name
         )
+        self.staked_this_block += amount_transferred
 
     def __handle_set_controller(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
         controlled_account = Account.get(extrinsic.account)
@@ -338,11 +333,8 @@ class PGBlockHandler:
         validator_stash = extrinsic.call_args[0]["value"]
         era = extrinsic.call_args[1]["value"]
         validator_account = Account.get_from_address(validator_stash)
-        if not validator_account:
-            validator_account = Account.create(validator_stash)
-        validator = Validator.get_from_account(validator_account)
-        if not validator:
-            validator = Validator.create(validator_account,era)
+        
+        validator = Validator.create(validator_account,era)
         for event in events:
             if event.event_name == "Reward":
                 nominator_reward = event.attributes[1]['value']
@@ -362,7 +354,7 @@ class PGBlockHandler:
                     elif validator_account.reward_destination in ['Staked']:
                         to_balance = validator_account.update_balance(extrinsic,bonded=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
-                        from_balance = to_balance
+                        self.staked_this_block += nominator_reward
                     else:
                         external_account = Account.get_from_address(nominator_account.reward_destination)
                         if external_account is None:
@@ -379,6 +371,7 @@ class PGBlockHandler:
                         from_balance = validator_account.update_balance(extrinsic, transferable=-nominator_reward)
                         to_balance = nominator_account.update_balance(extrinsic,bonded=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
+                        self.staked_this_block += nominator_reward
                     else:
                         external_account = Account.get_from_address(nominator_account.reward_destination)
                         if external_account is None:
@@ -386,52 +379,21 @@ class PGBlockHandler:
                         to_balance = external_account.update_balance(extrinsic, transferable=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,external_account,None,to_balance,nominator_reward,extrinsic,"Reward")
 
-                nominator = Nominator.get_from_account(nominator_account)
-                if nominator is None:
-                    nominator = Nominator.create(
-                        nominator_account,
-                        validator,
-                        nominator_reward,
-                        transfer,
-                        era
-                        )
+                
+                nominator = Nominator.create(
+                    nominator_account,
+                    validator,
+                    nominator_reward,
+                    transfer,
+                    era
+                    )
                 Account.save(nominator_account)
-                Nominator.save(nominator)
+                #Nominator.save(nominator)
                 Validator.save(validator)
                 vtn = ValidatorToNominator.get(validator,nominator,era)
                 if vtn is None:
                     ValidatorToNominator.create(nominator, validator, era)
 
-    def create_substrate_connection(self):
-        exit()
-        with open("config.json", "r") as f:
-            polkadot_config = json.load(f)["node"]
-          #needed for self signed certificate
-        sslopt = {
-            "sslopt": {
-                "cert_reqs": ssl.CERT_NONE
-                }
-        }
-        return SubstrateInterface(
-            url=polkadot_config["url"],
-            ss58_format=polkadot_config["ss58_format"],
-            type_registry_preset=polkadot_config["type_registry_preset"],
-            ws_options=sslopt
-        )
-    """
-    def __handle_tip(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
-        from_address = utils.convert_public_key_to_polkadot_address(transaction_data["address"])
-        from_account = Account.get(from_address)
-        if from_account is None:
-            from_account = Account.create(from_address)
-        to_address = utils.convert_public_key_to_polkadot_address(transaction_data["call"]["call_args"][0]["value"])
-        to_account = Account.get(to_address)
-        if not to_account:
-            to_account = Account.create(to_address)
-        amount_transferred = transaction_data['call']['call_args'][1]['value']
-        transaction.amount_transferred = amount_transferred
-        return transaction, from_account, to_account, amount_transferred
-    """
 
     def __handle_batch(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
         """
@@ -483,9 +445,7 @@ class PGBlockHandler:
         We extract the proxy 'call_args', create a new extrinsic with the other accounts address and call the
         handle_special_extrinsic function.
         """
-        for event in events:
-            if event.module_name == "Balances" and event.event_name == "Reserved":
-                print("ey")
+        
         proxied_extrinsic = Extrinsic.create_from_proxy(block, extrinsic,events)
         self.handle_special_extrinsics(block, proxied_extrinsic, events)
 
