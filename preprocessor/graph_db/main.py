@@ -16,6 +16,11 @@ logging.getLogger("py2neo.cypher").setLevel(logging.DEBUG)
 logging.getLogger("py2neo.client").setLevel(logging.DEBUG)
 logging.getLogger("py2neo.client.bolt").setLevel(logging.DEBUG)
 logging.getLogger("py2neo").setLevel(logging.DEBUG)
+from logging.handlers import RotatingFileHandler
+handler = RotatingFileHandler("graph.log", maxBytes=1024 ** 3, backupCount=2)
+
+logging.basicConfig(level=logging.DEBUG, handlers=[handler],
+                        format='%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
 
 load_dotenv(find_dotenv())
 

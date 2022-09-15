@@ -5,14 +5,43 @@ from src.driver_singleton import Driver
 from typing import Dict
 from substrateinterface.utils import ss58
 from py2neo import Subgraph, Node, Relationship
-
+import time
+import logging
 Base = declarative_base()
 """
 Block
 """
 
 treasury_address = "13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB"
+def decorator_factory(decorator):
+    """
+    Meta decorator
+    Is used to decorate other decorators such that they can have passed an argument
+    e.g. 
+    @decorator(argument)
+    would not work if decorator isn't decorated with this decorator
+    It is used mostly for the event_error_handling such that we can decorate a function with an exception and
+    log it if something bad happened
+    """
 
+    def layer(error, *args, **kwargs):
+
+        def repl(f, *args, **kwargs):
+            return decorator(f, error, *args, **kwargs)
+
+        return repl
+
+    return layer
+@decorator_factory
+def profiler(function,cls_name, *args, **kwargs):
+    def wrapper(*args, **kwargs):
+        logging.debug("Transaction started")
+        start = time.perf_counter()
+        result = function(*args, **kwargs)
+        logging.debug(f"Transaction finished {cls_name} {function.__name__} took {time.perf_counter()-start} s")
+        return result
+
+    return wrapper
 
 class RawData(Base):
     __tablename__ = "raw_data"
@@ -518,6 +547,7 @@ class ExtrinsicFunction(GraphObject):
     has_module = RelatedTo("ExtrinsicModule")
 
     @staticmethod
+    @profiler("Extrinsic")
     def get(function_name, module_name):
         return None, None
         extrinsic_function = Driver().get_driver().graph.run(
@@ -547,6 +577,7 @@ class ExtrinsicModule(GraphObject):
     has_function = RelatedTo("ExtrinsicFunction")
 
     @staticmethod
+    @profiler("ExtrinsicModule")
     def get(name):
         return None
         extrinsic_module = Driver().get_driver().graph.run(
@@ -608,8 +639,8 @@ class Account(GraphObject):
         return account
 
     @staticmethod
+    @profiler("Account")
     def get(subgraph, address: str):
-        return None
         for node in subgraph.nodes:
             if node.has_label('Account'):
                 if node['address'] == address:
@@ -624,6 +655,7 @@ class Account(GraphObject):
         Driver().get_driver().save(account)
 
     @staticmethod
+    @profiler("Account")
     def get_treasury():
         treasury = Driver().get_driver().graph.run(
             "Match (n:Account {address: " + str(treasury_address) + "}) return n").evaluate()
@@ -645,6 +677,7 @@ class ValidatorPool(GraphObject):
     previous_validator_pool = RelatedTo("ValidatorPool")
 
     @staticmethod
+    @profiler("ValidatorPool")
     def get():
         return ValidatorPool.match(Driver().get_driver()).all()[-1]
 
@@ -672,11 +705,13 @@ class Validator(GraphObject):
     account = RelatedFrom("Account", "IS_VALIDATOR")
 
     @staticmethod
+    @profiler("Validator")
     def get_account_from_validator(validator):
         # res1 =  Driver().get_driver().run("Match (v:Validator)<-[:IS_VALIDATOR]-(a:Account {address: '"+str(account.address)+"'}) return a")
         print(validator.account.triples())
 
     @staticmethod
+    @profiler("Validator")
     def get_from_account(account: "Account") -> "Validator":
 
         res = Driver().get_driver().graph.run(
@@ -702,6 +737,7 @@ class Nominator(GraphObject):
     reward = Property()
 
     @staticmethod
+    @profiler("Nominator")
     def get_from_account(account: "Account") -> "Nominator":
         res = Driver().get_driver().graph.run(
             "Match (n:Nominator)<-[:IS_NOMINATOR]-(a:Account {address: '" + str(account['address']) + "'}) return n").evaluate()
