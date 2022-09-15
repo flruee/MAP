@@ -8,7 +8,14 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 import os
 import ast
+import logging
 
+fh = logging.FileHandler("ladida.log")
+logging.getLogger("py2neo.batch").setLevel(logging.DEBUG)
+logging.getLogger("py2neo.cypher").setLevel(logging.DEBUG)
+logging.getLogger("py2neo.client").setLevel(logging.DEBUG)
+logging.getLogger("py2neo.client.bolt").setLevel(logging.DEBUG)
+logging.getLogger("py2neo").setLevel(logging.DEBUG)
 
 load_dotenv(find_dotenv())
 
@@ -48,16 +55,27 @@ transaction_list = range(829839,1328745)
 #transaction_list = [7499977]
 
 
+"""CREATE INDEX IF NOT EXISTS
+FOR (n:Account)
+ON (n.address)"""
+
+"""Match (n:Account {address: '14bARWgpfEiURUS7sGGb54V6mvteRhYWDovcjnFMsLfxRxVV'}) return n;"""
+
 #transaction_list = [330907]
 # create first validatorpool for testing
 with Session(pg_driver) as session:
-    stmt = select(RawData).where(RawData.block_number == 330907)
+    start = time.time()
+    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+    account = Driver().get_driver().graph.run(
+        "Profile Match (n:Account {address: '" + '14bARWgpfEiURUS7sGGb54V6mvteRhYWDovcjnFMsLfxRxVV' + "'}) return n").evaluate()
+    end = time.time()
+    print(end-start)
+    stmt = select(RawData).where(RawData.block_number == 328745)
     db_data = session.execute(stmt).fetchone()[0]
     subgraph = block_handler.handle_full_block(db_data.data)
     tx = Driver().get_driver().graph.begin()
     tx.create(subgraph)
     Driver().get_driver().graph.commit(tx)
-
 
 counter = 0
 average_time = 0
@@ -67,7 +85,7 @@ with Session(pg_driver) as session:
     start = time.time()
     for i in transaction_list:
         print(i)
-        if counter == 10000000:
+        if counter == 1000:
             counter = 0
             average_time = average_time / 100000
             print(average_time)

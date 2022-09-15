@@ -519,6 +519,7 @@ class ExtrinsicFunction(GraphObject):
 
     @staticmethod
     def get(function_name, module_name):
+        return None, None
         extrinsic_function = Driver().get_driver().graph.run(
             "Match (n:ExtrinsicFunction {function_name: '" + str(function_name) + "'}) return n").evaluate()
         extrinsic_module = ExtrinsicModule.get(module_name)
@@ -547,6 +548,7 @@ class ExtrinsicModule(GraphObject):
 
     @staticmethod
     def get(name):
+        return None
         extrinsic_module = Driver().get_driver().graph.run(
             "Match (n:ExtrinsicModule {name: '" + str(name) + "'}) return n").evaluate()
 
