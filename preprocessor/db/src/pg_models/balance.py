@@ -52,13 +52,20 @@ class Balance(Base):
     def get_last_balance(account) -> "Balance":
         session = Driver().get_driver()
         #stmt = select(Balance).where(account=account.id).order_by(Balance.id.desc())
-        balance = session.query(Balance).filter(Balance.account==account.id).order_by(Balance.id.desc()).order_by(Balance.transferable).first()
-        if balance is None:
+        #balance = session.query(Balance).filter(Balance.account==account.id).order_by(Balance.id.desc()).order_by(Balance.transferable).first()
+        with_query = session.query(Balance).filter(Balance.account==account.id)
+        with_query = with_query.cte("last_balance_selection")
+        balance = session.query(with_query).order_by(with_query.c.id.desc()).first()
+        #balance = session.query(Balance).filter(Balance.account==account.id).order_by(Balance.id.desc()).all()
+        if balance is None or len(balance) == 0:
             return Balance(
                 transferable=0,
                 reserved=0,
                 bonded=0,
                 unbonding=0,
             )
-        return balance
+        #balance = Balance(
+        #        balance
+        #        )
         
+        return balance
