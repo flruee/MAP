@@ -8,7 +8,12 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 import os
 import ast
+import logging
+from logging.handlers import RotatingFileHandler
+handler = RotatingFileHandler("graph.log", maxBytes=1024 ** 3, backupCount=2)
 
+logging.basicConfig(level=logging.DEBUG, handlers=[handler],
+                        format='%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
 
 load_dotenv(find_dotenv())
 
