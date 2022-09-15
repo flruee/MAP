@@ -27,12 +27,13 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import time
 import logging
+from logging.handlers import RotatingFileHandler
+handler = RotatingFileHandler("db.log", maxBytes=1024 ** 3, backupCount=2)
 
-logging.basicConfig(filename="db.log")
-logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+logging.basicConfig(level=logging.DEBUG, handlers=[handler],
+                        format='%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
 logger = logging.getLogger("sqlalchemy.engine")
-fh = logging.FileHandler("sql.log")
-logger.addHandler(fh)
+logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 @event.listens_for(Engine, "before_cursor_execute")
@@ -96,6 +97,7 @@ if __name__ == "__main__":
                 block_handler.handle_blocks(1785, 1785)
                 print(time.time()-start)
             elif MODE == "node": 
+                logging.debug("eyyyy")
                 start = time.time()
                 block_handler.handle_node_connection_blocks(2000000,2000100) #1411
                 exit()
@@ -110,6 +112,7 @@ if __name__ == "__main__":
                     print("rey")
                     for i in range(0,11000000):
                         print(i)
+                        logging.info("hi")
                         data =raw_data_session.query(RawData.data).filter(RawData.block_number==i).first()[0]
                         block_handler.handle_full_block(data)
                         session.commit()
