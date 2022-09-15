@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer,BigInteger
+from sqlalchemy.orm import relationship
 from src.pg_models.base import Base
 
 from src.driver_singleton import Driver
@@ -11,15 +12,15 @@ from src.pg_models.block import Block
 
 class Balance(Base):
     __tablename__ = "balance"
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, index=True)
     nonce = Column(Integer)
     transferable = Column(BigInteger)
     reserved = Column(BigInteger)
     bonded = Column(BigInteger)
     unbonding = Column(BigInteger)
-    account = Column(Integer, ForeignKey("account.id"))
-    block_number = Column(Integer, ForeignKey(Block.block_number))
-    extrinsic = Column(Integer, ForeignKey("extrinsic.id"))
+    account = Column(Integer, ForeignKey("account.id",ondelete="CASCADE"), index=True)
+    block_number = Column(Integer, ForeignKey(Block.block_number,ondelete="CASCADE"))
+    extrinsic = Column(Integer, ForeignKey("extrinsic.id",ondelete="CASCADE"))
 
 
     @staticmethod
@@ -51,7 +52,7 @@ class Balance(Base):
     def get_last_balance(account) -> "Balance":
         session = Driver().get_driver()
         #stmt = select(Balance).where(account=account.id).order_by(Balance.id.desc())
-        balance = session.query(Balance).filter(Balance.account==account.id).order_by(Balance.id.desc()).first()
+        balance = session.query(Balance).filter(Balance.account==account.id).order_by(Balance.id.desc()).order_by(Balance.transferable).first()
         if balance is None:
             return Balance(
                 transferable=0,
