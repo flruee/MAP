@@ -4,6 +4,7 @@ from typing import Any
 def convert_public_key_to_polkadot_address(address):
     if address is None:
         return None
+    address = address.replace("0x","")
     if address[0] == '1':
         return address
     return ss58.ss58_encode(ss58_format=0, address=address)

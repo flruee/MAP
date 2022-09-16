@@ -11,8 +11,8 @@ from src.driver_singleton import Driver
 class Controller(Base):
     __tablename__ = "controller"
     id = Column(Integer, primary_key=True)
-    controller_account = Column(Integer,ForeignKey("account.id"))
-    controlled_account = Column(Integer, ForeignKey("account.id"))
+    controller_account = Column(Integer,ForeignKey("account.id",ondelete="CASCADE"))
+    controlled_account = Column(Integer, ForeignKey("account.id",ondelete="CASCADE"))
 
     @staticmethod
     def create(controller_account: Account, controlled_account: Account) -> "Controller":

@@ -11,11 +11,11 @@ from src.pg_models.base import Base
 class Nominator(Base):
     __tablename__ = "nominator"
     id = Column(Integer, primary_key=True)
-    account = Column(Integer, ForeignKey("account.id"))
-    validator = Column(Integer, ForeignKey("validator.id"))
+    account = Column(Integer, ForeignKey("account.id",ondelete="CASCADE"), index=True)
+    validator = Column(Integer, ForeignKey("validator.id",ondelete="CASCADE"))
     reward = Column(BigInteger)
-    reward_transfer = Column(ForeignKey("transfer.id"))
-    era = Column(Integer, ForeignKey("validator_pool.era"))
+    reward_transfer = Column(ForeignKey("transfer.id",ondelete="CASCADE"))
+    era = Column(Integer, ForeignKey("validator_pool.era",ondelete="CASCADE"))
 
 
     def get_from_account(account: Account) -> "Nominator":

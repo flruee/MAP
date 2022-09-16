@@ -2,6 +2,8 @@ import logging
 from typing import List
 import datetime
 import json
+
+from src.pg_models.validator_config import ValidatorConfig
 from .driver_singleton import Driver
 from src.pg_models.aggregator import Aggregator
 from src.pg_models.validator_pool import ValidatorPool
@@ -190,6 +192,8 @@ class PGBlockHandler:
             return self.__handle_set_payee(block, extrinsic, events)
         elif(extrinsic.module_name == "Staking") and extrinsic.function_name == "payout_stakers":
             return self.__handle_payout_stakers(block, extrinsic, events)
+        elif(extrinsic.module_name == "Staking" and extrinsic.function_name == "validate"):
+            self.__handle_validate(block, extrinsic, events)
         elif (extrinsic.module_name == 'Utility' and extrinsic.function_name in ['batch', 'as_derivative', 'batch_all']):
             return self.__handle_batch(block, extrinsic, events)
         elif (extrinsic.module_name == "Proxy" and extrinsic.function_name == "proxy"):
@@ -464,8 +468,8 @@ class PGBlockHandler:
             if event.module_name == "Claims" and event.event_name == "Claimed":
                 amount_transfered = utils.extract_event_attributes_from_object(event,2)
                 eth_address = utils.extract_event_attributes_from_object(event,1)
-                eth_account = Account.create(eth_address)
-                address = utils.extract_event_attributes_from_object(event,0)
+                address = utils.convert_public_key_to_polkadot_address(utils.extract_event_attributes_from_object(event,0))
+                eth_account = Account.create(eth_address, note=address)
             
                 
 
@@ -519,3 +523,7 @@ class PGBlockHandler:
                     "Reserved"
                     )
                 break
+    def __handle_validate(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
+        commission = extrinsic.call_args[0]["value"]["commission"]
+        ValidatorConfig.create(extrinsic.account, commission, block)
+        

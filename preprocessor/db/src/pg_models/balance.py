@@ -4,6 +4,7 @@ from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer,BigInteger
 from sqlalchemy.orm import relationship
+from pg_models.account import Account
 from src.pg_models.base import Base
 
 from src.driver_singleton import Driver
@@ -49,14 +50,17 @@ class Balance(Base):
         session.flush()
     
     @staticmethod
-    def get_last_balance(account) -> "Balance":
+    def get_last_balance(account: Account) -> "Balance":
         session = Driver().get_driver()
+        """
         #stmt = select(Balance).where(account=account.id).order_by(Balance.id.desc())
         #balance = session.query(Balance).filter(Balance.account==account.id).order_by(Balance.id.desc()).order_by(Balance.transferable).first()
         with_query = session.query(Balance).filter(Balance.account==account.id)
         with_query = with_query.cte("last_balance_selection")
         balance = session.query(with_query).order_by(with_query.c.id.desc()).first()
         #balance = session.query(Balance).filter(Balance.account==account.id).order_by(Balance.id.desc()).all()
+        """
+        balance = session.query(Balance).filter(Balance.id==account.last_balance).first()
         if balance is None or len(balance) == 0:
             return Balance(
                 transferable=0,
