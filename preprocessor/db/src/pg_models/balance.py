@@ -59,7 +59,7 @@ class Balance(Base):
         balance = session.query(with_query).order_by(with_query.c.id.desc()).first()
         #balance = session.query(Balance).filter(Balance.account==account.id).order_by(Balance.id.desc()).all()
         """
-        balance = session.query(Balance).filter(Balance.id==account.last_balance).first()
+        balance = session.query(Balance).filter(Balance.id==account.current_balance).first()
         if balance is None or len(balance) == 0:
             return Balance(
                 transferable=0,
