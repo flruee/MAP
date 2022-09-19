@@ -10,12 +10,7 @@ import os
 import ast
 import logging
 
-fh = logging.FileHandler("ladida.log")
-logging.getLogger("py2neo.batch").setLevel(logging.DEBUG)
-logging.getLogger("py2neo.cypher").setLevel(logging.DEBUG)
-logging.getLogger("py2neo.client").setLevel(logging.DEBUG)
-logging.getLogger("py2neo.client.bolt").setLevel(logging.DEBUG)
-logging.getLogger("py2neo").setLevel(logging.DEBUG)
+
 from logging.handlers import RotatingFileHandler
 handler = RotatingFileHandler("graph.log", maxBytes=1024 ** 3, backupCount=2)
 
@@ -54,7 +49,7 @@ driver_singleton = Driver()
 driver_singleton.add_driver(driver)
 pg_driver = create_engine('postgresql://postgres:polkamap@172.23.149.214/raw_data')
 block_handler = Neo4jBlockHandler(driver)
-transaction_list = range(829839,1328745)
+transaction_list = range(1000000,11328745)
 #transaction_list = [5499975] # free floating balance node
 #transaction_list = [5499979]
 #transaction_list = [7499977]
@@ -72,7 +67,7 @@ with Session(pg_driver) as session:
     start = time.time()
     loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
     account = Driver().get_driver().graph.run(
-        "Profile Match (n:Account {address: '" + '14bARWgpfEiURUS7sGGb54V6mvteRhYWDovcjnFMsLfxRxVV' + "'}) return n").evaluate()
+        "Match (n:Account {address: '" + '14bARWgpfEiURUS7sGGb54V6mvteRhYWDovcjnFMsLfxRxVV' + "'}) return n").evaluate()
     end = time.time()
     print(end-start)
     stmt = select(RawData).where(RawData.block_number == 328745)
@@ -87,12 +82,12 @@ average_time = 0
 
 with Session(pg_driver) as session:
     subgraphs = []
-    start = time.time()
     for i in transaction_list:
+        start = time.time()
         print(i)
-        if counter == 1000:
+        if counter == 10000:
             counter = 0
-            average_time = average_time / 100000
+            average_time = average_time / 1
             print(average_time)
             average_time = 0
             print(len(subgraphs))

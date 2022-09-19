@@ -180,9 +180,12 @@ class Transaction(GraphObject):
                            extrinsic_hash=transaction_data["extrinsic_hash"])
         subgraph = Utils.merge_subgraph(subgraph, transaction)
 
-        extrinsic_function, extrinsic_module = ExtrinsicFunction.get(call_function, call_module)
-        if not extrinsic_function:
-            extrinsic_function, extrinsic_module = ExtrinsicFunction.create(call_function, call_module)
+        extrinsic_function = ExtrinsicFunction.get(call_function, subgraph)
+        if extrinsic_function is None:
+            extrinsic_function = ExtrinsicFunction.create(call_function)
+        extrinsic_module = ExtrinsicModule.get(call_module, subgraph)
+        if extrinsic_module is None:
+            extrinsic_module = ExtrinsicModule.create(call_module)
         subgraph = Utils.merge_subgraph(subgraph, extrinsic_function, extrinsic_module)
         extrinsicfunction_extrinsicmodule_relationship = Relationship(extrinsic_function, "PART_OF_MODULE", extrinsic_module)
         transaction_extrinsicfunction_relationship = Relationship(transaction, "HAS_EXTRINSICFUNCTION", extrinsic_function)
@@ -313,12 +316,12 @@ class Transaction(GraphObject):
                                              from_account=from_account,
                                                 subgraph = subgraph)
 
-        elif extrinsic_function['name'] == "payout_stakers":
+        """        elif extrinsic_function['name'] == "payout_stakers":
             return Transaction.handle_payout_stakers(transaction_data=transaction_data,  # todo: improve this sucks ass
                                                   event_data=event_data,
                                                   block=block,
                                                   transaction=transaction,
-                                                     subgraph=subgraph)
+                                                     subgraph=subgraph)"""
 
         return subgraph
 
@@ -547,23 +550,22 @@ class ExtrinsicFunction(GraphObject):
     has_module = RelatedTo("ExtrinsicModule")
 
     @staticmethod
-    @profiler("Extrinsic")
-    def get(function_name, module_name):
-        return None, None
+    @profiler("ExtrinsicFunction")
+    def get(function_name, subgraph):
+        for node in subgraph.nodes:
+            if node.has_label('ExtrinsicFunction'):
+                if node['name'] == function_name:
+                    return node
         extrinsic_function = Driver().get_driver().graph.run(
-            "Match (n:ExtrinsicFunction {function_name: '" + str(function_name) + "'}) return n").evaluate()
-        extrinsic_module = ExtrinsicModule.get(module_name)
-        return extrinsic_function, extrinsic_module
+            "Match (n:ExtrinsicFunction {name: '" + str(function_name) + "'}) return n").evaluate()
+        return extrinsic_function
 
     @staticmethod
-    def create(function_name: str, module_name: str) -> "ExtrinsicFunction":
+    def create(function_name: str):
         extrinsic_function = Node("ExtrinsicFunction",
                                   name=function_name
                                   )
-        extrinsic_module = ExtrinsicModule.get(module_name)
-        if not extrinsic_module:
-            extrinsic_module = ExtrinsicModule.create(module_name)
-        return extrinsic_function, extrinsic_module
+        return extrinsic_function
 
     @staticmethod
     def save(extrinsic_function: "ExtrinsicFunction"):
@@ -578,13 +580,14 @@ class ExtrinsicModule(GraphObject):
 
     @staticmethod
     @profiler("ExtrinsicModule")
-    def get(name):
-        return None
+    def get(name, subgraph):
+        for node in subgraph.nodes:
+            if node.has_label('ExtrinsicModule'):
+                if node['name'] == name:
+                    return node
         extrinsic_module = Driver().get_driver().graph.run(
             "Match (n:ExtrinsicModule {name: '" + str(name) + "'}) return n").evaluate()
-
-        if extrinsic_module is None:
-            return ExtrinsicModule.create(name)
+        return extrinsic_module
 
     @staticmethod
     def create(module_name: str) -> "ExtrinsicModule":
@@ -647,8 +650,8 @@ class Account(GraphObject):
                     return node
         account = Driver().get_driver().graph.run(
             "Match (n:Account {address: '" + str(address) + "'}) return n").evaluate()
-        if account is None:
-            return account
+
+        return account
 
     @staticmethod
     def save(account: "Account"):
