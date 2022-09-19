@@ -11,9 +11,11 @@ from src.pg_models.balance import Balance
 class Account(Base):
     __tablename__ = "account"
     id = Column(Integer, primary_key=True)
-    address = Column(String)
-    nonce = Column(Integer)
+    address = Column(String, index=True)
     reward_destination = Column(String, nullable=True)
+    note = Column(String, nullable=True)
+    current_balance = Column(Integer, ForeignKey("balance.id"),nullable=True)
+    #block_number = Column(int, ForeignKey("block.block_number",ondelete="CASCADE"),index=True)
 
     @staticmethod
     def get(id):
@@ -32,7 +34,7 @@ class Account(Base):
         stmt = select(Account).where(Account.address == "13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB")
         treasury = session.query(Account).where(Account.address == "13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB").first()
         if treasury is None:
-            treasury = Account.create("13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB")
+            treasury = Account.create("13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB",note="Treasury")
         return treasury
         
     @staticmethod
@@ -43,10 +45,10 @@ class Account(Base):
         return session.query(Account).filter(Account.address == address).first()
     
     @staticmethod
-    def create(address) -> "Account":
+    def create(address,note=None) -> "Account":
         account = Account(
             address=address,
-            nonce=0
+            note=note
         )
         Account.save(account)
         return account
@@ -69,6 +71,8 @@ class Account(Base):
             bonded=bonded,
             unbonding=unbonding,
         )
+        self.current_balance = balance.id
+        Account.save(self)
 
 
         return balance

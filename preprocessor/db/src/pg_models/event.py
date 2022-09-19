@@ -14,8 +14,8 @@ class Event(Base):
     id = Column(Integer, primary_key=True)
     event_order_id = Column(Integer) #denotes in which order the events happened. given n events the first event in block has 0 last event has n-1
     phase = Column(String)
-    extrinsic = Column(Integer, ForeignKey("extrinsic.id"))
-    block_number = Column(Integer, ForeignKey(Block.block_number))
+    extrinsic = Column(Integer, ForeignKey("extrinsic.id",ondelete="CASCADE"))
+    block_number = Column(Integer, ForeignKey(Block.block_number,ondelete="CASCADE"))
     module_name =  Column(String)
     event_name =  Column(String)
     attributes = Column(JSON)

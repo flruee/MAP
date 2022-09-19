@@ -11,7 +11,7 @@ from src.pg_models.base import Base
 class Validator(Base):
     __tablename__ = "validator"
     id = Column(Integer, primary_key=True)
-    account = Column(Integer, ForeignKey("account.id"))
+    account = Column(Integer, ForeignKey("account.id",ondelete="CASCADE"), index=True)
     era = Column(Integer, 
         #ForeignKey("validator_pool.era")
         )

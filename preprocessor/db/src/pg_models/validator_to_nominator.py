@@ -9,13 +9,17 @@ from src.pg_models.event import Event
 from src.pg_models.base import Base
 from src.pg_models.nominator import Nominator
 from src.pg_models.validator import Validator
+from sqlalchemy import Index
 
 class ValidatorToNominator(Base):
     __tablename__ = "validator_to_nominator"
-    nominator = Column(Integer, ForeignKey("nominator.id"), primary_key=True)
-    validator = Column(Integer, ForeignKey("validator.id"), primary_key=True)
+    nominator = Column(Integer, ForeignKey("nominator.id",ondelete="CASCADE"), primary_key=True)
+    validator = Column(Integer, ForeignKey("validator.id",ondelete="CASCADE"), primary_key=True)
     era = Column(Integer, primary_key=True)
 
+    __table_args__ = (
+        Index("validator_to_nominator__nominator_validator_era_idx",nominator,validator,era),
+    )
 
     def get(validator: Validator, nominator: Nominator, era:int):
         session = Driver().get_driver()
