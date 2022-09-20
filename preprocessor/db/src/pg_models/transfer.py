@@ -12,7 +12,7 @@ from src.pg_models.account import Account
 class Transfer(Base):
     __tablename__ = "transfer"
     id = Column(Integer, primary_key=True)
-    block_number = Column(Integer, ForeignKey(Block.block_number,ondelete="CASCADE"))
+    block_number = Column(Integer, ForeignKey(Block.block_number,ondelete="CASCADE"),index=True)
     from_account = Column(Integer, ForeignKey(Account.id,ondelete="CASCADE"))
     to_account = Column(Integer, ForeignKey(Account.id,ondelete="CASCADE"))
     from_balance = Column(Integer, ForeignKey(Balance.id,ondelete="CASCADE"))
