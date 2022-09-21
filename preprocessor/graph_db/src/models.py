@@ -342,8 +342,8 @@ class Transaction(GraphObject):
 
         amount_transferred = transaction_data['call']['call_args'][1]['value']
 
-        transaction["amount_transferred"] = amount_transferred
-        fromaccount_transferto_relationship = Relationship(from_account, "TRANFER_TO", to_account)
+        transaction["amount_transferred"] = str(amount_transferred)
+        fromaccount_transferto_relationship = Relationship(from_account, "TRANSFER_TO", to_account)
         #fromaccount_transferto_relationship.properties['block_number'] = block['block_number'] # todo: add property
         subgraph =  Utils.merge_subgraph(subgraph, fromaccount_transferto_relationship, from_account, to_account,
                              Transaction.finish_transaction(block, transaction))

@@ -14,11 +14,15 @@ queries_postgres = {
     "get_accounts_all": "select * from account",
     "get_blocks_all": "select * from block",
     "get_transfers_and_accounts": "select * from transfer t inner join account a1 on a1.address = t.from_address inner join account a2  on a2.address = t.to_address",
-    "get_last_balances": "Select b2.* from balance b2 inner join (select b.account, max(b.block_number) as block_number from balance b group by b.account) as b1 on b1.account=b2.account and b1.block_number=b2.block_number"
+    "get_last_balances": "Select b2.* from balance b2 inner join (select b.account, max(b.block_number) as block_number from balance b group by b.account) as b1 on b1.account=b2.account and b1.block_number=b2.block_number",
+    "get_nominator_rewards": "select an.address as nominator, av.address as validator,n.reward as reward,an.reward_destination as reward_destination,n.era as era from nominator n inner join validator v on v.id = n.validator inner join account an on an.id = n.account inner join account av on av.id = v.account"
 }
 
 queries_neo4j = {
-    "get_transfers_all": "match(t:Transfer) return t"
+    "get_transactions_all": "match(t:Transaction) return t",
+    "get_blocks_and_validators": "match(b:Block)-[:HAS_AUTHOR]-(v:Validator)-[:IS_VALIDATOR]-(a:Account) return b,v,a",
+    "get_validatorpools_validators_nominators": "match(v:ValidatorPool)-[:HAS_VALIDATOR]-(n:Validator)-[:HAS_NOMINATOR]-(g:Nominator) return v,n,g",
+    "get_all_on_block": "match(b:Block)-[*1]-() return b"
 }
 
 
@@ -69,17 +73,19 @@ def init_sparksession(query: str, db: str):
 
 
 def main(args):
+    print(args)
     start = time.perf_counter()
     if args.query is not None:
         query = args.query
     else:
-        if args.db == "P":
+        if args.database == "p":
             query = queries_postgres[args.preset]
         else:
             query = queries_neo4j[args.preset]
     spark = init_sparksession(query, db=args.database)
     spark.show(
     )
+    spark.time(spark.show())
     exit()
     if args.save:
         if args.name is None:

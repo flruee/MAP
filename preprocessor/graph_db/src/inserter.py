@@ -83,23 +83,26 @@ class Neo4jBlockHandler:
             logging.warning(f"strange block {data['number']}")
         else:
             start = 1
-        for i in range(start, len(data["extrinsics"])):
-            # TODO make a parainherent check here
-            extrinsic_data = data["extrinsics"][i]
-            current_events = self.handle_events(events_data, i)
+        if start and len(data['extrinsics']) == 1: # block nr 1603427
+            subgraphs.append(Subgraph())
+        else:
+            for i in range(start, len(data["extrinsics"])):
+                # TODO make a parainherent check here
+                extrinsic_data = data["extrinsics"][i]
+                current_events = self.handle_events(events_data, i)
 
-            # an extrinsic_hash of None indicates ParaInherent transactions or Timestamp transactions
-            # timestamp is already handled above
+                # an extrinsic_hash of None indicates ParaInherent transactions or Timestamp transactions
+                # timestamp is already handled above
 
-            subgraph = Transaction.create(block=block,
-                               transaction_data=extrinsic_data,
-                               event_data=current_events,
-                               proxy_transaction=None,
-                               batch_from_account=None,
-                               batch_transaction=None,
-                               subgraph=subgraph
-                               )
-            subgraphs.append(subgraph)
+                subgraph = Transaction.create(block=block,
+                                   transaction_data=extrinsic_data,
+                                   event_data=current_events,
+                                   proxy_transaction=None,
+                                   batch_from_account=None,
+                                   batch_transaction=None,
+                                   subgraph=subgraph
+                                   )
+                subgraphs.append(subgraph)
         return subgraphs
 
 

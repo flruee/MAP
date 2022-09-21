@@ -49,10 +49,10 @@ driver_singleton = Driver()
 driver_singleton.add_driver(driver)
 pg_driver = create_engine('postgresql://postgres:polkamap@172.23.149.214/raw_data')
 block_handler = Neo4jBlockHandler(driver)
-transaction_list = range(1000000,11328745)
+transaction_list = range(2010000,11328745)
 #transaction_list = [5499975] # free floating balance node
 #transaction_list = [5499979]
-#transaction_list = [7499977]
+#transaction_list = [2015478,2015479]
 
 
 """CREATE INDEX IF NOT EXISTS
@@ -63,7 +63,8 @@ ON (n.address)"""
 
 #transaction_list = [330907]
 # create first validatorpool for testing
-with Session(pg_driver) as session:
+"""
+"with Session(pg_driver) as session:
     start = time.time()
     loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
     account = Driver().get_driver().graph.run(
@@ -76,6 +77,7 @@ with Session(pg_driver) as session:
     tx = Driver().get_driver().graph.begin()
     tx.create(subgraph)
     Driver().get_driver().graph.commit(tx)
+    """
 
 counter = 0
 average_time = 0
@@ -85,7 +87,7 @@ with Session(pg_driver) as session:
     for i in transaction_list:
         start = time.time()
         print(i)
-        if counter == 10000:
+        if counter == 1:
             counter = 0
             average_time = average_time / 1
             print(average_time)
@@ -106,6 +108,9 @@ with Session(pg_driver) as session:
         stmt = select(RawData).where(RawData.block_number == i)
         db_data = session.execute(stmt).fetchone()[0]
         subgraph = block_handler.handle_full_block(db_data.data)
+        if subgraph == None:
+            print(f'this mf fucked it {i}')
+            exit()
         subgraphs.append(subgraph)
         end = time.time()
         average_time += end - start
