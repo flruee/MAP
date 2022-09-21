@@ -165,18 +165,34 @@ class Extrinsic(Base):
         if len(event_data) <= 1 or validator_account is None:
             return 0
         
+        validator_event_index = -2
+        treasury_event_index = -3
         try:
-            validator_fee = int(extract_event_attributes(event_data[-2],1))
+            validator_fee = None
+            if event_data[validator_event_index]["module_id"] != "Balances" or event_data[validator_event_index]["event_id"] != "Deposit":
+                if event_data[validator_event_index -1]["module_id"] == "Balances" and event_data[validator_event_index-1]["event_id"] == "Deposit":
+                    validator_event_index -= 1
+                else:
+                    validator_fee = 0
+                
+            if validator_fee is None:
+                validator_fee = int(extract_event_attributes(event_data[validator_event_index],1))
+
             validator_balance = validator_account.update_balance(extrinsic,transferable=validator_fee)
             author_balance = author_account.update_balance(extrinsic,transferable=-validator_fee)
             Transfer.create(extrinsic.block_number, author_account, validator_account, author_balance,validator_balance,validator_fee,extrinsic,"ValidatorFee")
 
-            treasury_fee = int(extract_event_attributes(event_data[-3],0))
+            treasury_fee = None
+            if event_data[treasury_event_index]["module_id"] != "Treasury" or event_data[treasury_event_index]["event_id"] != "Deposit":
+                treasury_fee = 0
+            
+            if treasury_fee is None:
+                treasury_fee = int(extract_event_attributes(event_data[-3],0))
             treasury_balance = treasury_account.update_balance(extrinsic,transferable=treasury_fee)
             author_balance = author_account.update_balance(extrinsic,transferable=-treasury_fee)
             Transfer.create(extrinsic.block_number, author_account, treasury_account, author_balance,treasury_balance,treasury_fee,extrinsic,"TreasuryFee")
 
-        except (IndexError,ValueError):
+        except (IndexError,ValueError,TypeError):
             try:
                 validator_fee = int(extract_event_attributes(event_data[-2],1))
                 validator_balance = validator_account.update_balance(extrinsic,transferable=validator_fee)
