@@ -197,7 +197,7 @@ class Extrinsic(Base):
                 validator_fee = int(extract_event_attributes(event_data[-2],1))
                 validator_balance = validator_account.update_balance(extrinsic,transferable=validator_fee)
                 author_balance = author_account.update_balance(extrinsic,transferable=-validator_fee)
-                treasury_balance = Balance.create(treasury_account,extrinsic,transferable=treasury_fee)
+                treasury_balance = treasury_account.update_balance(extrinsic,transferable=treasury_fee)
                 Transfer.create(extrinsic.block_number, author_account, validator_account, author_balance,validator_balance,validator_fee,extrinsic,"ValidatorFee")
 
                 treasury_fee = 0

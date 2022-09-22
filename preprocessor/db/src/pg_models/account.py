@@ -18,7 +18,7 @@ class Account(Base):
     #block_number = Column(int, ForeignKey("block.block_number",ondelete="CASCADE"),index=True)
 
     @staticmethod
-    def get(id):
+    def get(id) -> "Account":
         session = Driver().get_driver()
         
         

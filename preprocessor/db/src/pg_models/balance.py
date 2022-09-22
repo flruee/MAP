@@ -24,7 +24,7 @@ class Balance(Base):
 
 
     @staticmethod
-    def create(account: "Account", extrinsic: "Extrinsic",transferable: int=0, reserved:int=0, bonded:int=0, unbonding:int=0,executing=False) -> "Balance":
+    def create(account: "Account", extrinsic: "Extrinsic",transferable: int=0, reserved:int=0, bonded:int=0, unbonding:int=0) -> "Balance":
         # get last balance
         last_balance = Balance.get_last_balance(account)
         balance = Balance(

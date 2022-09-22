@@ -244,8 +244,9 @@ class PGBlockHandler:
             amount_transferred = 0
         if amount_transferred is None:
             amount_transferred = extrinsic.call_args[1]["value"]
-        from_balance = Balance.create(from_account, extrinsic, transferable=-(amount_transferred+extrinsic.fee), executing=True)
-        to_balance = Balance.create(to_account, extrinsic,transferable=amount_transferred)
+        from_balance = from_account.update_balance()
+        from_balance = from_account.update_balance(extrinsic, transferable=-(amount_transferred+extrinsic.fee))
+        to_balance = to_account.update_balance(extrinsic,transferable=amount_transferred)
         
         transfer = Transfer.create(
             block_number=block.block_number,
@@ -285,7 +286,8 @@ class PGBlockHandler:
             raise NotImplementedError()
         
         old_balance = Balance.get_last_balance(from_account)
-        new_balance = Balance.create(from_account, extrinsic,transferable=-(extrinsic.fee+amount_transferred) ,bonded=amount_transferred, executing=True)
+
+        new_balance = from_account.update_balance(extrinsic,transferable=-(extrinsic.fee+amount_transferred) ,bonded=amount_transferred)
         
         Transfer.create(
             block_number=block.block_number,
