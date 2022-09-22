@@ -21,7 +21,7 @@ from src.pg_models.validator import Validator
 from src.pg_models.validator_to_nominator import ValidatorToNominator
 #from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler, ClaimsEventHandler
 from sqlalchemy.exc import IntegrityError
-#from src.node_connection import handle_one_block
+from src.node_connection import handle_one_block
 from substrateinterface import SubstrateInterface
 import ssl
 import src.utils as utils
@@ -39,8 +39,9 @@ class PGBlockHandler:
 
     def handle_node_connection_blocks(self,start,end):
         for i in range(start, end+1):
-            
+            print(i)
             block = handle_one_block(i)
+            print(i)
             with open(f"small_block_dataset/{i}.json", "w+") as f:
                 f.write(json.dumps(block, indent=4))
             with Driver().get_driver().begin():
@@ -244,7 +245,6 @@ class PGBlockHandler:
             amount_transferred = 0
         if amount_transferred is None:
             amount_transferred = extrinsic.call_args[1]["value"]
-        from_balance = from_account.update_balance()
         from_balance = from_account.update_balance(extrinsic, transferable=-(amount_transferred+extrinsic.fee))
         to_balance = to_account.update_balance(extrinsic,transferable=amount_transferred)
         
@@ -267,7 +267,7 @@ class PGBlockHandler:
             for event in events:
                 if event.module_name == "Staking" and event.event_name == "Bonded":
                     amount_transferred = utils.extract_event_attributes_from_object(event,1)
-            controller_address = extrinsic.call_args[0]["value"]
+            controller_address = utils.convert_public_key_to_polkadot_address(extrinsic.call_args[0]["value"])
             controller_account = Account.get_from_address(controller_address)
             reward_destination = extrinsic.call_args[2]["value"]
             if isinstance(reward_destination,dict):
@@ -303,7 +303,7 @@ class PGBlockHandler:
 
     def __handle_set_controller(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
         controlled_account = Account.get(extrinsic.account)
-        controller_address = extrinsic.call_args[0]["value"]
+        controller_address = utils.convert_public_key_to_polkadot_address(extrinsic.call_args[0]["value"])
         controller_account = Account.get_from_address(controller_address)
         if controller_account is None:
             controller_account = Account.create(controller_address)
@@ -342,7 +342,8 @@ class PGBlockHandler:
         validator_stash = extrinsic.call_args[0]["value"]
         era = extrinsic.call_args[1]["value"]
         validator_account = Account.get_from_address(validator_stash)
-        
+        if validator_account is None:
+            validator_account = Account.create(validator_stash) 
         validator = Validator.create(validator_account,era)
         for event in events:
             if event.event_name == "Reward":
@@ -414,8 +415,8 @@ class PGBlockHandler:
         event_start = 0
         event_end = len(events)
         
-        for i in range(len(extrinsic.call_args[0]["value"])):
-            sub_extrinsic_data = extrinsic.call_args[0]["value"][i]
+        for j in range(len(extrinsic.call_args[0]["value"])):
+            sub_extrinsic_data = extrinsic.call_args[0]["value"][j]
 
             """
             We can't assign events to extrinsics (only after spec 9050 that introduced the 'ItemCompleted' event).
@@ -424,14 +425,16 @@ class PGBlockHandler:
             of who got how much. Fortunately we know that the validator gets payed out first. We can therefore check if 
             the next extrinsic is also a payout extrinsic, then iterate through the events until we find the payout event
             for the validator in the next extrinsic and use all events until that one to create the rewards with the right era.
-            
-            if (
-                i+1 < len(extrinsic.call_args[0]["value"]) and
-                extrinsic.call_args[0]["value"][i]["module_id"] == "Staking" and extrinsic.call_args[0]["value"][i]["call_id"] == "payout_stakers" and
-                extrinsic.call_args[0]["value"][i+1]["module_id"] == "Staking" and extrinsic.call_args[0]["value"][i+1]["call_id"] == "payout_stakers"
-                ):
-                pass
             """
+            payout_staker_flag = False
+            if (
+                j+1 < len(extrinsic.call_args[0]["value"]) and
+                extrinsic.call_args[0]["value"][j]["call_module"] == "Staking" and extrinsic.call_args[0]["value"][j]["call_function"] == "payout_stakers" and
+                extrinsic.call_args[0]["value"][j+1]["call_module"] == "Staking" and extrinsic.call_args[0]["value"][j+1]["call_function"] == "payout_stakers"
+                ):
+                next_validator = extrinsic.call_args[0]["value"][j+1]["call_args"][0]["value"]
+                payout_staker_flag = True
+            
             for i in range(event_start, event_end):
                 if events[i].module_name == "Utility":
                     if events[i].event_name == "ItemCompleted":
@@ -459,6 +462,12 @@ class PGBlockHandler:
                 elif events[i].module_name == "Sudo" and events[i].event_name == "SudoAsDone":
                     was_successful = utils.extract_event_attributes_from_object(events[i],0)
                     break
+                elif payout_staker_flag and events[i].module_name == "Staking" and events[i].event_name == "Reward":
+                    reward_account = utils.convert_public_key_to_polkadot_address(utils.extract_event_attributes_from_object(events[i],0))
+                    if next_validator == reward_account and i != event_start:
+                        i = i-1
+                        was_successful = True
+                        break
             
             sub_events = events[event_start:i+1]
             event_start = i+1
