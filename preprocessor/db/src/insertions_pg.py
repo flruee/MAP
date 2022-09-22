@@ -277,7 +277,10 @@ class PGBlockHandler:
                 controller_account = Account.create(controller_address)
             Controller.create(controller_account, from_account)
         elif extrinsic.function_name == "bond_extra":
-            amount_transferred = extrinsic.call_args[0]["value"]
+            #amount_transferred = extrinsic.call_args[0]["value"]
+            for event in events:
+                if event.module_name == "Staking" and event.event_name == "Bonded":
+                    amount_transferred = utils.extract_event_attributes_from_object(event,1)
         else:
             raise NotImplementedError()
         
@@ -408,7 +411,24 @@ class PGBlockHandler:
 
         event_start = 0
         event_end = len(events)
-        for sub_extrinsic_data in extrinsic.call_args[0]["value"]:
+        
+        for i in range(len(extrinsic.call_args[0]["value"])):
+            sub_extrinsic_data = extrinsic.call_args[0]["value"][i]
+
+            """
+            We can't assign events to extrinsics (only after spec 9050 that introduced the 'ItemCompleted' event).
+            This is most of the time not a great problem since we get our information from the extrinsic data.
+            There is however the case of Staking(PayoutStakers). In this extrinsic the events carry the information
+            of who got how much. Fortunately we know that the validator gets payed out first. We can therefore check if 
+            the next extrinsic is also a payout extrinsic, then iterate through the events until we find the payout event
+            for the validator in the next extrinsic and use all events until that one to create the rewards with the right era.
+            """
+            if (
+                i+1 < len(extrinsic.call_args[0]["value"]) and
+                extrinsic.call_args[0]["value"][i]["module_id"] == "Staking" and extrinsic.call_args[0]["value"][i]["call_id"] == "payout_stakers" and
+                extrinsic.call_args[0]["value"][i+1]["module_id"] == "Staking" and extrinsic.call_args[0]["value"][i+1]["call_id"] == "payout_stakers"
+                ):
+                pass
             for i in range(event_start, event_end):
                 if events[i].module_name == "Utility":
                     if events[i].event_name == "ItemCompleted":
