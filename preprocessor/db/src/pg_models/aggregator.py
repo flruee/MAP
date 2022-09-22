@@ -1,7 +1,7 @@
 from multiprocessing.context import set_spawning_popen
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
-from sqlalchemy import Integer,BigInteger
+from sqlalchemy import Integer,BigInteger,Numeric
 from sqlalchemy.orm import relationship
 from .account import Account
 from .extrinsic import Extrinsic
@@ -20,8 +20,8 @@ class Aggregator(Base):
     total_events = Column(Integer)
     total_accounts = Column(Integer)
     total_transfers = Column(Integer)
-    total_currency = Column(BigInteger)
-    total_staked = Column(BigInteger)
+    total_currency = Column(Numeric(22,0))
+    total_staked = Column(Numeric(22,0))
 
 
     def create(block: Block, extrinsics: List[Extrinsic], events: List[List[Event]],staked_amount):

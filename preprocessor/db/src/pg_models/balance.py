@@ -2,7 +2,7 @@ from sqlalchemy import select
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
-from sqlalchemy import Integer,BigInteger
+from sqlalchemy import Integer,BigInteger, Numeric
 from sqlalchemy.orm import relationship
 from src.pg_models.base import Base
 
@@ -14,10 +14,10 @@ class Balance(Base):
     __tablename__ = "balance"
     id = Column(Integer, primary_key=True, index=True)
     nonce = Column(Integer)
-    transferable = Column(BigInteger)
-    reserved = Column(BigInteger)
-    bonded = Column(BigInteger)
-    unbonding = Column(BigInteger)
+    transferable = Column(Numeric(22,0))
+    reserved = Column(Numeric(22,0))
+    bonded = Column(Numeric(22,0))
+    unbonding = Column(Numeric(22,0))
     account = Column(Integer, ForeignKey("account.id",ondelete="CASCADE"), index=True)
     block_number = Column(Integer, ForeignKey(Block.block_number,ondelete="CASCADE"))
     extrinsic = Column(Integer, ForeignKey("extrinsic.id",ondelete="CASCADE"))

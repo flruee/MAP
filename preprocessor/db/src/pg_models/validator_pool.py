@@ -1,5 +1,6 @@
+from unicodedata import numeric
 from requests import session
-from sqlalchemy import BigInteger, Column, null
+from sqlalchemy import BigInteger, Column, null, Numeric
 from sqlalchemy import Integer
 from src.driver_singleton import Driver
 from src.pg_models.account import Account
@@ -11,8 +12,8 @@ from src.pg_models.base import Base
 class ValidatorPool(Base):
     __tablename__ = "validator_pool"
     era = Column(Integer, primary_key=True)
-    validator_payout = Column(BigInteger)
-    treasury_payout = Column(BigInteger)
+    validator_payout = Column(Numeric(22,0))
+    treasury_payout = Column(Numeric(22,0))
 
     def create(event: Event) -> "ValidatorPool":
         try:

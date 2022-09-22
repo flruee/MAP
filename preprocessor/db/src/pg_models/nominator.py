@@ -1,6 +1,6 @@
 from requests import session
 from sqlalchemy import Column, ForeignKey, null
-from sqlalchemy import Integer, BigInteger, String
+from sqlalchemy import Integer, BigInteger, String, Numeric
 from src.driver_singleton import Driver
 from src.pg_models.account import Account
 from src.pg_models.validator import Validator
@@ -13,7 +13,7 @@ class Nominator(Base):
     id = Column(Integer, primary_key=True)
     account = Column(Integer, ForeignKey("account.id",ondelete="CASCADE"), index=True)
     validator = Column(Integer, ForeignKey("validator.id",ondelete="CASCADE"))
-    reward = Column(BigInteger)
+    reward = Column(Numeric(22,0))
     reward_transfer = Column(ForeignKey("transfer.id",ondelete="CASCADE"))
     era = Column(Integer, ForeignKey("validator_pool.era",ondelete="CASCADE"))
 

@@ -1,7 +1,7 @@
 from requests import session
 from sqlalchemy import Column, null
 from sqlalchemy import ForeignKey
-from sqlalchemy import Integer,String,BigInteger
+from sqlalchemy import Integer,String,BigInteger, Numeric
 from src.pg_models.balance import Balance
 from src.pg_models.base import Base
 
@@ -17,7 +17,7 @@ class Transfer(Base):
     to_account = Column(Integer, ForeignKey(Account.id,ondelete="CASCADE"))
     from_balance = Column(Integer, ForeignKey(Balance.id,ondelete="CASCADE"))
     to_balance = Column(Integer, ForeignKey(Balance.id,ondelete="CASCADE"))
-    value = Column(BigInteger)
+    value = Column(Numeric(22,0))
     extrinsic = Column(Integer, ForeignKey("extrinsic.id",ondelete="CASCADE"))
     type = Column(String)
 
