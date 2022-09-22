@@ -21,7 +21,7 @@ from src.pg_models.validator import Validator
 from src.pg_models.validator_to_nominator import ValidatorToNominator
 #from src.event_handlers_pg import SystemEventHandler, BalancesEventHandler, StakingEventHandler, ClaimsEventHandler
 from sqlalchemy.exc import IntegrityError
-from src.node_connection import handle_one_block
+#from src.node_connection import handle_one_block
 from substrateinterface import SubstrateInterface
 import ssl
 import src.utils as utils
@@ -422,13 +422,14 @@ class PGBlockHandler:
             of who got how much. Fortunately we know that the validator gets payed out first. We can therefore check if 
             the next extrinsic is also a payout extrinsic, then iterate through the events until we find the payout event
             for the validator in the next extrinsic and use all events until that one to create the rewards with the right era.
-            """
+            
             if (
                 i+1 < len(extrinsic.call_args[0]["value"]) and
                 extrinsic.call_args[0]["value"][i]["module_id"] == "Staking" and extrinsic.call_args[0]["value"][i]["call_id"] == "payout_stakers" and
                 extrinsic.call_args[0]["value"][i+1]["module_id"] == "Staking" and extrinsic.call_args[0]["value"][i+1]["call_id"] == "payout_stakers"
                 ):
                 pass
+            """
             for i in range(event_start, event_end):
                 if events[i].module_name == "Utility":
                     if events[i].event_name == "ItemCompleted":
