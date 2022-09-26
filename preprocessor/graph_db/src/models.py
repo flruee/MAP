@@ -175,7 +175,7 @@ class Transaction(GraphObject):
 
         call_function = transaction_data["call"]["call_function"]
         call_module = transaction_data["call"]["call_module"]
-
+        print(call_module, call_function)
         transaction = Node("Transaction",
                            extrinsic_hash=transaction_data["extrinsic_hash"])
         subgraph = Utils.merge_subgraph(subgraph, transaction)
@@ -191,7 +191,7 @@ class Transaction(GraphObject):
         transaction_extrinsicfunction_relationship = Relationship(transaction, "HAS_EXTRINSICFUNCTION", extrinsic_function)
         subgraph = Utils.merge_subgraph(subgraph, extrinsicfunction_extrinsicmodule_relationship, transaction_extrinsicfunction_relationship)
         if call_module in ['FinalityTracker', 'Parachains', 'ParaInherent', 'ImOnline',
-                           'ElectionProviderMultiPhase', 'Timestamp', 'Council', 'Claims']:
+                           'ElectionProviderMultiPhase', 'Timestamp', 'Council', 'Claims', 'Babe']:
             """
             Simply return transaction since no balance shift takes place in these modules.
             """
@@ -214,17 +214,93 @@ class Transaction(GraphObject):
             from_account = Account.get(subgraph, from_account_address)
             if from_account is None:
                 from_account = Account.create(from_account_address)
-            for transaction_batch in transaction_data['call']['call_args'][0]['value']:
+
+            event_start = 0
+            event_end = len(event_data)
+            if call_function == 'as_derivative':
                 transaction_structure = dict()
                 transaction_structure['extrinsic_hash'] = transaction_data['extrinsic_hash']
                 transaction_structure['address'] = transaction_data['address']
-                transaction_structure['call'] = transaction_batch
+                transaction_structure['call'] = transaction_data['call']['call_args'][1]['value']
+                return Transaction.create(block=block,
+                                               transaction_data=transaction_structure,
+                                               event_data=event_data,
+                                               batch_from_account=from_account,
+                                               batch_transaction=transaction,
+                                               subgraph=subgraph)
+
+
+            transaction_data_list = transaction_data['call']['call_args'][0]['value']
+            for j in range(len(transaction_data_list)):
+                sub_extrinsic_data = transaction_data_list[j]
+
+                """
+                We can't assign events to extrinsics (only after spec 9050 that introduced the 'ItemCompleted' event).
+                This is most of the time not a great problem since we get our information from the extrinsic data.
+                There is however the case of Staking(PayoutStakers). In this extrinsic the events carry the information
+                of who got how much. Fortunately we know that the validator gets payed out first. We can therefore check if 
+                the next extrinsic is also a payout extrinsic, then iterate through the events until we find the payout event
+                for the validator in the next extrinsic and use all events until that one to create the rewards with the right era.
+                """
+                payout_staker_flag = False
+                if (
+                        j + 1 < len(transaction_data_list) and
+                        transaction_data_list[j]["call_module"] == "Staking" and
+                        transaction_data_list[j]["call_function"] == "payout_stakers" and
+                        transaction_data_list[j + 1]["call_module"] == "Staking" and
+                        transaction_data_list[j + 1]["call_function"] == "payout_stakers"
+                ):
+                    next_validator = transaction_data_list[j + 1]["call_args"][0]["value"]
+                    payout_staker_flag = True
+
+                for i in range(event_start, event_end):
+                    if event_data[i]['module_id'] == "Utility":
+                        if event_data[i]['event_id'] == "ItemCompleted":
+                            was_successful = True
+                            break
+                        elif event_data[i]['event_id'] == "ItemFailed":
+                            was_successful = False
+                            break
+                        elif event_data[i]['event_id'] == "BatchInterrupted":
+                            was_successful = False
+                            break
+                        elif event_data[i]['event_id'] == "BatchCompleted":
+                            was_successful = True
+                            break
+                        elif event_data[i]['event_id'] == "ProxyExecuted" and event_data[i].module_name == 'Proxy':
+                            was_successful = True
+                            break
+                        # True Horror, an encapsulation of type Sudo->Batch gives no indication as to which events
+                        # belong to which item of the batch. we have to handle those by hand.
+                        elif block['block_number'] in [240853, 240984, 372203, 500796]:
+                            was_successful = True
+                            i = i + 2  # take 3 events
+                            break
+
+                            """                        elif event_data[i]['module_id'] == "Sudo" and event_data[i]['event_id'] == "SudoAsDone":
+                            was_successful = Utils.extract_event_attributes_from_object(event_data[i], 0)
+                            break"""
+                    elif payout_staker_flag and event_data[i]['module_id'] == "Staking" and event_data[i]['event_id'] == "Reward":
+                        reward_account = Utils.convert_public_key_to_polkadot_address(event_data[i]['attributes'][0]['value'])
+                        if next_validator == reward_account and i != event_start:
+                            i = i - 1
+                            was_successful = True
+                            break
+
+                sub_events = event_data[event_start:i + 1]
+                event_start = i + 1
+                """                    sub_extrinsic = Extrinsic.create_from_batch(block, sub_extrinsic_data, events, extrinsic, was_successful)
+                self.handle_special_extrinsics(block, sub_extrinsic, sub_events)"""
+                transaction_structure = dict()
+                transaction_structure['extrinsic_hash'] = transaction_data['extrinsic_hash']
+                transaction_structure['address'] = transaction_data['address']
+                transaction_structure['call'] = sub_extrinsic_data
                 subgraph = Transaction.create(block=block,
-                                   transaction_data=transaction_structure,
-                                   event_data=event_data,
-                                   batch_from_account=from_account,
-                                   batch_transaction=transaction,
-                                   subgraph=subgraph)
+                                               transaction_data=transaction_structure,
+                                               event_data=sub_events,
+                                               batch_from_account=from_account,
+                                               batch_transaction=transaction,
+                                               subgraph=subgraph)
         """
         Get account which triggered the transaction and set initial values of variables required for further processing
         """
@@ -316,13 +392,13 @@ class Transaction(GraphObject):
                                              from_account=from_account,
                                                 subgraph = subgraph)
 
-        """        elif extrinsic_function['name'] == "payout_stakers":
+        elif extrinsic_function['name'] == "payout_stakers":
             return Transaction.handle_payout_stakers(transaction_data=transaction_data,  # todo: improve this sucks ass
                                                   event_data=event_data,
                                                   block=block,
                                                   transaction=transaction,
-                                                     subgraph=subgraph)"""
-
+                                                     subgraph=subgraph,
+                                                     batch_transaction=batch_transaction)
         return subgraph
 
 
@@ -476,7 +552,8 @@ class Transaction(GraphObject):
                               event_data,
                               block,
                               transaction,
-                              subgraph):
+                              subgraph,
+                              batch_transaction):
         """
         handles Staking(Reward) event by creating a nominator node, checking their payout preferences (reward_destination)
         adjusting their transferable/bonded balance respectively.
@@ -485,10 +562,10 @@ class Transaction(GraphObject):
         """
         validator_stash = transaction_data['call']['call_args'][0]['value']
         author_account = Account.get(subgraph, validator_stash)
-        if not author_account:
+        if author_account is None:
             author_account = Account.create(validator_stash)
         validator = Validator.get_from_account(author_account)
-        if not validator:
+        if validator is None:
             validator = Validator.create(author_account)
         for event in event_data:
             if event['event_id'] == 'Reward':

@@ -52,7 +52,7 @@ block_handler = Neo4jBlockHandler(driver)
 transaction_list = range(2010000,11328745)
 #transaction_list = [5499975] # free floating balance node
 #transaction_list = [5499979]
-#transaction_list = [2015478,2015479]
+transaction_list = [3268338,990163]
 
 
 """CREATE INDEX IF NOT EXISTS
