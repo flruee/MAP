@@ -1,18 +1,21 @@
 from sqlalchemy import Column, Integer, JSON
 from sqlalchemy.orm import declarative_base
-from py2neo.ogm import GraphObject, Property, RelatedTo, RelatedFrom, RelatedObjects
+from py2neo.ogm import GraphObject, Property, RelatedTo, RelatedFrom
 from src.driver_singleton import Driver
 from typing import Dict
 from substrateinterface.utils import ss58
 from py2neo import Subgraph, Node, Relationship
 import time
 import logging
+
 Base = declarative_base()
 """
 Block
 """
 
 treasury_address = "13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB"
+
+
 def decorator_factory(decorator):
     """
     Meta decorator
@@ -25,23 +28,25 @@ def decorator_factory(decorator):
     """
 
     def layer(error, *args, **kwargs):
-
         def repl(f, *args, **kwargs):
             return decorator(f, error, *args, **kwargs)
 
         return repl
 
     return layer
+
+
 @decorator_factory
-def profiler(function,cls_name, *args, **kwargs):
+def profiler(function, cls_name, *args, **kwargs):
     def wrapper(*args, **kwargs):
         logging.debug("Transaction started")
         start = time.perf_counter()
         result = function(*args, **kwargs)
-        logging.debug(f"Transaction finished {cls_name} {function.__name__} took {time.perf_counter()-start} s")
+        logging.debug(f"Transaction finished {cls_name} {function.__name__} took {time.perf_counter() - start} s")
         return result
 
     return wrapper
+
 
 class RawData(Base):
     __tablename__ = "raw_data"
@@ -115,6 +120,7 @@ class Utils:
             new_list.append(Utils.merge_subgraph(x, y))
         return new_list
 
+
 class Block(GraphObject):
     __primarykey__ = "block_number"
 
@@ -187,9 +193,16 @@ class Transaction(GraphObject):
         if extrinsic_module is None:
             extrinsic_module = ExtrinsicModule.create(call_module)
         subgraph = Utils.merge_subgraph(subgraph, extrinsic_function, extrinsic_module)
-        extrinsicfunction_extrinsicmodule_relationship = Relationship(extrinsic_function, "PART_OF_MODULE", extrinsic_module)
-        transaction_extrinsicfunction_relationship = Relationship(transaction, "HAS_EXTRINSICFUNCTION", extrinsic_function)
-        subgraph = Utils.merge_subgraph(subgraph, extrinsicfunction_extrinsicmodule_relationship, transaction_extrinsicfunction_relationship)
+        extrinsicfunction_extrinsicmodule_relationship = Relationship(extrinsic_function,
+                                                                      "PART_OF_MODULE",
+                                                                      extrinsic_module)
+        transaction_extrinsicfunction_relationship = Relationship(transaction,
+                                                                  "HAS_EXTRINSICFUNCTION",
+                                                                  extrinsic_function)
+        subgraph = Utils.merge_subgraph(subgraph, extrinsicfunction_extrinsicmodule_relationship,
+                                        transaction_extrinsicfunction_relationship)
+
+        #Transaction.handle_extrinsics_without_sender(call_module, call_function, subgraph, block, transaction)
         if call_module in ['FinalityTracker', 'Parachains', 'ParaInherent', 'ImOnline',
                            'ElectionProviderMultiPhase', 'Timestamp', 'Council', 'Claims', 'Babe']:
             """
@@ -223,12 +236,11 @@ class Transaction(GraphObject):
                 transaction_structure['address'] = transaction_data['address']
                 transaction_structure['call'] = transaction_data['call']['call_args'][1]['value']
                 return Transaction.create(block=block,
-                                               transaction_data=transaction_structure,
-                                               event_data=event_data,
-                                               batch_from_account=from_account,
-                                               batch_transaction=transaction,
-                                               subgraph=subgraph)
-
+                                          transaction_data=transaction_structure,
+                                          event_data=event_data,
+                                          batch_from_account=from_account,
+                                          batch_transaction=transaction,
+                                          subgraph=subgraph)
 
             transaction_data_list = transaction_data['call']['call_args'][0]['value']
             for j in range(len(transaction_data_list)):
@@ -267,21 +279,19 @@ class Transaction(GraphObject):
                         elif event_data[i]['event_id'] == "BatchCompleted":
                             was_successful = True
                             break
-                        elif event_data[i]['event_id'] == "ProxyExecuted" and event_data[i].module_name == 'Proxy':
-                            was_successful = True
-                            break
+                    elif event_data[i]['event_id'] == "ProxyExecuted" and event_data[i].module_name == 'Proxy':
+                        was_successful = True
+                        break
                         # True Horror, an encapsulation of type Sudo->Batch gives no indication as to which events
                         # belong to which item of the batch. we have to handle those by hand.
-                        elif block['block_number'] in [240853, 240984, 372203, 500796]:
-                            was_successful = True
-                            i = i + 2  # take 3 events
-                            break
-
-                            """                        elif event_data[i]['module_id'] == "Sudo" and event_data[i]['event_id'] == "SudoAsDone":
-                            was_successful = Utils.extract_event_attributes_from_object(event_data[i], 0)
-                            break"""
-                    elif payout_staker_flag and event_data[i]['module_id'] == "Staking" and event_data[i]['event_id'] == "Reward":
-                        reward_account = Utils.convert_public_key_to_polkadot_address(event_data[i]['attributes'][0]['value'])
+                    elif block['block_number'] in [240853, 240984, 372203, 500796]:
+                        was_successful = True
+                        i = i + 2  # take 3 events
+                        break
+                    elif payout_staker_flag and event_data[i]['module_id'] == "Staking" and\
+                            event_data[i]['event_id'] == "Reward":
+                        reward_account = Utils.convert_public_key_to_polkadot_address(
+                            event_data[i]['attributes'][0]['value'])
                         if next_validator == reward_account and i != event_start:
                             i = i - 1
                             was_successful = True
@@ -289,18 +299,16 @@ class Transaction(GraphObject):
 
                 sub_events = event_data[event_start:i + 1]
                 event_start = i + 1
-                """                    sub_extrinsic = Extrinsic.create_from_batch(block, sub_extrinsic_data, events, extrinsic, was_successful)
-                self.handle_special_extrinsics(block, sub_extrinsic, sub_events)"""
                 transaction_structure = dict()
                 transaction_structure['extrinsic_hash'] = transaction_data['extrinsic_hash']
                 transaction_structure['address'] = transaction_data['address']
                 transaction_structure['call'] = sub_extrinsic_data
                 subgraph = Transaction.create(block=block,
-                                               transaction_data=transaction_structure,
-                                               event_data=sub_events,
-                                               batch_from_account=from_account,
-                                               batch_transaction=transaction,
-                                               subgraph=subgraph)
+                                              transaction_data=transaction_structure,
+                                              event_data=sub_events,
+                                              batch_from_account=from_account,
+                                              batch_transaction=transaction,
+                                              subgraph=subgraph)
         """
         Get account which triggered the transaction and set initial values of variables required for further processing
         """
@@ -321,11 +329,12 @@ class Transaction(GraphObject):
         """
         Handle Extrinsics which failed. They are required to pay fees regardless of outcome.
         """
-        if event_data[-1]["event_id"] != "ExtrinsicSuccess":
-            transaction['is_succesful'] = False
-            block_transaction_relationship = Relationship(block, "HAS_TRANSACTION", transaction)
-            subgraph = Utils.merge_subgraph(subgraph, transaction)
-            return Utils.merge_subgraph(subgraph, block_transaction_relationship)
+        if len(event_data):
+            if event_data[-1]["event_id"] == "ExtrinsicFailed":
+                transaction['is_succesful'] = False
+                block_transaction_relationship = Relationship(block, "HAS_TRANSACTION", transaction)
+                subgraph = Utils.merge_subgraph(subgraph, transaction)
+                return Utils.merge_subgraph(subgraph, block_transaction_relationship)
         transaction.is_successful = True
         """
         Lastly we make a separate batch node which we connect to the individual call
@@ -344,9 +353,9 @@ class Transaction(GraphObject):
             transaction_structure['address'] = transaction_data['address']
             transaction_structure['call'] = transaction_data['call']['call_args'][2]['value']
             subgraph = Transaction.create(block=block,
-                               transaction_data=transaction_structure,
-                               event_data=event_data,
-                               proxy_transaction=transaction,
+                                          transaction_data=transaction_structure,
+                                          event_data=event_data,
+                                          proxy_transaction=transaction,
                                           subgraph=subgraph)
             # todo: connect with proxy call
 
@@ -361,46 +370,49 @@ class Transaction(GraphObject):
         if extrinsic_function['name'] in ["transfer", "transfer_all", "transfer_keep_alive"]:
 
             return Transaction.handle_transfer(transaction_data=transaction_data,
-                                            event_data=event_data,
-                                            block=block,
-                                            transaction=transaction,
-                                            from_account=from_account,
-                                            subgraph=subgraph)
+                                               event_data=event_data,
+                                               block=block,
+                                               transaction=transaction,
+                                               from_account=from_account,
+                                               subgraph=subgraph)
 
         elif extrinsic_function['name'] in ["bond", "bond_extra"]:
             return Transaction.handle_bond(transaction_data=transaction_data,
-                                        event_data=event_data,
-                                        block=block,
-                                        transaction=transaction,
-                                        extrinsic_function=extrinsic_function,
-                                        from_account=from_account,
-                                        subgraph=subgraph)
+                                           event_data=event_data,
+                                           block=block,
+                                           transaction=transaction,
+                                           extrinsic_function=extrinsic_function,
+                                           from_account=from_account,
+                                           subgraph=subgraph)
 
         elif extrinsic_function['name'] == "set_controller":
             return Transaction.handle_set_controller(transaction_data=transaction_data,
-                                                        event_data=event_data,
-                                                  block=block,
-                                                  transaction=transaction,
-                                                  from_account=from_account,
-                                                    subgraph = subgraph)
+                                                     event_data=event_data,
+                                                     block=block,
+                                                     transaction=transaction,
+                                                     from_account=from_account,
+                                                     subgraph=subgraph)
 
         elif extrinsic_function['name'] == "set_payee":
             return Transaction.handle_set_payee(transaction_data=transaction_data,
-                                             event_data=event_data,
-                                             block=block,
-                                             transaction=transaction,
-                                             from_account=from_account,
-                                                subgraph = subgraph)
+                                                event_data=event_data,
+                                                block=block,
+                                                transaction=transaction,
+                                                from_account=from_account,
+                                                subgraph=subgraph)
 
         elif extrinsic_function['name'] == "payout_stakers":
             return Transaction.handle_payout_stakers(transaction_data=transaction_data,  # todo: improve this sucks ass
-                                                  event_data=event_data,
-                                                  block=block,
-                                                  transaction=transaction,
+                                                     event_data=event_data,
+                                                     block=block,
+                                                     transaction=transaction,
                                                      subgraph=subgraph,
                                                      batch_transaction=batch_transaction)
         return subgraph
 
+    @staticmethod
+    def handle_extrinsics_without_sender(call_module, call_function, subgraph, block, transaction):
+        return
 
     @staticmethod
     def handle_transfer(transaction_data,
@@ -420,9 +432,9 @@ class Transaction(GraphObject):
 
         transaction["amount_transferred"] = str(amount_transferred)
         fromaccount_transferto_relationship = Relationship(from_account, "TRANSFER_TO", to_account)
-        #fromaccount_transferto_relationship.properties['block_number'] = block['block_number'] # todo: add property
-        subgraph =  Utils.merge_subgraph(subgraph, fromaccount_transferto_relationship, from_account, to_account,
-                             Transaction.finish_transaction(block, transaction))
+        # fromaccount_transferto_relationship.properties['block_number'] = block['block_number'] # todo: add property
+        subgraph = Utils.merge_subgraph(subgraph, fromaccount_transferto_relationship, from_account, to_account,
+                                        Transaction.finish_transaction(block, transaction))
         return subgraph
 
     @staticmethod
@@ -442,7 +454,6 @@ class Transaction(GraphObject):
 
         amount_transferred = 0
         transaction["amount_transferred"] = amount_transferred
-
 
         return Utils.merge_subgraph(subgraph, from_account, controller_account,
                                     Transaction.finish_transaction(block, transaction), controller_account_relationship)
@@ -555,9 +566,9 @@ class Transaction(GraphObject):
                               subgraph,
                               batch_transaction):
         """
-        handles Staking(Reward) event by creating a nominator node, checking their payout preferences (reward_destination)
-        adjusting their transferable/bonded balance respectively.
-        We check whether or not the nominator receiving the reward is the same address as the validator in order to avoid
+        handles Staking(Reward) event by creating a nominator node, checking their payout preferences
+        (reward_destination) adjusting their transferable/bonded balance respectively.
+        We check whether the nominator receiving the reward is the same address as the validator in order to avoid
         creating a nominator node for a validator.
         """
         validator_stash = transaction_data['call']['call_args'][0]['value']
@@ -566,7 +577,11 @@ class Transaction(GraphObject):
             author_account = Account.create(validator_stash)
         validator = Validator.get_from_account(author_account)
         if validator is None:
-            validator = Validator.create(author_account)
+            validator, account_validator_relationship = Validator.create(amount_staked=0, self_staked=0,
+                                                                         nominator_staked=0,
+                                                                         account=author_account)
+            subgraph = Utils.merge_subgraph(subgraph, account_validator_relationship)
+
         for event in event_data:
             if event['event_id'] == 'Reward':
                 nominator_reward = event['attributes'][1]['value']
@@ -667,7 +682,7 @@ class ExtrinsicModule(GraphObject):
         return extrinsic_module
 
     @staticmethod
-    def create(module_name: str) -> "ExtrinsicModule":
+    def create(module_name: str) -> Node:
         extrinsic_module = Node("ExtrinsicModule",
                                 name=module_name,
                                 )
@@ -764,10 +779,10 @@ class ValidatorPool(GraphObject):
     @staticmethod
     def create(era, total_staked=0, total_reward=0):
         validatorpool = Node("ValidatorPool",
-            era=era,
-            total_staked=total_staked,
-            total_reward=total_reward
-        )
+                             era=era,
+                             total_staked=total_staked,
+                             total_reward=total_reward
+                             )
         tx = Driver().get_driver().graph.begin()
         tx.create(validatorpool)
         Driver().get_driver().graph.commit(tx)
@@ -787,20 +802,15 @@ class Validator(GraphObject):
     @staticmethod
     @profiler("Validator")
     def get_account_from_validator(validator):
-        # res1 =  Driver().get_driver().run("Match (v:Validator)<-[:IS_VALIDATOR]-(a:Account {address: '"+str(account.address)+"'}) return a")
         print(validator.account.triples())
 
     @staticmethod
     @profiler("Validator")
     def get_from_account(account: "Account") -> "Validator":
+        return Driver().get_driver().graph.run(
+            "Match (v:Validator)<-[:IS_VALIDATOR]-(a:Account {address: '" + str(
+                account['address']) + "'}) return v").evaluate()
 
-        res = Driver().get_driver().graph.run(
-            "Match (v:Validator)<-[:IS_VALIDATOR]-(a:Account {address: '" + str(account['address']) + "'}) return v").evaluate()
-        if res is None:
-            validator = Validator.create(account=account)
-        else:
-            validator = res
-        return validator
 
     @staticmethod
     def create(amount_staked=0, self_staked=0, nominator_staked=0, account: "Account" = None):
@@ -809,7 +819,8 @@ class Validator(GraphObject):
                          self_staked=self_staked,
                          nominator_staked=nominator_staked
                          )
-        return validator
+        account_validator_relationship = Relationship(account, "IS_VALIDATOR", validator)
+        return validator, account_validator_relationship
 
 
 class Nominator(GraphObject):
@@ -820,7 +831,8 @@ class Nominator(GraphObject):
     @profiler("Nominator")
     def get_from_account(account: "Account") -> "Nominator":
         res = Driver().get_driver().graph.run(
-            "Match (n:Nominator)<-[:IS_NOMINATOR]-(a:Account {address: '" + str(account['address']) + "'}) return n").evaluate()
+            "Match (n:Nominator)<-[:IS_NOMINATOR]-(a:Account {address: '" + str(
+                account['address']) + "'}) return n").evaluate()
         if res is None:
             nominator = Nominator.create(account=account)
         else:
@@ -830,7 +842,7 @@ class Nominator(GraphObject):
     @staticmethod
     def create(total_staked=0, reward=0, account: "Account" = None):
         nominator = Node("Nominator",
-            total_staked=total_staked,
-            reward=reward
-        )
+                         total_staked=total_staked,
+                         reward=reward
+                         )
         return nominator
