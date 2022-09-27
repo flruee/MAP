@@ -279,7 +279,7 @@ class Transaction(GraphObject):
                         elif event_data[i]['event_id'] == "BatchCompleted":
                             was_successful = True
                             break
-                    elif event_data[i]['event_id'] == "ProxyExecuted" and event_data[i].module_name == 'Proxy':
+                    elif event_data[i]['event_id'] == "ProxyExecuted" and event_data[i]['module_id'] == 'Proxy':
                         was_successful = True
                         break
                         # True Horror, an encapsulation of type Sudo->Batch gives no indication as to which events
@@ -580,7 +580,7 @@ class Transaction(GraphObject):
             validator, account_validator_relationship = Validator.create(amount_staked=0, self_staked=0,
                                                                          nominator_staked=0,
                                                                          account=author_account)
-            subgraph = Utils.merge_subgraph(subgraph, account_validator_relationship)
+            subgraph = Utils.merge_subgraph(subgraph, validator, account_validator_relationship)
 
         for event in event_data:
             if event['event_id'] == 'Reward':
@@ -590,10 +590,13 @@ class Transaction(GraphObject):
                 if nominator_account is None:
                     nominator_account = Account.create(nominator_address)
                 nominator = Nominator.get_from_account(nominator_account)
-                nominator_account_relationship = Relationship(nominator_account, "IS_NOMINATOR", nominator)
+                if nominator is None:
+                    nominator, account_nominator_relationship = Nominator.create(total_staked=0, reward=0,
+                                                                                 account=nominator_account)
+                    subgraph = Utils.merge_subgraph(subgraph, nominator, account_nominator_relationship)
                 nominator['reward'] = nominator_reward
                 validator_nominator_relationship = Relationship(validator, "HAS_NOMINATOR", nominator)
-                subgraph = Utils.merge_subgraph(subgraph, nominator, nominator_account_relationship,
+                subgraph = Utils.merge_subgraph(subgraph, nominator, validator,
                                                 validator_nominator_relationship, nominator_account)
 
         return Utils.merge_subgraph(subgraph, Transaction.finish_transaction(block, transaction))
@@ -830,14 +833,9 @@ class Nominator(GraphObject):
     @staticmethod
     @profiler("Nominator")
     def get_from_account(account: "Account") -> "Nominator":
-        res = Driver().get_driver().graph.run(
+        return Driver().get_driver().graph.run(
             "Match (n:Nominator)<-[:IS_NOMINATOR]-(a:Account {address: '" + str(
                 account['address']) + "'}) return n").evaluate()
-        if res is None:
-            nominator = Nominator.create(account=account)
-        else:
-            nominator = res
-        return nominator
 
     @staticmethod
     def create(total_staked=0, reward=0, account: "Account" = None):
@@ -845,4 +843,5 @@ class Nominator(GraphObject):
                          total_staked=total_staked,
                          reward=reward
                          )
-        return nominator
+        account_nominator_relationship = Relationship(account, "IS_NOMINATOR", nominator)
+        return nominator, account_nominator_relationship
