@@ -127,6 +127,11 @@ class Neo4jBlockHandler:
             if validator_account is None:
                 validator_account = Account.create(validator_address)
             validator_node = Validator.get_from_account(validator_account)
+            if validator_node is None:
+                validator_node, account_validator_relationship = Validator.create(amount_staked=0, self_staked=0, nominator_staked=0,
+                                                  account=validator_account)
+                subgraph = Utils.merge_subgraph(subgraph, account_validator_relationship)
+
             account_validator_relationship = Relationship(validator_account, "IS_VALIDATOR", validator_node)
             validatorpool_validatornode_relationship = Relationship(current_validatorpool,
                                                                     "HAS_VALIDATOR",

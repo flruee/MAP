@@ -43,8 +43,8 @@ driver_singleton = Driver()
 driver_singleton.add_driver(driver)
 pg_driver = create_engine('postgresql://postgres:polkamap@172.23.149.214/raw_data')
 block_handler = Neo4jBlockHandler(driver)
-transaction_list = range(3268338,11328745)
-transaction_list = [990212, 990163]
+transaction_list = range(3268701,11328745)
+#transaction_list = [3268701, 990163]
 
 
 """CREATE INDEX IF NOT EXISTS
@@ -66,8 +66,7 @@ ON (n.address)"""
     subgraph = block_handler.handle_full_block(db_data.data)
     tx = Driver().get_driver().graph.begin()
     tx.create(subgraph)
-    Driver().get_driver().graph.commit(tx)
-    """
+    Driver().get_driver().graph.commit(tx)"""
 
 counter = 0
 average_time = 0
