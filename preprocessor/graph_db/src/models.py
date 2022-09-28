@@ -453,7 +453,7 @@ class Transaction(GraphObject):
         controller_account_relationship = Relationship(controller_account, "CONTROLS", from_account)
 
         amount_transferred = 0
-        transaction["amount_transferred"] = amount_transferred
+        transaction["amount_transferred"] = str(amount_transferred)
 
         return Utils.merge_subgraph(subgraph, from_account, controller_account,
                                     Transaction.finish_transaction(block, transaction), controller_account_relationship)
@@ -468,7 +468,7 @@ class Transaction(GraphObject):
                     subgraph):
 
         if extrinsic_function['name'] == "bond":
-            amount_transferred = transaction_data["call"]["call_args"][1]["value"]
+            amount_transferred = str(transaction_data["call"]["call_args"][1]["value"])
 
             controller_address = Utils.convert_public_key_to_polkadot_address(
                 transaction_data["call"]["call_args"][0]["value"])
@@ -486,7 +486,7 @@ class Transaction(GraphObject):
             controller_account["reward_destination"] = reward_destination
 
         elif extrinsic_function['name'] == "bond_extra":
-            amount_transferred = transaction_data["call"]["call_args"][0]["value"]
+            amount_transferred = str(transaction_data["call"]["call_args"][0]["value"])
             controller_account = None
         else:
             raise NotImplementedError(extrinsic_function.name)
@@ -612,7 +612,7 @@ class Transaction(GraphObject):
         if not to_account:
             to_account = Account.create(to_address)
         amount_transferred = transaction_data['call']['call_args'][1]['value']
-        transaction.amount_transferred = amount_transferred
+        transaction.amount_transferred = str(amount_transferred)
         return transaction, from_account, to_account, amount_transferred
 
     @staticmethod
