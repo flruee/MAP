@@ -38,21 +38,13 @@ def env(key, default=None, required=True):
 DATABASE_USERNAME = env('DATABASE_USERNAME')
 DATABASE_PASSWORD = env('DATABASE_PASSWORD')
 DATABASE_URL = env('DATABASE_URL')
-
-
 driver = Repository(DATABASE_URL, auth=(DATABASE_USERNAME, str(DATABASE_PASSWORD)))
-#driver.graph.schema.create_index("Account", "address")
-#driver.graph.schema.drop_index("Account", "address")
-#driver.graph.schema.drop_uniqueness_constraint("Account", "address")
-#driver.graph.schema.create_uniqueness_constraint("Account", "address")
 driver_singleton = Driver()
 driver_singleton.add_driver(driver)
 pg_driver = create_engine('postgresql://postgres:polkamap@172.23.149.214/raw_data')
 block_handler = Neo4jBlockHandler(driver)
-transaction_list = range(2010000,11328745)
-#transaction_list = [5499975] # free floating balance node
-#transaction_list = [5499979]
-#transaction_list = [2015478,2015479]
+transaction_list = range(3898094,11328745)
+#transaction_list = range(3898094, 3908094)
 
 
 """CREATE INDEX IF NOT EXISTS
@@ -61,10 +53,8 @@ ON (n.address)"""
 
 """Match (n:Account {address: '14bARWgpfEiURUS7sGGb54V6mvteRhYWDovcjnFMsLfxRxVV'}) return n;"""
 
-#transaction_list = [330907]
-# create first validatorpool for testing
-"""
-"with Session(pg_driver) as session:
+
+with Session(pg_driver) as session:
     start = time.time()
     loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
     account = Driver().get_driver().graph.run(
@@ -77,7 +67,6 @@ ON (n.address)"""
     tx = Driver().get_driver().graph.begin()
     tx.create(subgraph)
     Driver().get_driver().graph.commit(tx)
-    """
 
 counter = 0
 average_time = 0

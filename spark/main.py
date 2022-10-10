@@ -21,8 +21,10 @@ queries_postgres = {
 queries_neo4j = {
     "get_transactions_all": "match(t:Transaction) return t",
     "get_blocks_and_validators": "match(b:Block)-[:HAS_AUTHOR]-(v:Validator)-[:IS_VALIDATOR]-(a:Account) return b,v,a",
-    "get_validatorpools_validators_nominators": "match(v:ValidatorPool)-[:HAS_VALIDATOR]-(n:Validator)-[:HAS_NOMINATOR]-(g:Nominator) return v,n,g",
-    "get_all_on_block": "match(b:Block)-[*1]-() return b"
+    "get_validatorpools_validators_nominators": "match(v:ValidatorPool)-[:HAS_VALIDATOR]->(n:Validator)-[:HAS_NOMINATOR]->(g:Nominator) return v,n,g",
+    "get_all_on_block": "match(b:Block)-[*1]-() return b",
+    "get": "match(v:ValidatorPool)-[:HAS_VALIDATOR]->(n:Validator) return v,n",
+    "get_transfernetwork": "match(account:Account)-[transfer_to:TRANSFER_TO]->(b:Account) return account,b,transfer_to"
 }
 
 
@@ -48,15 +50,16 @@ def init_sparksession(query: str, db: str):
             .load()
     else:
         print('graph_job')
-        url = 'bolt://127.0.0.1:7687'
+        url = 'bolt://172.23.149.214:7687'
         user = "neo4j"
         password = "mapmap"
         return \
             SparkSession \
             .builder \
+            .config("spark.driver.memory", "15g") \
             .appName("Polkadot Pyspark neo4j") \
             .config("spark.jars", "./neo4j-connector-apache-spark_2.12-4.1.2_for_spark_3.jar") \
-            .config("neo4j.url", "bolt://localhost:7687") \
+            .config("neo4j.url", url) \
             .config("neo4j.authentication.type", "basic") \
             .config("neo4j.authentication.basic.username", user) \
             .config("neo4j.authentication.basic.password", password) \
@@ -85,8 +88,6 @@ def main(args):
     spark = init_sparksession(query, db=args.database)
     spark.show(
     )
-    spark.time(spark.show())
-    exit()
     if args.save:
         if args.name is None:
             name = "untitled"
@@ -99,7 +100,7 @@ def main(args):
 
 def argparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-q",   "--query",                              help="enter SQL query",           type=str)
+    parser.add_argument("-q",   "--query",                              help="enter SQL/cypher query",           type=str)
     parser.add_argument("-u",   "--url",                          help="default: localhost",        type=str)
     parser.add_argument("-n",   "--name",                               help="name for file results",     type=str)
     parser.add_argument("-pre", "--preset",                           help="choose predefined query",   type=str)
