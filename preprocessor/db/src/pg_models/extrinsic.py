@@ -37,9 +37,10 @@ class Extrinsic(Base):
     @staticmethod
     def create(block: "Block",extrinsic_data,event_data) -> "Extrinsic":
         Extrinsic.__clean_fields(extrinsic_data)
+        created_accounts = 0
         was_successful = event_data[-1]["event_id"] == "ExtrinsicSuccess"
-        sender_account = Extrinsic.__extract_sender_account(extrinsic_data)
-        
+        sender_account,additional_accounts = Extrinsic.__extract_sender_account(extrinsic_data)
+        created_accounts += additional_accounts
 
         extrinsic = Extrinsic(
             extrinsic_hash = extrinsic_data["extrinsic_hash"],
@@ -62,13 +63,14 @@ class Extrinsic(Base):
         # created after saving
         Extrinsic.save(extrinsic)
         if extrinsic.function_name in ["set_heads"] or sender_account is None:
-            return extrinsic
+            return extrinsic, created_accounts
             
-        fee = Extrinsic.__handle_fees(extrinsic, event_data,sender_account,block)
+        fee, additional_accounts = Extrinsic.__handle_fees(extrinsic, event_data,sender_account,block)
+        created_accounts += additional_accounts
         extrinsic.fee = fee
         Extrinsic.save(extrinsic)
 
-        return extrinsic
+        return extrinsic, additional_accounts
 
     @staticmethod
     def create_from_batch(block: Block, data, events: List[Event], parent: "Extrinsic", was_successful: bool) -> "Extrinsic":
@@ -97,6 +99,7 @@ class Extrinsic(Base):
     @staticmethod
     def create_from_proxy(block: Block, parent: "Extrinsic", events: List[Event]) -> "Extrinsic":
         was_successful = False
+        created_accounts = 0
         for event in events:
             if event.module_name == "Proxy" and event.event_name == "ProxyExecuted":
                 try:
@@ -114,6 +117,7 @@ class Extrinsic(Base):
         account = Account.get_from_address(address)
         if account is None:
             account = Account.create(address)
+            created_accounts+=1
 
         extrinsic_data = parent.call_args[2]["value"]
         extrinsic = Extrinsic(
@@ -133,7 +137,7 @@ class Extrinsic(Base):
         )
 
         Extrinsic.save(extrinsic)
-        return extrinsic
+        return extrinsic, created_accounts
 
 
     @staticmethod
@@ -161,9 +165,11 @@ class Extrinsic(Base):
 
     @staticmethod
     def __handle_fees(extrinsic: "Extrinsic", event_data, author_account: Account, block: Block):
+        created_accounts = 0
         validator_account = Account.get_from_address(block.author)
         if not validator_account:
             validator_account = Account.create(block.author)
+            created_accounts += 1
         treasury_account = Account.get_treasury()
         author_balance = Balance.get_last_balance(author_account)
         if len(event_data) <= 1 or validator_account is None:
@@ -210,15 +216,16 @@ class Extrinsic(Base):
                 validator_fee = 0
                 treasury_fee = 0
        
-        return validator_fee+treasury_fee
+        return validator_fee+treasury_fee, created_accounts
 
 
     @staticmethod
     def __extract_sender_account(extrinsic_data):
+        created_accounts = 0
         if extrinsic_data["call"]["call_function"] not in ["final_hint"]:
             address = extrinsic_data["address"]
             if address is None:
-                return None
+                return None, 0
 
             # Extrinsic in batches have the 0x prefix
             if "0x" in address:
@@ -226,14 +233,16 @@ class Extrinsic(Base):
             sender_account = Account.get_from_address(address)
             if sender_account is None:
                 sender_account = Account.create(address)
-            return sender_account
+                created_accounts += 1
+            return sender_account, created_accounts
         else:
-            return None
+            return None, created_accounts
 
     @staticmethod
     def create_from_sudo(block: Block, parent: "Extrinsic", events: List[Event]) -> "Extrinsic":
         
         account = Account.get(parent.account)
+        created_accounts = 0
         was_successful = True
         for event in events:
             if event.module_name == "Sudo" and event.event_name == "Sudid":
@@ -249,6 +258,7 @@ class Extrinsic(Base):
             account = Account.get_from_address(address)
             if account is None:
                 account = Account.create(address)
+                created_accounts += 1
         else:
             extrinsic_data = parent.call_args[0]["value"]
 
@@ -269,4 +279,4 @@ class Extrinsic(Base):
         )
 
         Extrinsic.save(extrinsic)
-        return extrinsic
+        return extrinsic, created_accounts

@@ -24,12 +24,12 @@ class Aggregator(Base):
     total_staked = Column(Numeric(22,0))
 
 
-    def create(block: Block, extrinsics: List[Extrinsic], events: List[List[Event]],staked_amount):
+    def create(block: Block, extrinsics: List[Extrinsic], events: List[List[Event]],staked_amount,accounts):
         previous_aggregator = Aggregator.get(block.block_number-1)
 
         n_extrinsics = previous_aggregator.total_extrinsics + len(extrinsics)
         n_events = sum([len(e) for e in events]) + previous_aggregator.total_events
-        n_accounts = Account.count()
+        n_accounts = previous_aggregator.total_accounts + accounts
         n_transfers = Transfer.count(block)+previous_aggregator.total_transfers
         n_currency = 0
         n_staked = previous_aggregator.total_staked + staked_amount

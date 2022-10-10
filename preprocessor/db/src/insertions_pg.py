@@ -49,6 +49,9 @@ class PGBlockHandler:
             #Driver().get_driver().commit()
 
     def handle_full_block(self,data):
+        # counts all accounts created this block, to be used by aggregator
+        self.accounts = 0
+
         block = self.insert_block(data)
         extrinsics= self.handle_extrinsics_and_events(block,data)
         
@@ -62,7 +65,6 @@ class PGBlockHandler:
         extrinsics = []
         events = []
         self.staked_this_block = 0
-
         if len(data['extrinsics']) == 1 and len(events_data) > 2: # Todo: handle differently,
             """
             This was done because some blocks contain 0 extrinsics, 
@@ -97,7 +99,8 @@ class PGBlockHandler:
             current_events_data = self.handle_events(events_data, i)
             #last event denotes if ectrinsic was successfull
             #was_successful = current_events[-1].event_name == "ExtrinsicSuccess"
-            extrinsic = Extrinsic.create(block, extrinsic_data,current_events_data)
+            extrinsic, additional_accounts = Extrinsic.create(block, extrinsic_data,current_events_data)
+            self.accounts+=additional_accounts
             #events = [Event.create(event_data,extrinsic.id,block.block_number) for event_data in current_events_data]
             current_events = []
             for event_data in current_events_data:
@@ -119,7 +122,7 @@ class PGBlockHandler:
 
         #if len(extrinsics)> 0:
         #    return extrinsics[0]
-        Aggregator.create(block, extrinsics, events, self.staked_this_block)
+        Aggregator.create(block, extrinsics, events, self.staked_this_block,self.accounts)
         return extrinsics
 
 
@@ -225,6 +228,7 @@ class PGBlockHandler:
         to_account = Account.get_from_address(to_address)
         if not to_account:
             to_account = Account.create(to_address)
+            self.accounts+=1
         # Get amount transferred from 'Transfer' event
         amount_transferred = None
         for event in events:
@@ -236,6 +240,7 @@ class PGBlockHandler:
                     from_account = Account.get_from_address(from_address)
                     if from_account is None:
                         from_account = Account.create(from_address)
+                        self.accounts+=1
                 amount_transferred = utils.extract_event_attributes_from_object(event,2)
 
         # Create new balances
@@ -276,6 +281,7 @@ class PGBlockHandler:
 
             if not controller_account:
                 controller_account = Account.create(controller_address)
+                self.accounts+=1
             Controller.create(controller_account, from_account)
         elif extrinsic.function_name == "bond_extra":
             #amount_transferred = extrinsic.call_args[0]["value"]
@@ -307,6 +313,7 @@ class PGBlockHandler:
         controller_account = Account.get_from_address(controller_address)
         if controller_account is None:
             controller_account = Account.create(controller_address)
+            self.accounts+=1
         
         Controller.create(controller_account, controlled_account)
     
@@ -344,6 +351,7 @@ class PGBlockHandler:
         validator_account = Account.get_from_address(validator_stash)
         if validator_account is None:
             validator_account = Account.create(validator_stash) 
+            self.accounts+=1
         validator = Validator.create(validator_account,era)
         for event in events:
             if event.event_name == "Reward":
@@ -353,6 +361,7 @@ class PGBlockHandler:
                 nominator_account = Account.get_from_address(nominator_address)
                 if nominator_account is None:
                     nominator_account = Account.create(nominator_address)
+                    self.accounts+=1
                 from_balance = Balance.get_last_balance(validator_account)
                 
                 transfer = None
@@ -369,6 +378,7 @@ class PGBlockHandler:
                         external_account = Account.get_from_address(nominator_account.reward_destination)
                         if external_account is None:
                             external_account = Account.create(nominator_account.reward_destination)
+                            self.accounts+=1
                         to_balance = external_account.update_balance(extrinsic, transferable=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,external_account,None,to_balance,nominator_reward,extrinsic,"Reward")
 
@@ -386,6 +396,7 @@ class PGBlockHandler:
                         external_account = Account.get_from_address(nominator_account.reward_destination)
                         if external_account is None:
                             external_account = Account.create(nominator_account.reward_destination)
+                            self.accounts+=1
                         to_balance = external_account.update_balance(extrinsic, transferable=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,external_account,None,to_balance,nominator_reward,extrinsic,"Reward")
 
@@ -482,7 +493,8 @@ class PGBlockHandler:
         handle_special_extrinsic function.
         """
         
-        proxied_extrinsic = Extrinsic.create_from_proxy(block, extrinsic,events)
+        proxied_extrinsic, additional_accounts = Extrinsic.create_from_proxy(block, extrinsic,events)
+        self.accounts += additional_accounts
         self.handle_special_extrinsics(block, proxied_extrinsic, events)
 
     def __handle_claim(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
@@ -501,6 +513,7 @@ class PGBlockHandler:
                 amount_transfered = utils.extract_event_attributes_from_object(event,2)
                 eth_address = utils.extract_event_attributes_from_object(event,1)
                 address = utils.convert_public_key_to_polkadot_address(utils.extract_event_attributes_from_object(event,0))
+                # We dont add this to the total accounts
                 eth_account = Account.create(eth_address, note=address)
             
                 
@@ -508,6 +521,7 @@ class PGBlockHandler:
         account = Account.get_from_address(address)
         if account is None:
             account = Account.create(address)
+            self.accounts+=1
         
         last_balance = Balance.get_last_balance(account)
 
@@ -523,7 +537,8 @@ class PGBlockHandler:
         A sudo call wraps around another call. We extract the call inside the sudo call and create a new extrinsic
         object out of it. Then we also execute handle_special_extrinsics if needed.
         """
-        proxied_extrinsic = Extrinsic.create_from_sudo(block, extrinsic,events)
+        proxied_extrinsic, additional_accounts = Extrinsic.create_from_sudo(block, extrinsic,events)
+        self.accounts += additional_accounts
         self.handle_special_extrinsics(block, proxied_extrinsic, events)
 
 
