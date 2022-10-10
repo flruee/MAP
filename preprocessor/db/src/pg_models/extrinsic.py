@@ -99,8 +99,12 @@ class Extrinsic(Base):
         was_successful = False
         for event in events:
             if event.module_name == "Proxy" and event.event_name == "ProxyExecuted":
-                if event.attributes[0]["value"] == "Ok":
-                    was_successful = True
+                try:
+                    if event.attributes[0]["value"] == "Ok":
+                        was_successful = True
+                except KeyError:
+                    if "Ok" in event.attributes:
+                        was_successful = True
                 break
             elif event.module_name == "System" and event.event_name == "ExtrinsicSuccess":
                 was_successful = True
