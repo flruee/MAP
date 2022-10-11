@@ -23,7 +23,7 @@ class ValidatorPool(Base):
                 treasury_payout = event.attributes[2]["value"]
             )
             ValidatorPool.save(validator_pool)
-        except IndexError:
+        except (IndexError, TypeError):
             validator_pool = ValidatorPool(
                 era = event.attributes[0],
                 validator_payout = event.attributes[1],
