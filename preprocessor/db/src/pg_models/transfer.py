@@ -1,3 +1,4 @@
+from operator import index
 from requests import session
 from sqlalchemy import Column, null
 from sqlalchemy import ForeignKey
@@ -13,12 +14,12 @@ class Transfer(Base):
     __tablename__ = "transfer"
     id = Column(Integer, primary_key=True)
     block_number = Column(Integer, ForeignKey(Block.block_number,ondelete="CASCADE"),index=True)
-    from_account = Column(Integer, ForeignKey(Account.id,ondelete="CASCADE"))
-    to_account = Column(Integer, ForeignKey(Account.id,ondelete="CASCADE"))
-    from_balance = Column(Integer, ForeignKey(Balance.id,ondelete="CASCADE"))
-    to_balance = Column(Integer, ForeignKey(Balance.id,ondelete="CASCADE"))
+    from_account = Column(Integer, ForeignKey(Account.id,ondelete="CASCADE"),index=True)
+    to_account = Column(Integer, ForeignKey(Account.id,ondelete="CASCADE"),index=True)
+    from_balance = Column(Integer, ForeignKey(Balance.id,ondelete="CASCADE"),index=True)
+    to_balance = Column(Integer, ForeignKey(Balance.id,ondelete="CASCADE"),index=True)
     value = Column(Numeric(22,0))
-    extrinsic = Column(Integer, ForeignKey("extrinsic.id",ondelete="CASCADE"))
+    extrinsic = Column(Integer, ForeignKey("extrinsic.id",ondelete="CASCADE"),index=True)
     type = Column(String)
 
     @staticmethod

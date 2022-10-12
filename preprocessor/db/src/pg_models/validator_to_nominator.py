@@ -13,8 +13,8 @@ from sqlalchemy import Index
 
 class ValidatorToNominator(Base):
     __tablename__ = "validator_to_nominator"
-    nominator = Column(Integer, ForeignKey("nominator.id",ondelete="CASCADE"), primary_key=True)
-    validator = Column(Integer, ForeignKey("validator.id",ondelete="CASCADE"), primary_key=True)
+    nominator = Column(Integer, ForeignKey("nominator.id",ondelete="CASCADE"), primary_key=True,index=True)
+    validator = Column(Integer, ForeignKey("validator.id",ondelete="CASCADE"), primary_key=True,index=True)
     era = Column(Integer, primary_key=True)
 
     __table_args__ = (

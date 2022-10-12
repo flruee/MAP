@@ -354,7 +354,7 @@ class PGBlockHandler:
             self.accounts+=1
         validator = Validator.create(validator_account,era)
         for event in events:
-            if event.event_name == "Reward":
+            if event.event_name in ["Reward","Rewarded"]:
                 nominator_reward = event.attributes[1]['value']
                 nominator_address = event.attributes[0]['value']
                 

@@ -19,7 +19,7 @@ class Balance(Base):
     bonded = Column(Numeric(22,0))
     unbonding = Column(Numeric(22,0))
     account = Column(Integer, ForeignKey("account.id",ondelete="CASCADE"), index=True)
-    block_number = Column(Integer, ForeignKey(Block.block_number,ondelete="CASCADE"))
+    block_number = Column(Integer, ForeignKey(Block.block_number,ondelete="CASCADE"),index=True)
     extrinsic = Column(Integer, ForeignKey("extrinsic.id",ondelete="CASCADE"))
 
 

@@ -10,9 +10,9 @@ from src.pg_models.base import Base
 
 class ValidatorConfig(Base):
     __tablename__ = "validator_config"
-    account = Column(Integer, ForeignKey("account.id",ondelete="CASCADE"), primary_key=True)
+    account = Column(Integer, ForeignKey("account.id",ondelete="CASCADE"), primary_key=True,index=True)
     commission = Column(Integer)
-    block_number = Column(Integer, ForeignKey("block.block_number",ondelete="CASCADE"),primary_key=True)
+    block_number = Column(Integer, ForeignKey("block.block_number",ondelete="CASCADE"),primary_key=True,index=True)
 
 
     def create(account_id: int, commission: int,block: "Block") -> "ValidatorConfig":

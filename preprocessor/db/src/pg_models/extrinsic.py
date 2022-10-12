@@ -19,7 +19,7 @@ class Extrinsic(Base):
     id = Column(Integer,primary_key=True)
     extrinsic_hash = Column(String)
     extrinsic_length = Column(Integer)
-    account = Column(Integer, ForeignKey(Account.id,ondelete="CASCADE"))
+    account = Column(Integer, ForeignKey(Account.id,ondelete="CASCADE"),index=True)
     signature = Column(JSON)
     era = Column(JSON)
     nonce = Column(Integer)

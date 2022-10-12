@@ -12,10 +12,10 @@ class Nominator(Base):
     __tablename__ = "nominator"
     id = Column(Integer, primary_key=True)
     account = Column(Integer, ForeignKey("account.id",ondelete="CASCADE"), index=True)
-    validator = Column(Integer, ForeignKey("validator.id",ondelete="CASCADE"))
+    validator = Column(Integer, ForeignKey("validator.id",ondelete="CASCADE"),index=True)
     reward = Column(Numeric(22,0))
-    reward_transfer = Column(ForeignKey("transfer.id",ondelete="CASCADE"))
-    era = Column(Integer, ForeignKey("validator_pool.era",ondelete="CASCADE"))
+    reward_transfer = Column(ForeignKey("transfer.id",ondelete="CASCADE"),index=True)
+    era = Column(Integer, ForeignKey("validator_pool.era",ondelete="CASCADE"),index=True)
 
 
     def get_from_account(account: Account) -> "Nominator":

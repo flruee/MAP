@@ -1,3 +1,4 @@
+from tkinter import CASCADE
 from requests import session
 from sqlalchemy import Column, null
 from sqlalchemy import ForeignKey, select
@@ -14,7 +15,7 @@ class Account(Base):
     address = Column(String, index=True)
     reward_destination = Column(String, nullable=True)
     note = Column(String, nullable=True)
-    current_balance = Column(Integer, ForeignKey("balance.id"),nullable=True)
+    current_balance = Column(Integer, ForeignKey("balance.id",ondelete="CASCADE"),nullable=True,index=True)
     #block_number = Column(int, ForeignKey("block.block_number",ondelete="CASCADE"),index=True)
 
     @staticmethod
