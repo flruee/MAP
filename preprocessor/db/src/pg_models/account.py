@@ -1,5 +1,3 @@
-from tkinter import CASCADE
-from requests import session
 from sqlalchemy import Column, null
 from sqlalchemy import ForeignKey, select
 from sqlalchemy import Integer,String, DateTime, JSON, TEXT, Boolean,BigInteger
