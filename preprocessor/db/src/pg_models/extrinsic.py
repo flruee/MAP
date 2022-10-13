@@ -173,7 +173,7 @@ class Extrinsic(Base):
         treasury_account = Account.get_treasury()
         author_balance = Balance.get_last_balance(author_account)
         if len(event_data) <= 1 or validator_account is None:
-            return 0
+            return 0,created_accounts
         
         validator_event_index = -2
         treasury_event_index = -3
