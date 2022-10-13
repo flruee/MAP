@@ -28,6 +28,10 @@ import src.utils as utils
 class PGBlockHandler:
     def __init__(self, session):
         self.session = session
+        self.current_validator = None
+        self.current_validator_balance = None
+        self.treasury = Account.get_treasury()
+        self.current_treasury_balance = Account
 
 
     def handle_blocks(self,start, end):
@@ -53,6 +57,10 @@ class PGBlockHandler:
         self.accounts = 0
 
         block = self.insert_block(data)
+        self.current_validator = Account.get_from_address(block.author)
+        if self.current_validator is None:
+            self.current_validator = Account.create(block.author)
+        self.current_validator_balance = Balance.get_last_balance(self.current_validator)
         extrinsics= self.handle_extrinsics_and_events(block,data)
         
 
@@ -184,7 +192,7 @@ class PGBlockHandler:
         print(f"{extrinsic.module_name}({extrinsic.function_name})")
         if not extrinsic.was_successful:
             return
-        if(extrinsic.module_name == "Balances" and extrinsic.function_name in ["transfer", "transfer_keep_alive,transfer_all","force_transfer"]):
+        if(extrinsic.module_name == "Balances" and extrinsic.function_name in ["transfer", "transfer_keep_alive","transfer_all","force_transfer"]):
             return self.__handle_transfer(block, extrinsic, events)
         
         elif(extrinsic.module_name == "Staking" and extrinsic.function_name in ["bond", "bond_extra"]):
