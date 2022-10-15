@@ -28,10 +28,6 @@ import src.utils as utils
 class PGBlockHandler:
     def __init__(self, session):
         self.session = session
-        self.current_validator = None
-        self.current_validator_balance = None
-        self.treasury = Account.get_treasury()
-        self.current_treasury_balance = Account
 
 
     def handle_blocks(self,start, end):
@@ -57,10 +53,6 @@ class PGBlockHandler:
         self.accounts = 0
 
         block = self.insert_block(data)
-        self.current_validator = Account.get_from_address(block.author)
-        if self.current_validator is None:
-            self.current_validator = Account.create(block.author)
-        self.current_validator_balance = Balance.get_last_balance(self.current_validator)
         extrinsics= self.handle_extrinsics_and_events(block,data)
         
 
@@ -258,7 +250,7 @@ class PGBlockHandler:
             amount_transferred = 0
         if amount_transferred is None:
             amount_transferred = extrinsic.call_args[1]["value"]
-        from_balance = from_account.update_balance(extrinsic, transferable=-(amount_transferred+extrinsic.fee))
+        from_balance = from_account.update_balance(extrinsic, transferable=-(amount_transferred))
         to_balance = to_account.update_balance(extrinsic,transferable=amount_transferred)
         
         transfer = Transfer.create(
@@ -301,7 +293,7 @@ class PGBlockHandler:
         
         old_balance = Balance.get_last_balance(from_account)
 
-        new_balance = from_account.update_balance(extrinsic,transferable=-(extrinsic.fee+amount_transferred) ,bonded=amount_transferred)
+        new_balance = from_account.update_balance(extrinsic,transferable=-(amount_transferred) ,bonded=amount_transferred)
         
         Transfer.create(
             block_number=block.block_number,
@@ -472,6 +464,7 @@ class PGBlockHandler:
                     was_successful = True
                     break
                 
+                    
                 # True Horror, an encapsulation of type Sudo->Batch gives no indication as to which events
                 # belong to which item of the batch. we have to handle those by hand.
                 elif block.block_number in [240853,240984,372203,500796]:
@@ -487,6 +480,13 @@ class PGBlockHandler:
                         i = i-1
                         was_successful = True
                         break
+                
+                
+                elif events[i].event_name == "Transfer" and events[i].module_name == "Balances" \
+                    and sub_extrinsic_data["call_function"] in ["transfer", "transfer_keep_alive","transfer_all","force_transfer"]:
+                    
+                    was_successful = True
+                    break
             
             sub_events = events[event_start:i+1]
             event_start = i+1
