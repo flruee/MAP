@@ -1,6 +1,6 @@
 from unicodedata import numeric
 from requests import session
-from sqlalchemy import BigInteger, Column, null, Numeric
+from sqlalchemy import BigInteger, Column, null, Numeric, ForeignKey
 from sqlalchemy import Integer
 from src.driver_singleton import Driver
 from src.pg_models.account import Account
@@ -14,13 +14,16 @@ class ValidatorPool(Base):
     era = Column(Integer, primary_key=True)
     validator_payout = Column(Numeric(22,0))
     treasury_payout = Column(Numeric(22,0))
+    total_stake = Column(Numeric(22,0))
+    block_number = Column(Integer, ForeignKey("block.block_number", ondelete="CASCADE"), index=True)
 
-    def create(event: Event) -> "ValidatorPool":
+    def create(event: Event,block:"Block") -> "ValidatorPool":
         try:
             validator_pool = ValidatorPool(
                 era = event.attributes[0]["value"],
                 validator_payout = event.attributes[1]["value"],
-                treasury_payout = event.attributes[2]["value"]
+                treasury_payout = event.attributes[2]["value"],
+                block_number = block.block_number
             )
             ValidatorPool.save(validator_pool)
         except (IndexError, TypeError):
@@ -36,4 +39,10 @@ class ValidatorPool(Base):
         session = Driver().get_driver()
         session.add(validator_pool)
         session.flush()
+    
+    def get(era):
+        session = Driver().get_driver()
+        
+        
+        return session.query(ValidatorPool).where(ValidatorPool.era == era).first()
     

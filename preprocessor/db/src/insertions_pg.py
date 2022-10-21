@@ -1,4 +1,5 @@
 import logging
+from re import sub
 from typing import List
 import datetime
 import json
@@ -78,7 +79,7 @@ class PGBlockHandler:
             events = []
             for event_data in current_events_data:
                 event = Event.create(event_data, None, block.block_number)
-                self.handle_special_events(event)
+                self.handle_special_events(block,event)
         for i in range(start, len(data["extrinsics"])):
             """
             #index 0 is reserved for the timestamp transaction in extrinsics.
@@ -105,7 +106,7 @@ class PGBlockHandler:
             current_events = []
             for event_data in current_events_data:
                 current_event = Event.create(event_data, extrinsic.id, block.block_number)
-                self.handle_special_events(current_event)
+                self.handle_special_events(block,current_event)
                 current_events.append(current_event)
 
             events.append(current_events)
@@ -204,7 +205,7 @@ class PGBlockHandler:
             return self.__handle_proxy(block, extrinsic, events)
         elif (extrinsic.module_name == "Proxy" and extrinsic.function_name == "add_proxy"):
             return self.__handle_add_proxy(block, extrinsic,events)
-        elif (extrinsic.module_name == "Claims" and extrinsic.function_name in ["claim", "attest"]):
+        elif (extrinsic.module_name == "Claims" and extrinsic.function_name in ["claim", "attest","claim_attest"]):
             return self.__handle_claim(block, extrinsic, events)
         
         elif (extrinsic.module_name == "Sudo" and extrinsic.function_name in ["sudo","sudo_as"]):
@@ -327,7 +328,7 @@ class PGBlockHandler:
         
         Account.save(from_account)
 
-    def handle_special_events(self,event: Event):
+    def handle_special_events(self,block: Block,event: Event):
         """
         Certain features, like an era change, are only captured in events.
         """
@@ -336,14 +337,51 @@ class PGBlockHandler:
         # From the following event we get the total reward of the last era
 
         if event.event_name in ['EraPayout', 'EraPaid'] and event.module_name == 'Staking':
-            validator_pool = ValidatorPool.create(event)
-            return
-            substrate = self.create_substrate_connection()
-            result = substrate.query(
+            validator_pool = ValidatorPool.create(event,block)
+            
+            substrate = self.__create_substrate_connection()
+            # Get all validators of era
+            validator_reward_points= substrate.query(
                 module='Staking',
                 storage_function='ErasRewardPoints',
-                params=[validator_pool.era]
-            )
+                params=[validator_pool.era],
+                block_hash=block.hash
+            ).value
+            staking_sum = 0
+            for validator_address,reward_points in validator_reward_points["individual"]:
+
+                validator_account = Account.get_from_address(validator_address)
+                if validator_account is None:
+                    validator_account = Account.create(validator_address)
+
+                validator_staking= substrate.query(
+                    module='Staking',
+                    storage_function='ErasStakers',
+                    params=[validator_pool.era,validator_address],
+                    block_hash=block.hash
+                ).value
+                commission = substrate.query(
+                    module='Staking',
+                    storage_function='ErasValidatorPrefs',
+                    params=[validator_pool.era,validator_address],
+                    block_hash=block.hash
+                ).value
+                validator = Validator.create(validator_account, validator_pool.era, reward_points,validator_staking["total"], validator_staking["own"], commission["commission"])
+                staking_sum += validator.total_stake
+
+                for element in validator_staking["others"]:
+                    nominator_address = element["who"]
+                    nominator_stake = element["value"]
+                    nominator_account = Account.get_from_address(nominator_address)
+                    if nominator_account is None:
+                        nominator_account = Account.create(nominator_address)
+                    
+                    nominator = Nominator.create(nominator_account, validator, nominator_stake, validator_pool.era)
+                    
+
+            validator_pool.total_stake = staking_sum
+            ValidatorPool.save(validator_pool)
+
 
     def __handle_payout_stakers(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
         validator_stash = extrinsic.call_args[0]["value"]
@@ -582,3 +620,19 @@ class PGBlockHandler:
         commission = extrinsic.call_args[0]["value"]["commission"]
         ValidatorConfig.create(extrinsic.account, commission, block)
         
+    def __create_substrate_connection(self):
+        with open("config.json","r") as f:
+            node_config=json.loads(f.read())["node"]
+        sslopt = {
+        "sslopt": {
+            "cert_reqs": ssl.CERT_NONE
+            }
+        }
+        substrate = SubstrateInterface(
+            url=node_config["url"],
+            ss58_format=node_config["ss58_format"],
+            type_registry_preset=node_config["type_registry_preset"],
+
+            ws_options=sslopt
+        )
+        return substrate
