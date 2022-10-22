@@ -353,6 +353,7 @@ class PGBlockHandler:
                 validator_account = Account.get_from_address(validator_address)
                 if validator_account is None:
                     validator_account = Account.create(validator_address)
+                    self.accounts+=1
 
                 validator_staking= substrate.query(
                     module='Staking',
@@ -367,6 +368,8 @@ class PGBlockHandler:
                     block_hash=block.hash
                 ).value
                 validator = Validator.create(validator_account, validator_pool.era, reward_points,validator_staking["total"], validator_staking["own"], commission["commission"])
+                # We create the validator also as a nominator to catch the reward
+                Nominator.create(validator_account,validator, validator_staking["own"],validator_pool.era)
                 staking_sum += validator.total_stake
 
                 for element in validator_staking["others"]:
@@ -375,6 +378,7 @@ class PGBlockHandler:
                     nominator_account = Account.get_from_address(nominator_address)
                     if nominator_account is None:
                         nominator_account = Account.create(nominator_address)
+                        self.accounts+=1
                     
                     nominator = Nominator.create(nominator_account, validator, nominator_stake, validator_pool.era)
                     
@@ -387,10 +391,8 @@ class PGBlockHandler:
         validator_stash = extrinsic.call_args[0]["value"]
         era = extrinsic.call_args[1]["value"]
         validator_account = Account.get_from_address(validator_stash)
-        if validator_account is None:
-            validator_account = Account.create(validator_stash) 
-            self.accounts+=1
-        validator = Validator.create(validator_account,era)
+        
+        validator = Validator.get(era,validator_account)
         for event in events:
             if event.event_name in ["Reward","Rewarded"]:
                 nominator_reward = event.attributes[1]['value']
@@ -404,14 +406,15 @@ class PGBlockHandler:
                 
                 transfer = None
                 if nominator_address == validator_stash:
-                    if validator_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
-                        to_balance = validator_account.update_balance(extrinsic,transferable=nominator_reward)
-                        transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
-                        from_balance = to_balance
-                    elif validator_account.reward_destination in ['Staked']:
+                    if validator_account.reward_destination in ['Staked']:
                         to_balance = validator_account.update_balance(extrinsic,bonded=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
                         self.staked_this_block += nominator_reward
+                    else:# validator_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
+                        to_balance = validator_account.update_balance(extrinsic,transferable=nominator_reward)
+                        transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
+                        from_balance = to_balance
+                    """
                     else:
                         external_account = Account.get_from_address(nominator_account.reward_destination)
                         if external_account is None:
@@ -419,17 +422,18 @@ class PGBlockHandler:
                             self.accounts+=1
                         to_balance = external_account.update_balance(extrinsic, transferable=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,external_account,None,to_balance,nominator_reward,extrinsic,"Reward")
-
+                    """
                 else:
-                    if nominator_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
-                        from_balance = validator_account.update_balance(extrinsic, transferable=-nominator_reward)
-                        to_balance = nominator_account.update_balance(extrinsic, transferable=nominator_reward)
-                        transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
-                    elif nominator_account.reward_destination in ['Staked']:
+                    if nominator_account.reward_destination in ['Staked']:
                         from_balance = validator_account.update_balance(extrinsic, transferable=-nominator_reward)
                         to_balance = nominator_account.update_balance(extrinsic,bonded=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
                         self.staked_this_block += nominator_reward
+                    else:# nominator_account.reward_destination in [None, 'Stash', 'Controller', 'Account']:
+                        from_balance = validator_account.update_balance(extrinsic, transferable=-nominator_reward)
+                        to_balance = nominator_account.update_balance(extrinsic, transferable=nominator_reward)
+                        transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
+                    """
                     else:
                         external_account = Account.get_from_address(nominator_account.reward_destination)
                         if external_account is None:
@@ -438,14 +442,11 @@ class PGBlockHandler:
                         to_balance = external_account.update_balance(extrinsic, transferable=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,external_account,None,to_balance,nominator_reward,extrinsic,"Reward")
 
-                
-                nominator = Nominator.create(
-                    nominator_account,
-                    validator,
-                    nominator_reward,
-                    transfer,
-                    era
-                    )
+                    """
+                nominator = Nominator.get(era, validator, nominator_account)
+                if nominator is None:
+                    nominator = Nominator.create(nominator_account, validator,None,era)
+                nominator.update_rewards(nominator_reward, transfer)    
                 Account.save(nominator_account)
                 #Nominator.save(nominator)
                 Validator.save(validator)

@@ -30,7 +30,8 @@ class ValidatorPool(Base):
             validator_pool = ValidatorPool(
                 era = event.attributes[0],
                 validator_payout = event.attributes[1],
-                treasury_payout = event.attributes[2]
+                treasury_payout = event.attributes[2],
+                block_number = block.block_number
             )
             ValidatorPool.save(validator_pool)
         return validator_pool
