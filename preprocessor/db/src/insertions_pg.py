@@ -3,6 +3,7 @@ from re import sub
 from typing import List
 import datetime
 import json
+from wsgiref.validate import validator
 
 from src.pg_models.validator_config import ValidatorConfig
 from .driver_singleton import Driver
@@ -38,7 +39,7 @@ class PGBlockHandler:
             self.handle_full_block(data)
             #self.session.commit()
 
-    def handle_node_connection_blocks(self,start,end):
+    def handle_node_connection_index(self,start,end):
         for i in range(start, end+1):
             print(i)
             block = handle_one_block(i)
@@ -48,6 +49,16 @@ class PGBlockHandler:
             with Driver().get_driver().begin():
                 self.handle_full_block(block)
             #Driver().get_driver().commit()
+
+    def handle_node_connection_blocks(self,blocks):
+        for block_number in blocks:
+            print(block_number)
+            block = handle_one_block(block_number)
+            print(block_number)
+            with open(f"small_block_dataset/{block_number}.json", "w+") as f:
+                f.write(json.dumps(block, indent=4))
+            with Driver().get_driver().begin():
+                self.handle_full_block(block)
 
     def handle_full_block(self,data):
         # counts all accounts created this block, to be used by aggregator
@@ -393,6 +404,7 @@ class PGBlockHandler:
         validator_account = Account.get_from_address(validator_stash)
         
         validator = Validator.get(era,validator_account)
+
         for event in events:
             if event.event_name in ["Reward","Rewarded"]:
                 nominator_reward = event.attributes[1]['value']
@@ -468,6 +480,16 @@ class PGBlockHandler:
         for j in range(len(extrinsic.call_args[0]["value"])):
             sub_extrinsic_data = extrinsic.call_args[0]["value"][j]
 
+            if sub_extrinsic_data["call_module"] == "Staking" and sub_extrinsic_data["call_function"] == "payout_stakers":
+                # check if validator exists if not continue
+                address = sub_extrinsic_data["call_args"][0]["value"]
+                era = sub_extrinsic_data["call_args"][1]["value"]
+                account = Account.get_from_address(address)
+                validator = Validator.get(era,account)
+                if validator is None:
+                    continue
+
+                
             """
             We can't assign events to extrinsics (only after spec 9050 that introduced the 'ItemCompleted' event).
             This is most of the time not a great problem since we get our information from the extrinsic data.
@@ -530,8 +552,9 @@ class PGBlockHandler:
             sub_events = events[event_start:i+1]
             event_start = i+1
             sub_extrinsic = Extrinsic.create_from_batch(block, sub_extrinsic_data, events, extrinsic, was_successful)
-            self.handle_special_extrinsics(block, sub_extrinsic, sub_events)
 
+            self.handle_special_extrinsics(block, sub_extrinsic, sub_events)
+            
     def __handle_proxy(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
         """
         A proxy transaction, as the name suggest, executes an extrinsic from another account then the one
