@@ -586,9 +586,9 @@ class Transaction(GraphObject):
             author_account = Account.create(validator_stash)
         validator = Validator.get_from_account(author_account)
         if validator is None:
-            validator, account_validator_relationship = Validator.create(amount_staked=0, self_staked=0,
-                                                                         nominator_staked=0,
-                                                                         account=author_account)
+            validator, account_validator_relationship = Validator.create(author_account, current_validatorpool=None,
+                                                                         reward_points=None, validator_staking=None,
+                                                                         commission=None)
             subgraph = Utils.merge_subgraph(subgraph, validator, account_validator_relationship)
 
         for event in event_data:
@@ -600,8 +600,8 @@ class Transaction(GraphObject):
                     nominator_account = Account.create(nominator_address)
                 nominator = Nominator.get_from_account(nominator_account)
                 if nominator is None:
-                    nominator, account_nominator_relationship = Nominator.create(total_staked=0, reward=0,
-                                                                                 account=nominator_account)
+                    nominator, account_nominator_relationship = Nominator.create(nominator_account=nominator_account,
+                                                                                 nominator_stake=0)
                     subgraph = Utils.merge_subgraph(subgraph, nominator, account_nominator_relationship)
                 nominator['reward'] = nominator_reward
                 validator_nominator_relationship = Relationship(validator, "HAS_NOMINATOR", nominator)
@@ -846,7 +846,8 @@ class Validator(GraphObject):
         if current_validatorpool is None:
             validator = Node("Validator",
                         )
-            return validator
+            account_validator_relationship = Relationship(validator_account, "IS_VALIDATOR", validator)
+            return validator, account_validator_relationship
 
         validator = Node("Validator",
                          era=current_validatorpool['era'],

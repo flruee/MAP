@@ -43,7 +43,7 @@ driver_singleton = Driver()
 driver_singleton.add_driver(driver)
 pg_driver = create_engine('postgresql://postgres:polkamap@172.23.149.214/raw_data')
 block_handler = Neo4jBlockHandler(driver)
-transaction_list = range(1,11328745)
+transaction_list = range(531636,11328745)
 #transaction_list = range(3898094, 3908094)
 
 

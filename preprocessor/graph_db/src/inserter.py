@@ -117,8 +117,7 @@ class Neo4jBlockHandler:
             author_account = Account.create(author_address)
         validator = Validator.get_from_account(author_account)
         if not validator:
-            validator = Validator.create(validator_account=author_account)
-            account_validator_relationship = Relationship(author_account, "IS_VALIDATOR", validator)
+            validator, account_validator_relationship = Validator.create(validator_account=author_account)
             subgraph = Utils.merge_subgraph(subgraph, account_validator_relationship, validator)
 
         if last_block is not None:
