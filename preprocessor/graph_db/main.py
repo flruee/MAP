@@ -43,7 +43,7 @@ driver_singleton = Driver()
 driver_singleton.add_driver(driver)
 pg_driver = create_engine('postgresql://postgres:polkamap@172.23.149.214/raw_data')
 block_handler = Neo4jBlockHandler(driver)
-transaction_list = range(3898094,11328745)
+transaction_list = range(1,11328745)
 #transaction_list = range(3898094, 3908094)
 
 
@@ -53,8 +53,8 @@ ON (n.address)"""
 
 """Match (n:Account {address: '14bARWgpfEiURUS7sGGb54V6mvteRhYWDovcjnFMsLfxRxVV'}) return n;"""
 
-
-with Session(pg_driver) as session:
+"""
+#with Session(pg_driver) as session:
     start = time.time()
     loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
     account = Driver().get_driver().graph.run(
@@ -67,18 +67,24 @@ with Session(pg_driver) as session:
     tx = Driver().get_driver().graph.begin()
     tx.create(subgraph)
     Driver().get_driver().graph.commit(tx)
-
+"""
 counter = 0
 average_time = 0
+
+
+
 
 with Session(pg_driver) as session:
     subgraphs = []
     for i in transaction_list:
         start = time.time()
         print(i)
+        """        statement = "Match (n:Block {block_number: i}) return n"
+        statement = statement.replace("i", str(i))
+        block = Driver().get_driver().graph.run(statement).evaluate()"""
         if counter == 1:
             counter = 0
-            average_time = average_time / 1
+            average_time = average_time / 10000
             print(average_time)
             average_time = 0
             print(len(subgraphs))
