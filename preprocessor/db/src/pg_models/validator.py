@@ -6,6 +6,7 @@ from src.driver_singleton import Driver
 from src.pg_models.account import Account
 
 from src.pg_models.base import Base
+from sqlalchemy import Index
 
 
 
@@ -21,7 +22,11 @@ class Validator(Base):
     own_stake = Column(Numeric(22,0))
     commission = Column(Integer)
 
+    __table_args__ = (
+            Index("validator__era_account_idx",era,account),
+        )
 
+        
     def create(account: Account, era: int, reward_points: int, total_stake:int, own_stake:int, commission:int) -> "Validator":
         validator = Validator(
             account = account.id,
@@ -43,6 +48,6 @@ class Validator(Base):
         session = Driver().get_driver()
         return session.query(Validator).filter(Validator.account == account.id).first()   
     
-    def get(era, account) -> "Validator":
+    def get(era: int, account: "Account") -> "Validator":
         session = Driver().get_driver()
         return session.query(Validator).filter(Validator.account == account.id,Validator.era == era).first()   

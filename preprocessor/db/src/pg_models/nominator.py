@@ -6,6 +6,7 @@ from src.driver_singleton import Driver
 from src.pg_models.account import Account
 from src.pg_models.validator import Validator
 from src.pg_models.base import Base
+from sqlalchemy import Index
 
 
 
@@ -19,7 +20,9 @@ class Nominator(Base):
     era = Column(Integer, ForeignKey("validator_pool.era",ondelete="CASCADE"),index=True)
     stake = Column(Numeric(22,0))
 
-
+    __table_args__ = (
+        Index("nominator__era_validator_account_idx",era,validator,account),
+    )
     def get_from_account(account: Account) -> "Nominator":
         session = Driver().get_driver()
         
@@ -49,7 +52,7 @@ class Nominator(Base):
         session.add(nominator)
         session.flush()
     
-    def get(era, validator, nominator_account) -> "Nominator":
+    def get(era: int, validator: "Validator", nominator_account: "Account") -> "Nominator":
         session = Driver().get_driver()
 
-        return session.query(Nominator).filter(Nominator.validator == validator.id,Nominator.era == era, Nominator.account==nominator_account.id).first()   
+        return session.query(Nominator).filter(Nominator.era == era,Nominator.validator == validator.id, Nominator.account==nominator_account.id).first()   

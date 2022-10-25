@@ -69,7 +69,7 @@ def create_substrate_connection():
         )
         return substrate
     
-def handle_special_events(hash, era):
+def handle_special_events(hash, era, block_number):
     """
     Certain features, like an era change, are only captured in events.
     """
@@ -133,6 +133,7 @@ def handle_special_events(hash, era):
                 Nominator.save(nominator)
 
     validator_pool.total_stake = staking_sum
+    validator_pool.block_number = block_number
     ValidatorPool.save(validator_pool)
 
 DATABASE_USERNAME = env('DATABASE_USERNAME')
@@ -155,12 +156,11 @@ if __name__ == "__main__":
                 on b.block_number = e.block_number
             where e.module_name = 'Staking'
             and e.event_name in ('EraPayout', 'EraPaid')
-            limit 10
+            Order by b.block_number
             """
         )
         #substrate = create_substrate_connection()
         for x in q:
             print(x["block_number"])
-            handle_special_events(x["hash"], x["attributes"][0]["value"])
-
-        session.commit()
+            handle_special_events(x["hash"], x["attributes"][0]["value"], x["block_number"])
+            session.commit()
