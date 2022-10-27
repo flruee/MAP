@@ -485,6 +485,8 @@ class PGBlockHandler:
                 address = sub_extrinsic_data["call_args"][0]["value"]
                 era = sub_extrinsic_data["call_args"][1]["value"]
                 account = Account.get_from_address(address)
+                if account is None:
+                    continue
                 validator = Validator.get(era,account)
                 if validator is None:
                     continue
