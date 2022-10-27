@@ -58,6 +58,7 @@ class RawData(Base):
 
 
 class Utils:
+    schema = dict()
     @staticmethod
     def convert_public_key_to_polkadot_address(address):
         try:
@@ -119,6 +120,14 @@ class Utils:
                     y = Subgraph()
             new_list.append(Utils.merge_subgraph(x, y))
         return new_list
+
+    def set_schema(self, schema):
+        self.schema = schema
+
+    def restructure_block(self, data, schema):
+        self.set_schema(schema)
+
+        return
 
 
 class Block(GraphObject):
@@ -577,9 +586,9 @@ class Transaction(GraphObject):
             author_account = Account.create(validator_stash)
         validator = Validator.get_from_account(author_account)
         if validator is None:
-            validator, account_validator_relationship = Validator.create(amount_staked=0, self_staked=0,
-                                                                         nominator_staked=0,
-                                                                         account=author_account)
+            validator, account_validator_relationship = Validator.create(author_account, current_validatorpool=None,
+                                                                         reward_points=None, validator_staking=None,
+                                                                         commission=None)
             subgraph = Utils.merge_subgraph(subgraph, validator, account_validator_relationship)
 
         for event in event_data:
@@ -591,8 +600,8 @@ class Transaction(GraphObject):
                     nominator_account = Account.create(nominator_address)
                 nominator = Nominator.get_from_account(nominator_account)
                 if nominator is None:
-                    nominator, account_nominator_relationship = Nominator.create(total_staked=0, reward=0,
-                                                                                 account=nominator_account)
+                    nominator, account_nominator_relationship = Nominator.create(nominator_account=nominator_account,
+                                                                                 nominator_stake=0)
                     subgraph = Utils.merge_subgraph(subgraph, nominator, account_nominator_relationship)
                 nominator['reward'] = nominator_reward
                 validator_nominator_relationship = Relationship(validator, "HAS_NOMINATOR", nominator)
@@ -766,41 +775,56 @@ class ValidatorPool(GraphObject):
     __primarykey__ = "era"
 
     era = Property()
+    validator_payout = Property()
+    treasury_payout = Property()
     total_staked = Property()
-    total_reward = Property()
 
-    hasValidators = RelatedTo("Validator")
-    from_block = RelatedTo("Block")
-    to_block = RelatedTo("Block")
+    block_number = RelatedTo("Block")
     previous_validator_pool = RelatedTo("ValidatorPool")
+    hasValidators = RelatedTo("Validator")
+
 
     @staticmethod
     @profiler("ValidatorPool")
-    def get():
-        return ValidatorPool.match(Driver().get_driver()).all()[-1]
+    def get(era):
+        query = "Match (v:ValidatorPool{era:x}) return v"
+        query = query.replace("x", str(era))
+        result = Driver().get_driver().graph.run(query).evaluate()
+        return result
 
     @staticmethod
-    def create(era, total_staked=0, total_reward=0):
-        validatorpool = Node("ValidatorPool",
-                             era=era,
-                             total_staked=total_staked,
-                             total_reward=total_reward
-                             )
-        tx = Driver().get_driver().graph.begin()
-        tx.create(validatorpool)
-        Driver().get_driver().graph.commit(tx)
-        return validatorpool
+    def create(event,block:"Block"):
+        try:
+            validator_pool =\
+                                Node("ValidatorPool",
+                                era=event['attributes'][0]["value"],
+                                validator_payout=event['attributes'][1]["value"],
+                                treasury_payout=event['attributes'][2]["value"],
+                                block_number=block['block_number']
+                                )
+        except (IndexError, TypeError):
+            validator_pool = ValidatorPool(
+                era = event['attributes'][0],
+                validator_payout = event['attributes'][1],
+                treasury_payout = event['attributes'][2],
+                block_number = block['block_number']
+            )
+        return validator_pool
 
 
 class Validator(GraphObject):
-    __primarykey__ = "account"
+    __primarykey__ = "era"
 
-    amount_staked = Property()
-    self_staked = Property()
-    nominator_staked = Property()
+
+    account = RelatedFrom("Account", "IS_VALIDATOR")
+    era = Property()
+    reward_points = Property()
+    total_stake = Property()
+    own_stake = Property()
+    commission = Property()
 
     has_nominator = RelatedTo("Nominator")
-    account = RelatedFrom("Account", "IS_VALIDATOR")
+
 
     @staticmethod
     @profiler("Validator")
@@ -816,13 +840,23 @@ class Validator(GraphObject):
 
 
     @staticmethod
-    def create(amount_staked=0, self_staked=0, nominator_staked=0, account: "Account" = None):
+    def create(validator_account, current_validatorpool=None, reward_points=None,
+                                         validator_staking=None,  commission=None):
+
+        if current_validatorpool is None:
+            validator = Node("Validator",
+                        )
+            account_validator_relationship = Relationship(validator_account, "IS_VALIDATOR", validator)
+            return validator, account_validator_relationship
+
         validator = Node("Validator",
-                         amount_staked=amount_staked,
-                         self_staked=self_staked,
-                         nominator_staked=nominator_staked
+                         era=current_validatorpool['era'],
+                         total_stake=validator_staking["total"],
+                         own_stake=validator_staking["own"],
+                         commission=commission["commission"],
+                         reward_points=reward_points
                          )
-        account_validator_relationship = Relationship(account, "IS_VALIDATOR", validator)
+        account_validator_relationship = Relationship(validator_account, "IS_VALIDATOR", validator)
         return validator, account_validator_relationship
 
 
@@ -838,10 +872,9 @@ class Nominator(GraphObject):
                 account['address']) + "'}) return n").evaluate()
 
     @staticmethod
-    def create(total_staked=0, reward=0, account: "Account" = None):
+    def create(nominator_account, nominator_stake):
         nominator = Node("Nominator",
-                         total_staked=total_staked,
-                         reward=reward
+                         total_staked=nominator_stake
                          )
-        account_nominator_relationship = Relationship(account, "IS_NOMINATOR", nominator)
+        account_nominator_relationship = Relationship(nominator_account, "IS_NOMINATOR", nominator)
         return nominator, account_nominator_relationship
