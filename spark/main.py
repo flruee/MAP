@@ -4,7 +4,6 @@ import time
 from pyspark.sql import SparkSession
 
 
-
 queries_postgres = {
     "get_balances_all": "select * from balance",
     "get_balances_year": "select * from balance b where b.block_number > (select greatest(max(b.block_number) - 5256000 , 0) from balance b)",
@@ -15,7 +14,8 @@ queries_postgres = {
     "get_blocks_all": "select * from block",
     "get_transfers_and_accounts": "select * from transfer t inner join account a1 on a1.address = t.from_address inner join account a2  on a2.address = t.to_address",
     "get_last_balances": "Select b2.* from balance b2 inner join (select b.account, max(b.block_number) as block_number from balance b group by b.account) as b1 on b1.account=b2.account and b1.block_number=b2.block_number",
-    "get_nominator_rewards": "select an.address as nominator, av.address as validator,n.reward as reward,an.reward_destination as reward_destination,n.era as era from nominator n inner join validator v on v.id = n.validator inner join account an on an.id = n.account inner join account av on av.id = v.account"
+    "get_nominator_rewards": "select an.address as nominator, av.address as validator,n.reward as reward,an.reward_destination as reward_destination,n.era as era from nominator n inner join validator v on v.id = n.validator inner join account an on an.id = n.account inner join account av on av.id = v.account",
+    "get_validator_pool_at_era": "select * from validator_pool where era=REPL and block_number=REPL"
 }
 
 queries_neo4j = {
@@ -33,7 +33,7 @@ def init_sparksession(query: str, db: str):
     print(db)
     if db == "p":
         print('postgres_job')
-        url = "jdbc:postgresql://172.23.149.214:5432/map"
+        url = "jdbc:postgresql://172.23.149.214:5432/map3"
         return \
             SparkSession \
             .builder \
@@ -85,6 +85,10 @@ def main(args):
             query = queries_postgres[args.preset]
         else:
             query = queries_neo4j[args.preset]
+    if args.args:
+        for i, val in enumerate(args.args):
+            query = query.replace(f"REPL", val,1)
+
     spark = init_sparksession(query, db=args.database)
     spark.show(
     )
@@ -103,10 +107,10 @@ def argparser():
     parser.add_argument("-q",   "--query",                              help="enter SQL/cypher query",           type=str)
     parser.add_argument("-u",   "--url",                          help="default: localhost",        type=str)
     parser.add_argument("-n",   "--name",                               help="name for file results",     type=str)
-    parser.add_argument("-pre", "--preset",                           help="choose predefined query",   type=str)
-    parser.add_argument("-p",   "--plot",    action='store_true',       help="plot of graph")
+    parser.add_argument("-p", "--preset",                           help="choose predefined query",   type=str)
     parser.add_argument("-s",   "--save",    action='store_true',       help="Save to /results")
     parser.add_argument("-d",  "--database",                           help="p=postgres or n=neo4j")
+    parser.add_argument("-a", "--args",nargs='+')
     return parser.parse_args()
 
 
@@ -115,6 +119,7 @@ def argparser():
 
 if __name__ == "__main__":
     arguments = argparser()
+    print(arguments)
     if arguments.query is None and arguments.preset is None:
         raise UserWarning("A predefined or userdefined query via flags {-q, -pre} is required")
         exit()
