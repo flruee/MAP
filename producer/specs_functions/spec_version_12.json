@@ -1,0 +1,2595 @@
+[{"from_block": 443963},
+    {
+        "call_name": "fill_block",
+        "call_args": [
+            {
+                "name": "_ratio",
+                "type": "Perbill"
+            }
+        ],
+        "documentation": " A dispatch that will fill the block weight up to the given ratio.",
+        "module_prefix": "System",
+        "module_name": "System",
+        "spec_version": 12
+    },
+    {
+        "call_name": "remark",
+        "call_args": [
+            {
+                "name": "_remark",
+                "type": "Vec<u8>"
+            }
+        ],
+        "documentation": " Make some on-chain remark.\n\n # <weight>\n - `O(1)`\n - Base Weight: 0.665 \u00b5s, independent of remark length.\n - No DB operations.\n # </weight>",
+        "module_prefix": "System",
+        "module_name": "System",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_heap_pages",
+        "call_args": [
+            {
+                "name": "pages",
+                "type": "u64"
+            }
+        ],
+        "documentation": " Set the number of pages in the WebAssembly environment's heap.\n\n # <weight>\n - `O(1)`\n - 1 storage write.\n - Base Weight: 1.405 \u00b5s\n - 1 write to HEAP_PAGES\n # </weight>",
+        "module_prefix": "System",
+        "module_name": "System",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_code",
+        "call_args": [
+            {
+                "name": "code",
+                "type": "Vec<u8>"
+            }
+        ],
+        "documentation": " Set the new runtime code.\n\n # <weight>\n - `O(C + S)` where `C` length of `code` and `S` complexity of `can_set_code`\n - 1 storage write (codec `O(C)`).\n - 1 call to `can_set_code`: `O(S)` (calls `sp_io::misc::runtime_version` which is expensive).\n - 1 event.\n The weight of this function is dependent on the runtime, but generally this is very expensive.\n We will treat this as a full block.\n # </weight>",
+        "module_prefix": "System",
+        "module_name": "System",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_code_without_checks",
+        "call_args": [
+            {
+                "name": "code",
+                "type": "Vec<u8>"
+            }
+        ],
+        "documentation": " Set the new runtime code without doing any checks of the given `code`.\n\n # <weight>\n - `O(C)` where `C` length of `code`\n - 1 storage write (codec `O(C)`).\n - 1 event.\n The weight of this function is dependent on the runtime. We will treat this as a full block.\n # </weight>",
+        "module_prefix": "System",
+        "module_name": "System",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_changes_trie_config",
+        "call_args": [
+            {
+                "name": "changes_trie_config",
+                "type": "Option<ChangesTrieConfiguration>"
+            }
+        ],
+        "documentation": " Set the new changes trie configuration.\n\n # <weight>\n - `O(1)`\n - 1 storage write or delete (codec `O(1)`).\n - 1 call to `deposit_log`: Uses `append` API, so O(1)\n - Base Weight: 7.218 \u00b5s\n - DB Weight:\n     - Writes: Changes Trie, System Digest\n # </weight>",
+        "module_prefix": "System",
+        "module_name": "System",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_storage",
+        "call_args": [
+            {
+                "name": "items",
+                "type": "Vec<KeyValue>"
+            }
+        ],
+        "documentation": " Set some items of storage.\n\n # <weight>\n - `O(I)` where `I` length of `items`\n - `I` storage writes (`O(1)`).\n - Base Weight: 0.568 * i \u00b5s\n - Writes: Number of items\n # </weight>",
+        "module_prefix": "System",
+        "module_name": "System",
+        "spec_version": 12
+    },
+    {
+        "call_name": "kill_storage",
+        "call_args": [
+            {
+                "name": "keys",
+                "type": "Vec<Key>"
+            }
+        ],
+        "documentation": " Kill some items from storage.\n\n # <weight>\n - `O(IK)` where `I` length of `keys` and `K` length of one key\n - `I` storage deletions.\n - Base Weight: .378 * i \u00b5s\n - Writes: Number of items\n # </weight>",
+        "module_prefix": "System",
+        "module_name": "System",
+        "spec_version": 12
+    },
+    {
+        "call_name": "kill_prefix",
+        "call_args": [
+            {
+                "name": "prefix",
+                "type": "Key"
+            },
+            {
+                "name": "_subkeys",
+                "type": "u32"
+            }
+        ],
+        "documentation": " Kill all storage items with a key that starts with the given prefix.\n\n **NOTE:** We rely on the Root origin to provide us the number of subkeys under\n the prefix we are removing to accurately calculate the weight of this function.\n\n # <weight>\n - `O(P)` where `P` amount of keys with prefix `prefix`\n - `P` storage deletions.\n - Base Weight: 0.834 * P \u00b5s\n - Writes: Number of subkeys + 1\n # </weight>",
+        "module_prefix": "System",
+        "module_name": "System",
+        "spec_version": 12
+    },
+    {
+        "call_name": "suicide",
+        "call_args": [],
+        "documentation": " Kill the sending account, assuming there are no references outstanding and the composite\n data is equal to its default value.\n\n # <weight>\n - `O(1)`\n - 1 storage read and deletion.\n --------------------\n Base Weight: 8.626 \u00b5s\n No DB Read or Write operations because caller is already in overlay\n # </weight>",
+        "module_prefix": "System",
+        "module_name": "System",
+        "spec_version": 12
+    },
+    {
+        "call_name": "schedule",
+        "call_args": [
+            {
+                "name": "when",
+                "type": "T::BlockNumber"
+            },
+            {
+                "name": "maybe_periodic",
+                "type": "Option<schedule::Period<T::BlockNumber>>"
+            },
+            {
+                "name": "priority",
+                "type": "schedule::Priority"
+            },
+            {
+                "name": "call",
+                "type": "Box<<T as Trait>::Call>"
+            }
+        ],
+        "documentation": " Anonymously schedule a task.\n\n # <weight>\n - S = Number of already scheduled calls\n - Base Weight: 22.29 + .126 * S \u00b5s\n - DB Weight:\n     - Read: Agenda\n     - Write: Agenda\n - Will use base weight of 25 which should be good for up to 30 scheduled calls\n # </weight>",
+        "module_prefix": "Scheduler",
+        "module_name": "Scheduler",
+        "spec_version": 12
+    },
+    {
+        "call_name": "cancel",
+        "call_args": [
+            {
+                "name": "when",
+                "type": "T::BlockNumber"
+            },
+            {
+                "name": "index",
+                "type": "u32"
+            }
+        ],
+        "documentation": " Cancel an anonymously scheduled task.\n\n # <weight>\n - S = Number of already scheduled calls\n - Base Weight: 22.15 + 2.869 * S \u00b5s\n - DB Weight:\n     - Read: Agenda\n     - Write: Agenda, Lookup\n - Will use base weight of 100 which should be good for up to 30 scheduled calls\n # </weight>",
+        "module_prefix": "Scheduler",
+        "module_name": "Scheduler",
+        "spec_version": 12
+    },
+    {
+        "call_name": "schedule_named",
+        "call_args": [
+            {
+                "name": "id",
+                "type": "Vec<u8>"
+            },
+            {
+                "name": "when",
+                "type": "T::BlockNumber"
+            },
+            {
+                "name": "maybe_periodic",
+                "type": "Option<schedule::Period<T::BlockNumber>>"
+            },
+            {
+                "name": "priority",
+                "type": "schedule::Priority"
+            },
+            {
+                "name": "call",
+                "type": "Box<<T as Trait>::Call>"
+            }
+        ],
+        "documentation": " Schedule a named task.\n\n # <weight>\n - S = Number of already scheduled calls\n - Base Weight: 29.6 + .159 * S \u00b5s\n - DB Weight:\n     - Read: Agenda, Lookup\n     - Write: Agenda, Lookup\n - Will use base weight of 35 which should be good for more than 30 scheduled calls\n # </weight>",
+        "module_prefix": "Scheduler",
+        "module_name": "Scheduler",
+        "spec_version": 12
+    },
+    {
+        "call_name": "cancel_named",
+        "call_args": [
+            {
+                "name": "id",
+                "type": "Vec<u8>"
+            }
+        ],
+        "documentation": " Cancel a named scheduled task.\n\n # <weight>\n - S = Number of already scheduled calls\n - Base Weight: 24.91 + 2.907 * S \u00b5s\n - DB Weight:\n     - Read: Agenda, Lookup\n     - Write: Agenda, Lookup\n - Will use base weight of 100 which should be good for up to 30 scheduled calls\n # </weight>",
+        "module_prefix": "Scheduler",
+        "module_name": "Scheduler",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set",
+        "call_args": [
+            {
+                "name": "now",
+                "type": "Compact<T::Moment>"
+            }
+        ],
+        "documentation": " Set the current time.\n\n This call should be invoked exactly once per block. It will panic at the finalization\n phase, if this call hasn't been invoked by that time.\n\n The timestamp should be greater than the previous one by the amount specified by\n `MinimumPeriod`.\n\n The dispatch origin for this call must be `Inherent`.\n\n # <weight>\n - `O(T)` where `T` complexity of `on_timestamp_set`\n - 1 storage read and 1 storage mutation (codec `O(1)`). (because of `DidUpdate::take` in `on_finalize`)\n - 1 event handler `on_timestamp_set` `O(T)`.\n - Benchmark: 7.678 (min squares analysis)\n   - NOTE: This benchmark was done for a runtime with insignificant `on_timestamp_set` handlers.\n     New benchmarking is needed when adding new handlers.\n # </weight>",
+        "module_prefix": "Timestamp",
+        "module_name": "Timestamp",
+        "spec_version": 12
+    },
+    {
+        "call_name": "claim",
+        "call_args": [
+            {
+                "name": "index",
+                "type": "T::AccountIndex"
+            }
+        ],
+        "documentation": " Assign an previously unassigned index.\n\n Payment: `Deposit` is reserved from the sender account.\n\n The dispatch origin for this call must be _Signed_.\n\n - `index`: the index to be claimed. This must not be in use.\n\n Emits `IndexAssigned` if successful.\n\n # <weight>\n - `O(1)`.\n - One storage mutation (codec `O(1)`).\n - One reserve operation.\n - One event.\n -------------------\n - Base Weight: 28.69 \u00b5s\n - DB Weight: 1 Read/Write (Accounts)\n # </weight>",
+        "module_prefix": "Indices",
+        "module_name": "Indices",
+        "spec_version": 12
+    },
+    {
+        "call_name": "transfer",
+        "call_args": [
+            {
+                "name": "new",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "index",
+                "type": "T::AccountIndex"
+            }
+        ],
+        "documentation": " Assign an index already owned by the sender to another account. The balance reservation\n is effectively transferred to the new account.\n\n The dispatch origin for this call must be _Signed_.\n\n - `index`: the index to be re-assigned. This must be owned by the sender.\n - `new`: the new owner of the index. This function is a no-op if it is equal to sender.\n\n Emits `IndexAssigned` if successful.\n\n # <weight>\n - `O(1)`.\n - One storage mutation (codec `O(1)`).\n - One transfer operation.\n - One event.\n -------------------\n - Base Weight: 33.74 \u00b5s\n - DB Weight:\n    - Reads: Indices Accounts, System Account (recipient)\n    - Writes: Indices Accounts, System Account (recipient)\n # </weight>",
+        "module_prefix": "Indices",
+        "module_name": "Indices",
+        "spec_version": 12
+    },
+    {
+        "call_name": "free",
+        "call_args": [
+            {
+                "name": "index",
+                "type": "T::AccountIndex"
+            }
+        ],
+        "documentation": " Free up an index owned by the sender.\n\n Payment: Any previous deposit placed for the index is unreserved in the sender account.\n\n The dispatch origin for this call must be _Signed_ and the sender must own the index.\n\n - `index`: the index to be freed. This must be owned by the sender.\n\n Emits `IndexFreed` if successful.\n\n # <weight>\n - `O(1)`.\n - One storage mutation (codec `O(1)`).\n - One reserve operation.\n - One event.\n -------------------\n - Base Weight: 25.53 \u00b5s\n - DB Weight: 1 Read/Write (Accounts)\n # </weight>",
+        "module_prefix": "Indices",
+        "module_name": "Indices",
+        "spec_version": 12
+    },
+    {
+        "call_name": "force_transfer",
+        "call_args": [
+            {
+                "name": "new",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "index",
+                "type": "T::AccountIndex"
+            },
+            {
+                "name": "freeze",
+                "type": "bool"
+            }
+        ],
+        "documentation": " Force an index to an account. This doesn't require a deposit. If the index is already\n held, then any deposit is reimbursed to its current owner.\n\n The dispatch origin for this call must be _Root_.\n\n - `index`: the index to be (re-)assigned.\n - `new`: the new owner of the index. This function is a no-op if it is equal to sender.\n - `freeze`: if set to `true`, will freeze the index so it cannot be transferred.\n\n Emits `IndexAssigned` if successful.\n\n # <weight>\n - `O(1)`.\n - One storage mutation (codec `O(1)`).\n - Up to one reserve operation.\n - One event.\n -------------------\n - Base Weight: 26.83 \u00b5s\n - DB Weight:\n    - Reads: Indices Accounts, System Account (original owner)\n    - Writes: Indices Accounts, System Account (original owner)\n # </weight>",
+        "module_prefix": "Indices",
+        "module_name": "Indices",
+        "spec_version": 12
+    },
+    {
+        "call_name": "freeze",
+        "call_args": [
+            {
+                "name": "index",
+                "type": "T::AccountIndex"
+            }
+        ],
+        "documentation": " Freeze an index so it will always point to the sender account. This consumes the deposit.\n\n The dispatch origin for this call must be _Signed_ and the signing account must have a\n non-frozen account `index`.\n\n - `index`: the index to be frozen in place.\n\n Emits `IndexFrozen` if successful.\n\n # <weight>\n - `O(1)`.\n - One storage mutation (codec `O(1)`).\n - Up to one slash operation.\n - One event.\n -------------------\n - Base Weight: 30.86 \u00b5s\n - DB Weight: 1 Read/Write (Accounts)\n # </weight>",
+        "module_prefix": "Indices",
+        "module_name": "Indices",
+        "spec_version": 12
+    },
+    {
+        "call_name": "transfer",
+        "call_args": [
+            {
+                "name": "dest",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            },
+            {
+                "name": "value",
+                "type": "Compact<T::Balance>"
+            }
+        ],
+        "documentation": " Transfer some liquid free balance to another account.\n\n `transfer` will set the `FreeBalance` of the sender and receiver.\n It will decrease the total issuance of the system by the `TransferFee`.\n If the sender's account is below the existential deposit as a result\n of the transfer, the account will be reaped.\n\n The dispatch origin for this call must be `Signed` by the transactor.\n\n # <weight>\n - Dependent on arguments but not critical, given proper implementations for\n   input config types. See related functions below.\n - It contains a limited number of reads and writes internally and no complex computation.\n\n Related functions:\n\n   - `ensure_can_withdraw` is always called internally but has a bounded complexity.\n   - Transferring balances to accounts that did not exist before will cause\n      `T::OnNewAccount::on_new_account` to be called.\n   - Removing enough funds from an account will trigger `T::DustRemoval::on_unbalanced`.\n   - `transfer_keep_alive` works the same way as `transfer`, but has an additional\n     check that the transfer will not kill the origin account.\n ---------------------------------\n - Base Weight: 73.64 \u00b5s, worst case scenario (account created, account removed)\n - DB Weight: 1 Read and 1 Write to destination account\n - Origin account is already in memory, so no DB operations for them.\n # </weight>",
+        "module_prefix": "Balances",
+        "module_name": "Balances",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_balance",
+        "call_args": [
+            {
+                "name": "who",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            },
+            {
+                "name": "new_free",
+                "type": "Compact<T::Balance>"
+            },
+            {
+                "name": "new_reserved",
+                "type": "Compact<T::Balance>"
+            }
+        ],
+        "documentation": " Set the balances of a given account.\n\n This will alter `FreeBalance` and `ReservedBalance` in storage. it will\n also decrease the total issuance of the system (`TotalIssuance`).\n If the new free or reserved balance is below the existential deposit,\n it will reset the account nonce (`frame_system::AccountNonce`).\n\n The dispatch origin for this call is `root`.\n\n # <weight>\n - Independent of the arguments.\n - Contains a limited number of reads and writes.\n ---------------------\n - Base Weight:\n     - Creating: 27.56 \u00b5s\n     - Killing: 35.11 \u00b5s\n - DB Weight: 1 Read, 1 Write to `who`\n # </weight>",
+        "module_prefix": "Balances",
+        "module_name": "Balances",
+        "spec_version": 12
+    },
+    {
+        "call_name": "force_transfer",
+        "call_args": [
+            {
+                "name": "source",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            },
+            {
+                "name": "dest",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            },
+            {
+                "name": "value",
+                "type": "Compact<T::Balance>"
+            }
+        ],
+        "documentation": " Exactly as `transfer`, except the origin must be root and the source account may be\n specified.\n # <weight>\n - Same as transfer, but additional read and write because the source account is\n   not assumed to be in the overlay.\n # </weight>",
+        "module_prefix": "Balances",
+        "module_name": "Balances",
+        "spec_version": 12
+    },
+    {
+        "call_name": "transfer_keep_alive",
+        "call_args": [
+            {
+                "name": "dest",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            },
+            {
+                "name": "value",
+                "type": "Compact<T::Balance>"
+            }
+        ],
+        "documentation": " Same as the [`transfer`] call, but with a check that the transfer will not kill the\n origin account.\n\n 99% of the time you want [`transfer`] instead.\n\n [`transfer`]: struct.Module.html#method.transfer\n # <weight>\n - Cheaper than transfer because account cannot be killed.\n - Base Weight: 51.4 \u00b5s\n - DB Weight: 1 Read and 1 Write to dest (sender is in overlay already)\n #</weight>",
+        "module_prefix": "Balances",
+        "module_name": "Balances",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_uncles",
+        "call_args": [
+            {
+                "name": "new_uncles",
+                "type": "Vec<T::Header>"
+            }
+        ],
+        "documentation": " Provide a set of uncles.",
+        "module_prefix": "Authorship",
+        "module_name": "Authorship",
+        "spec_version": 12
+    },
+    {
+        "call_name": "bond",
+        "call_args": [
+            {
+                "name": "controller",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            },
+            {
+                "name": "value",
+                "type": "Compact<BalanceOf<T>>"
+            },
+            {
+                "name": "payee",
+                "type": "RewardDestination"
+            }
+        ],
+        "documentation": " Take the origin account as a stash and lock up `value` of its balance. `controller` will\n be the account that controls it.\n\n `value` must be more than the `minimum_balance` specified by `T::Currency`.\n\n The dispatch origin for this call must be _Signed_ by the stash account.\n\n Emits `Bonded`.\n\n # <weight>\n - Independent of the arguments. Moderate complexity.\n - O(1).\n - Three extra DB entries.\n\n NOTE: Two of the storage writes (`Self::bonded`, `Self::payee`) are _never_ cleaned\n unless the `origin` falls below _existential deposit_ and gets removed as dust.\n ------------------\n Base Weight: 67.87 \u00b5s\n DB Weight:\n - Read: Bonded, Ledger, [Origin Account], Current Era, History Depth, Locks\n - Write: Bonded, Payee, [Origin Account], Locks, Ledger\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "bond_extra",
+        "call_args": [
+            {
+                "name": "max_additional",
+                "type": "Compact<BalanceOf<T>>"
+            }
+        ],
+        "documentation": " Add some extra amount that have appeared in the stash `free_balance` into the balance up\n for staking.\n\n Use this if there are additional funds in your stash account that you wish to bond.\n Unlike [`bond`] or [`unbond`] this function does not impose any limitation on the amount\n that can be added.\n\n The dispatch origin for this call must be _Signed_ by the stash, not the controller and\n it can be only called when [`EraElectionStatus`] is `Closed`.\n\n Emits `Bonded`.\n\n # <weight>\n - Independent of the arguments. Insignificant complexity.\n - O(1).\n - One DB entry.\n ------------\n Base Weight: 54.88 \u00b5s\n DB Weight:\n - Read: Era Election Status, Bonded, Ledger, [Origin Account], Locks\n - Write: [Origin Account], Locks, Ledger\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "unbond",
+        "call_args": [
+            {
+                "name": "value",
+                "type": "Compact<BalanceOf<T>>"
+            }
+        ],
+        "documentation": " Schedule a portion of the stash to be unlocked ready for transfer out after the bond\n period ends. If this leaves an amount actively bonded less than\n T::Currency::minimum_balance(), then it is increased to the full amount.\n\n Once the unlock period is done, you can call `withdraw_unbonded` to actually move\n the funds out of management ready for transfer.\n\n No more than a limited number of unlocking chunks (see `MAX_UNLOCKING_CHUNKS`)\n can co-exists at the same time. In that case, [`Call::withdraw_unbonded`] need\n to be called first to remove some of the chunks (if possible).\n\n The dispatch origin for this call must be _Signed_ by the controller, not the stash.\n And, it can be only called when [`EraElectionStatus`] is `Closed`.\n\n Emits `Unbonded`.\n\n See also [`Call::withdraw_unbonded`].\n\n # <weight>\n - Independent of the arguments. Limited but potentially exploitable complexity.\n - Contains a limited number of reads.\n - Each call (requires the remainder of the bonded balance to be above `minimum_balance`)\n   will cause a new entry to be inserted into a vector (`Ledger.unlocking`) kept in storage.\n   The only way to clean the aforementioned storage item is also user-controlled via\n   `withdraw_unbonded`.\n - One DB entry.\n ----------\n Base Weight: 50.34 \u00b5s\n DB Weight:\n - Read: Era Election Status, Ledger, Current Era, Locks, [Origin Account]\n - Write: [Origin Account], Locks, Ledger\n </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "withdraw_unbonded",
+        "call_args": [
+            {
+                "name": "num_slashing_spans",
+                "type": "u32"
+            }
+        ],
+        "documentation": " Remove any unlocked chunks from the `unlocking` queue from our management.\n\n This essentially frees up that balance to be used by the stash account to do\n whatever it wants.\n\n The dispatch origin for this call must be _Signed_ by the controller, not the stash.\n And, it can be only called when [`EraElectionStatus`] is `Closed`.\n\n Emits `Withdrawn`.\n\n See also [`Call::unbond`].\n\n # <weight>\n - Could be dependent on the `origin` argument and how much `unlocking` chunks exist.\n  It implies `consolidate_unlocked` which loops over `Ledger.unlocking`, which is\n  indirectly user-controlled. See [`unbond`] for more detail.\n - Contains a limited number of reads, yet the size of which could be large based on `ledger`.\n - Writes are limited to the `origin` account key.\n ---------------\n Complexity O(S) where S is the number of slashing spans to remove\n Base Weight:\n Update: 50.52 + .028 * S \u00b5s\n - Reads: EraElectionStatus, Ledger, Current Era, Locks, [Origin Account]\n - Writes: [Origin Account], Locks, Ledger\n Kill: 79.41 + 2.366 * S \u00b5s\n - Reads: EraElectionStatus, Ledger, Current Era, Bonded, Slashing Spans, [Origin Account], Locks\n - Writes: Bonded, Slashing Spans (if S > 0), Ledger, Payee, Validators, Nominators, [Origin Account], Locks\n - Writes Each: SpanSlash * S\n NOTE: Weight annotation is the kill scenario, we refund otherwise.\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "validate",
+        "call_args": [
+            {
+                "name": "prefs",
+                "type": "ValidatorPrefs"
+            }
+        ],
+        "documentation": " Declare the desire to validate for the origin controller.\n\n Effects will be felt at the beginning of the next era.\n\n The dispatch origin for this call must be _Signed_ by the controller, not the stash.\n And, it can be only called when [`EraElectionStatus`] is `Closed`.\n\n # <weight>\n - Independent of the arguments. Insignificant complexity.\n - Contains a limited number of reads.\n - Writes are limited to the `origin` account key.\n -----------\n Base Weight: 17.13 \u00b5s\n DB Weight:\n - Read: Era Election Status, Ledger\n - Write: Nominators, Validators\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "nominate",
+        "call_args": [
+            {
+                "name": "targets",
+                "type": "Vec<<T::Lookup as StaticLookup>::Source>"
+            }
+        ],
+        "documentation": " Declare the desire to nominate `targets` for the origin controller.\n\n Effects will be felt at the beginning of the next era. This can only be called when\n [`EraElectionStatus`] is `Closed`.\n\n The dispatch origin for this call must be _Signed_ by the controller, not the stash.\n And, it can be only called when [`EraElectionStatus`] is `Closed`.\n\n # <weight>\n - The transaction's complexity is proportional to the size of `targets` (N)\n which is capped at CompactAssignments::LIMIT (MAX_NOMINATIONS).\n - Both the reads and writes follow a similar pattern.\n ---------\n Base Weight: 22.34 + .36 * N \u00b5s\n where N is the number of targets\n DB Weight:\n - Reads: Era Election Status, Ledger, Current Era\n - Writes: Validators, Nominators\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "chill",
+        "call_args": [],
+        "documentation": " Declare no desire to either validate or nominate.\n\n Effects will be felt at the beginning of the next era.\n\n The dispatch origin for this call must be _Signed_ by the controller, not the stash.\n And, it can be only called when [`EraElectionStatus`] is `Closed`.\n\n # <weight>\n - Independent of the arguments. Insignificant complexity.\n - Contains one read.\n - Writes are limited to the `origin` account key.\n --------\n Base Weight: 16.53 \u00b5s\n DB Weight:\n - Read: EraElectionStatus, Ledger\n - Write: Validators, Nominators\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_payee",
+        "call_args": [
+            {
+                "name": "payee",
+                "type": "RewardDestination"
+            }
+        ],
+        "documentation": " (Re-)set the payment target for a controller.\n\n Effects will be felt at the beginning of the next era.\n\n The dispatch origin for this call must be _Signed_ by the controller, not the stash.\n\n # <weight>\n - Independent of the arguments. Insignificant complexity.\n - Contains a limited number of reads.\n - Writes are limited to the `origin` account key.\n ---------\n - Base Weight: 11.33 \u00b5s\n - DB Weight:\n     - Read: Ledger\n     - Write: Payee\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_controller",
+        "call_args": [
+            {
+                "name": "controller",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            }
+        ],
+        "documentation": " (Re-)set the controller of a stash.\n\n Effects will be felt at the beginning of the next era.\n\n The dispatch origin for this call must be _Signed_ by the stash, not the controller.\n\n # <weight>\n - Independent of the arguments. Insignificant complexity.\n - Contains a limited number of reads.\n - Writes are limited to the `origin` account key.\n ----------\n Base Weight: 25.22 \u00b5s\n DB Weight:\n - Read: Bonded, Ledger New Controller, Ledger Old Controller\n - Write: Bonded, Ledger New Controller, Ledger Old Controller\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_validator_count",
+        "call_args": [
+            {
+                "name": "new",
+                "type": "Compact<u32>"
+            }
+        ],
+        "documentation": " Sets the ideal number of validators.\n\n The dispatch origin must be Root.\n\n # <weight>\n Base Weight: 1.717 \u00b5s\n Write: Validator Count\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "increase_validator_count",
+        "call_args": [
+            {
+                "name": "additional",
+                "type": "Compact<u32>"
+            }
+        ],
+        "documentation": " Increments the ideal number of validators.\n\n The dispatch origin must be Root.\n\n # <weight>\n Base Weight: 1.717 \u00b5s\n Read/Write: Validator Count\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "scale_validator_count",
+        "call_args": [
+            {
+                "name": "factor",
+                "type": "Percent"
+            }
+        ],
+        "documentation": " Scale up the ideal number of validators by a factor.\n\n The dispatch origin must be Root.\n\n # <weight>\n Base Weight: 1.717 \u00b5s\n Read/Write: Validator Count\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "force_no_eras",
+        "call_args": [],
+        "documentation": " Force there to be no new eras indefinitely.\n\n The dispatch origin must be Root.\n\n # <weight>\n - No arguments.\n - Base Weight: 1.857 \u00b5s\n - Write: ForceEra\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "force_new_era",
+        "call_args": [],
+        "documentation": " Force there to be a new era at the end of the next session. After this, it will be\n reset to normal (non-forced) behaviour.\n\n The dispatch origin must be Root.\n\n # <weight>\n - No arguments.\n - Base Weight: 1.959 \u00b5s\n - Write ForceEra\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_invulnerables",
+        "call_args": [
+            {
+                "name": "validators",
+                "type": "Vec<T::AccountId>"
+            }
+        ],
+        "documentation": " Set the validators who cannot be slashed (if any).\n\n The dispatch origin must be Root.\n\n # <weight>\n - O(V)\n - Base Weight: 2.208 + .006 * V \u00b5s\n - Write: Invulnerables\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "force_unstake",
+        "call_args": [
+            {
+                "name": "stash",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "num_slashing_spans",
+                "type": "u32"
+            }
+        ],
+        "documentation": " Force a current staker to become completely unstaked, immediately.\n\n The dispatch origin must be Root.\n\n # <weight>\n O(S) where S is the number of slashing spans to be removed\n Base Weight: 53.07 + 2.365 * S \u00b5s\n Reads: Bonded, Slashing Spans, Account, Locks\n Writes: Bonded, Slashing Spans (if S > 0), Ledger, Payee, Validators, Nominators, Account, Locks\n Writes Each: SpanSlash * S\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "force_new_era_always",
+        "call_args": [],
+        "documentation": " Force there to be a new era at the end of sessions indefinitely.\n\n The dispatch origin must be Root.\n\n # <weight>\n - Base Weight: 2.05 \u00b5s\n - Write: ForceEra\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "cancel_deferred_slash",
+        "call_args": [
+            {
+                "name": "era",
+                "type": "EraIndex"
+            },
+            {
+                "name": "slash_indices",
+                "type": "Vec<u32>"
+            }
+        ],
+        "documentation": " Cancel enactment of a deferred slash.\n\n Can be called by either the root origin or the `T::SlashCancelOrigin`.\n\n Parameters: era and indices of the slashes for that era to kill.\n\n # <weight>\n Complexity: O(U + S)\n with U unapplied slashes weighted with U=1000\n and S is the number of slash indices to be canceled.\n - Base: 5870 + 34.61 * S \u00b5s\n - Read: Unapplied Slashes\n - Write: Unapplied Slashes\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "payout_stakers",
+        "call_args": [
+            {
+                "name": "validator_stash",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "era",
+                "type": "EraIndex"
+            }
+        ],
+        "documentation": " Pay out all the stakers behind a single validator for a single era.\n\n - `validator_stash` is the stash account of the validator. Their nominators, up to\n   `T::MaxNominatorRewardedPerValidator`, will also receive their rewards.\n - `era` may be any era between `[current_era - history_depth; current_era]`.\n\n The origin of this call must be _Signed_. Any account can call this function, even if\n it is not one of the stakers.\n\n This can only be called when [`EraElectionStatus`] is `Closed`.\n\n # <weight>\n - Time complexity: at most O(MaxNominatorRewardedPerValidator).\n - Contains a limited number of reads and writes.\n -----------\n N is the Number of payouts for the validator (including the validator)\n Base Weight: 110 + 54.2 * N \u00b5s (Median Slopes)\n DB Weight:\n - Read: EraElectionStatus, CurrentEra, HistoryDepth, ErasValidatorReward,\n         ErasStakersClipped, ErasRewardPoints, ErasValidatorPrefs (8 items)\n - Read Each: Bonded, Ledger, Payee, Locks, System Account (5 items)\n - Write Each: System Account, Locks, Ledger (3 items)\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "rebond",
+        "call_args": [
+            {
+                "name": "value",
+                "type": "Compact<BalanceOf<T>>"
+            }
+        ],
+        "documentation": " Rebond a portion of the stash scheduled to be unlocked.\n\n The dispatch origin must be signed by the controller, and it can be only called when\n [`EraElectionStatus`] is `Closed`.\n\n # <weight>\n - Time complexity: O(L), where L is unlocking chunks\n - Bounded by `MAX_UNLOCKING_CHUNKS`.\n - Storage changes: Can't increase storage, only decrease it.\n ---------------\n - Base Weight: 34.51 \u00b5s * .048 L \u00b5s\n - DB Weight:\n     - Reads: EraElectionStatus, Ledger, Locks, [Origin Account]\n     - Writes: [Origin Account], Locks, Ledger\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_history_depth",
+        "call_args": [
+            {
+                "name": "new_history_depth",
+                "type": "Compact<EraIndex>"
+            },
+            {
+                "name": "_era_items_deleted",
+                "type": "Compact<u32>"
+            }
+        ],
+        "documentation": " Set `HistoryDepth` value. This function will delete any history information\n when `HistoryDepth` is reduced.\n\n Parameters:\n - `new_history_depth`: The new history depth you would like to set.\n - `era_items_deleted`: The number of items that will be deleted by this dispatch.\n    This should report all the storage items that will be deleted by clearing old\n    era history. Needed to report an accurate weight for the dispatch. Trusted by\n    `Root` to report an accurate number.\n\n Origin must be root.\n\n # <weight>\n - E: Number of history depths removed, i.e. 10 -> 7 = 3\n - Base Weight: 29.13 * E \u00b5s\n - DB Weight:\n     - Reads: Current Era, History Depth\n     - Writes: History Depth\n     - Clear Prefix Each: Era Stakers, EraStakersClipped, ErasValidatorPrefs\n     - Writes Each: ErasValidatorReward, ErasRewardPoints, ErasTotalStake, ErasStartSessionIndex\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "reap_stash",
+        "call_args": [
+            {
+                "name": "stash",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "num_slashing_spans",
+                "type": "u32"
+            }
+        ],
+        "documentation": " Remove all data structure concerning a staker/stash once its balance is zero.\n This is essentially equivalent to `withdraw_unbonded` except it can be called by anyone\n and the target `stash` must have no funds left.\n\n This can be called from any origin.\n\n - `stash`: The stash account to reap. Its balance must be zero.\n\n # <weight>\n Complexity: O(S) where S is the number of slashing spans on the account.\n Base Weight: 75.94 + 2.396 * S \u00b5s\n DB Weight:\n - Reads: Stash Account, Bonded, Slashing Spans, Locks\n - Writes: Bonded, Slashing Spans (if S > 0), Ledger, Payee, Validators, Nominators, Stash Account, Locks\n - Writes Each: SpanSlash * S\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "submit_election_solution",
+        "call_args": [
+            {
+                "name": "winners",
+                "type": "Vec<ValidatorIndex>"
+            },
+            {
+                "name": "compact",
+                "type": "CompactAssignments"
+            },
+            {
+                "name": "score",
+                "type": "ElectionScore"
+            },
+            {
+                "name": "era",
+                "type": "EraIndex"
+            },
+            {
+                "name": "size",
+                "type": "ElectionSize"
+            }
+        ],
+        "documentation": " Submit an election result to the chain. If the solution:\n\n 1. is valid.\n 2. has a better score than a potentially existing solution on chain.\n\n then, it will be _put_ on chain.\n\n A solution consists of two pieces of data:\n\n 1. `winners`: a flat vector of all the winners of the round.\n 2. `assignments`: the compact version of an assignment vector that encodes the edge\n    weights.\n\n Both of which may be computed using _phragmen_, or any other algorithm.\n\n Additionally, the submitter must provide:\n\n - The `score` that they claim their solution has.\n\n Both validators and nominators will be represented by indices in the solution. The\n indices should respect the corresponding types ([`ValidatorIndex`] and\n [`NominatorIndex`]). Moreover, they should be valid when used to index into\n [`SnapshotValidators`] and [`SnapshotNominators`]. Any invalid index will cause the\n solution to be rejected. These two storage items are set during the election window and\n may be used to determine the indices.\n\n A solution is valid if:\n\n 0. It is submitted when [`EraElectionStatus`] is `Open`.\n 1. Its claimed score is equal to the score computed on-chain.\n 2. Presents the correct number of winners.\n 3. All indexes must be value according to the snapshot vectors. All edge values must\n    also be correct and should not overflow the granularity of the ratio type (i.e. 256\n    or billion).\n 4. For each edge, all targets are actually nominated by the voter.\n 5. Has correct self-votes.\n\n A solutions score is consisted of 3 parameters:\n\n 1. `min { support.total }` for each support of a winner. This value should be maximized.\n 2. `sum { support.total }` for each support of a winner. This value should be minimized.\n 3. `sum { support.total^2 }` for each support of a winner. This value should be\n    minimized (to ensure less variance)\n\n # <weight>\n See `crate::weight` module.\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "submit_election_solution_unsigned",
+        "call_args": [
+            {
+                "name": "winners",
+                "type": "Vec<ValidatorIndex>"
+            },
+            {
+                "name": "compact",
+                "type": "CompactAssignments"
+            },
+            {
+                "name": "score",
+                "type": "ElectionScore"
+            },
+            {
+                "name": "era",
+                "type": "EraIndex"
+            },
+            {
+                "name": "size",
+                "type": "ElectionSize"
+            }
+        ],
+        "documentation": " Unsigned version of `submit_election_solution`.\n\n Note that this must pass the [`ValidateUnsigned`] check which only allows transactions\n from the local node to be included. In other words, only the block author can include a\n transaction in the block.\n\n # <weight>\n See `crate::weight` module.\n # </weight>",
+        "module_prefix": "Staking",
+        "module_name": "Staking",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_keys",
+        "call_args": [
+            {
+                "name": "keys",
+                "type": "T::Keys"
+            },
+            {
+                "name": "proof",
+                "type": "Vec<u8>"
+            }
+        ],
+        "documentation": " Sets the session key(s) of the function caller to `keys`.\n Allows an account to set its session key prior to becoming a validator.\n This doesn't take effect until the next session.\n\n The dispatch origin of this function must be signed.\n\n # <weight>\n - Complexity: `O(1)`\n   Actual cost depends on the number of length of `T::Keys::key_ids()` which is fixed.\n - DbReads: `origin account`, `T::ValidatorIdOf`, `NextKeys`\n - DbWrites: `origin account`, `NextKeys`\n - DbReads per key id: `KeyOwner`\n - DbWrites per key id: `KeyOwner`\n # </weight>",
+        "module_prefix": "Session",
+        "module_name": "Session",
+        "spec_version": 12
+    },
+    {
+        "call_name": "purge_keys",
+        "call_args": [],
+        "documentation": " Removes any session key(s) of the function caller.\n This doesn't take effect until the next session.\n\n The dispatch origin of this function must be signed.\n\n # <weight>\n - Complexity: `O(1)` in number of key types.\n   Actual cost depends on the number of length of `T::Keys::key_ids()` which is fixed.\n - DbReads: `T::ValidatorIdOf`, `NextKeys`, `origin account`\n - DbWrites: `NextKeys`, `origin account`\n - DbWrites per key id: `KeyOwnder`\n # </weight>",
+        "module_prefix": "Session",
+        "module_name": "Session",
+        "spec_version": 12
+    },
+    {
+        "call_name": "final_hint",
+        "call_args": [
+            {
+                "name": "hint",
+                "type": "Compact<T::BlockNumber>"
+            }
+        ],
+        "documentation": " Hint that the author of this block thinks the best finalized\n block is the given number.",
+        "module_prefix": "FinalityTracker",
+        "module_name": "FinalityTracker",
+        "spec_version": 12
+    },
+    {
+        "call_name": "report_equivocation",
+        "call_args": [
+            {
+                "name": "equivocation_proof",
+                "type": "EquivocationProof<T::Hash, T::BlockNumber>"
+            },
+            {
+                "name": "key_owner_proof",
+                "type": "T::KeyOwnerProof"
+            }
+        ],
+        "documentation": " Report voter equivocation/misbehavior. This method will verify the\n equivocation proof and validate the given key ownership proof\n against the extracted offender. If both are valid, the offence\n will be reported.\n\n Since the weight of the extrinsic is 0, in order to avoid DoS by\n submission of invalid equivocation reports, a mandatory pre-validation of\n the extrinsic is implemented in a `SignedExtension`.",
+        "module_prefix": "GrandpaFinality",
+        "module_name": "Grandpa",
+        "spec_version": 12
+    },
+    {
+        "call_name": "heartbeat",
+        "call_args": [
+            {
+                "name": "heartbeat",
+                "type": "Heartbeat<T::BlockNumber>"
+            },
+            {
+                "name": "_signature",
+                "type": "<T::AuthorityId as RuntimeAppPublic>::Signature"
+            }
+        ],
+        "documentation": " # <weight>\n - Complexity: `O(K + E)` where K is length of `Keys` and E is length of\n   `Heartbeat.network_state.external_address`\n\n   - `O(K)`: decoding of length `K`\n   - `O(E)`: decoding/encoding of length `E`\n - DbReads: pallet_session `Validators`, pallet_session `CurrentIndex`, `Keys`,\n   `ReceivedHeartbeats`\n - DbWrites: `ReceivedHeartbeats`\n # </weight>",
+        "module_prefix": "ImOnline",
+        "module_name": "ImOnline",
+        "spec_version": 12
+    },
+    {
+        "call_name": "propose",
+        "call_args": [
+            {
+                "name": "proposal_hash",
+                "type": "T::Hash"
+            },
+            {
+                "name": "value",
+                "type": "Compact<BalanceOf<T>>"
+            }
+        ],
+        "documentation": " Propose a sensitive action to be taken.\n\n The dispatch origin of this call must be _Signed_ and the sender must\n have funds to cover the deposit.\n\n - `proposal_hash`: The hash of the proposal preimage.\n - `value`: The amount of deposit (must be at least `MinimumDeposit`).\n\n Emits `Proposed`.\n\n # <weight>\n - Complexity: `O(1)`\n - Db reads: `PublicPropCount`, `PublicProps`\n - Db writes: `PublicPropCount`, `PublicProps`, `DepositOf`\n -------------------\n Base Weight: 42.58 + .127 * P \u00b5s with `P` the number of proposals `PublicProps`\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "second",
+        "call_args": [
+            {
+                "name": "proposal",
+                "type": "Compact<PropIndex>"
+            },
+            {
+                "name": "seconds_upper_bound",
+                "type": "Compact<u32>"
+            }
+        ],
+        "documentation": " Signals agreement with a particular proposal.\n\n The dispatch origin of this call must be _Signed_ and the sender\n must have funds to cover the deposit, equal to the original deposit.\n\n - `proposal`: The index of the proposal to second.\n - `seconds_upper_bound`: an upper bound on the current number of seconds on this\n   proposal. Extrinsic is weighted according to this value with no refund.\n\n # <weight>\n - Complexity: `O(S)` where S is the number of seconds a proposal already has.\n - Db reads: `DepositOf`\n - Db writes: `DepositOf`\n ---------\n - Base Weight: 22.28 + .229 * S \u00b5s\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "vote",
+        "call_args": [
+            {
+                "name": "ref_index",
+                "type": "Compact<ReferendumIndex>"
+            },
+            {
+                "name": "vote",
+                "type": "AccountVote<BalanceOf<T>>"
+            }
+        ],
+        "documentation": " Vote in a referendum. If `vote.is_aye()`, the vote is to enact the proposal;\n otherwise it is a vote to keep the status quo.\n\n The dispatch origin of this call must be _Signed_.\n\n - `ref_index`: The index of the referendum to vote for.\n - `vote`: The vote configuration.\n\n # <weight>\n - Complexity: `O(R)` where R is the number of referendums the voter has voted on.\n   weight is charged as if maximum votes.\n - Db reads: `ReferendumInfoOf`, `VotingOf`, `balances locks`\n - Db writes: `ReferendumInfoOf`, `VotingOf`, `balances locks`\n --------------------\n - Base Weight:\n     - Vote New: 49.24 + .333 * R \u00b5s\n     - Vote Existing: 49.94 + .343 * R \u00b5s\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "emergency_cancel",
+        "call_args": [
+            {
+                "name": "ref_index",
+                "type": "ReferendumIndex"
+            }
+        ],
+        "documentation": " Schedule an emergency cancellation of a referendum. Cannot happen twice to the same\n referendum.\n\n The dispatch origin of this call must be `CancellationOrigin`.\n\n -`ref_index`: The index of the referendum to cancel.\n\n # <weight>\n - Complexity: `O(1)`.\n - Db reads: `ReferendumInfoOf`, `Cancellations`\n - Db writes: `ReferendumInfoOf`, `Cancellations`\n -------------\n - Base Weight: 34.25 \u00b5s\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "external_propose",
+        "call_args": [
+            {
+                "name": "proposal_hash",
+                "type": "T::Hash"
+            }
+        ],
+        "documentation": " Schedule a referendum to be tabled once it is legal to schedule an external\n referendum.\n\n The dispatch origin of this call must be `ExternalOrigin`.\n\n - `proposal_hash`: The preimage hash of the proposal.\n\n # <weight>\n - Complexity `O(V)` with V number of vetoers in the blacklist of proposal.\n   Decoding vec of length V. Charged as maximum\n - Db reads: `NextExternal`, `Blacklist`\n - Db writes: `NextExternal`\n - Base Weight: 13.8 + .106 * V \u00b5s\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "external_propose_majority",
+        "call_args": [
+            {
+                "name": "proposal_hash",
+                "type": "T::Hash"
+            }
+        ],
+        "documentation": " Schedule a majority-carries referendum to be tabled next once it is legal to schedule\n an external referendum.\n\n The dispatch of this call must be `ExternalMajorityOrigin`.\n\n - `proposal_hash`: The preimage hash of the proposal.\n\n Unlike `external_propose`, blacklisting has no effect on this and it may replace a\n pre-scheduled `external_propose` call.\n\n # <weight>\n - Complexity: `O(1)`\n - Db write: `NextExternal`\n - Base Weight: 3.065 \u00b5s\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "external_propose_default",
+        "call_args": [
+            {
+                "name": "proposal_hash",
+                "type": "T::Hash"
+            }
+        ],
+        "documentation": " Schedule a negative-turnout-bias referendum to be tabled next once it is legal to\n schedule an external referendum.\n\n The dispatch of this call must be `ExternalDefaultOrigin`.\n\n - `proposal_hash`: The preimage hash of the proposal.\n\n Unlike `external_propose`, blacklisting has no effect on this and it may replace a\n pre-scheduled `external_propose` call.\n\n # <weight>\n - Complexity: `O(1)`\n - Db write: `NextExternal`\n - Base Weight: 3.087 \u00b5s\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "fast_track",
+        "call_args": [
+            {
+                "name": "proposal_hash",
+                "type": "T::Hash"
+            },
+            {
+                "name": "voting_period",
+                "type": "T::BlockNumber"
+            },
+            {
+                "name": "delay",
+                "type": "T::BlockNumber"
+            }
+        ],
+        "documentation": " Schedule the currently externally-proposed majority-carries referendum to be tabled\n immediately. If there is no externally-proposed referendum currently, or if there is one\n but it is not a majority-carries referendum then it fails.\n\n The dispatch of this call must be `FastTrackOrigin`.\n\n - `proposal_hash`: The hash of the current external proposal.\n - `voting_period`: The period that is allowed for voting on this proposal. Increased to\n   `FastTrackVotingPeriod` if too low.\n - `delay`: The number of block after voting has ended in approval and this should be\n   enacted. This doesn't have a minimum amount.\n\n Emits `Started`.\n\n # <weight>\n - Complexity: `O(1)`\n - Db reads: `NextExternal`, `ReferendumCount`\n - Db writes: `NextExternal`, `ReferendumCount`, `ReferendumInfoOf`\n - Base Weight: 30.1 \u00b5s\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "veto_external",
+        "call_args": [
+            {
+                "name": "proposal_hash",
+                "type": "T::Hash"
+            }
+        ],
+        "documentation": " Veto and blacklist the external proposal hash.\n\n The dispatch origin of this call must be `VetoOrigin`.\n\n - `proposal_hash`: The preimage hash of the proposal to veto and blacklist.\n\n Emits `Vetoed`.\n\n # <weight>\n - Complexity: `O(V + log(V))` where V is number of `existing vetoers`\n   Performs a binary search on `existing_vetoers` which should not be very large.\n - Db reads: `NextExternal`, `Blacklist`\n - Db writes: `NextExternal`, `Blacklist`\n - Base Weight: 29.87 + .188 * V \u00b5s\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "cancel_referendum",
+        "call_args": [
+            {
+                "name": "ref_index",
+                "type": "Compact<ReferendumIndex>"
+            }
+        ],
+        "documentation": " Remove a referendum.\n\n The dispatch origin of this call must be _Root_.\n\n - `ref_index`: The index of the referendum to cancel.\n\n # <weight>\n - Complexity: `O(1)`.\n - Db writes: `ReferendumInfoOf`\n - Base Weight: 21.57 \u00b5s\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "cancel_queued",
+        "call_args": [
+            {
+                "name": "which",
+                "type": "ReferendumIndex"
+            }
+        ],
+        "documentation": " Cancel a proposal queued for enactment.\n\n The dispatch origin of this call must be _Root_.\n\n - `which`: The index of the referendum to cancel.\n\n # <weight>\n - `O(D)` where `D` is the items in the dispatch queue. Weighted as `D = 10`.\n - Db reads: `scheduler lookup`, scheduler agenda`\n - Db writes: `scheduler lookup`, scheduler agenda`\n - Base Weight: 36.78 + 3.277 * D \u00b5s\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "delegate",
+        "call_args": [
+            {
+                "name": "to",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "conviction",
+                "type": "Conviction"
+            },
+            {
+                "name": "balance",
+                "type": "BalanceOf<T>"
+            }
+        ],
+        "documentation": " Delegate the voting power (with some given conviction) of the sending account.\n\n The balance delegated is locked for as long as it's delegated, and thereafter for the\n time appropriate for the conviction's lock period.\n\n The dispatch origin of this call must be _Signed_, and the signing account must either:\n   - be delegating already; or\n   - have no voting activity (if there is, then it will need to be removed/consolidated\n     through `reap_vote` or `unvote`).\n\n - `to`: The account whose voting the `target` account's voting power will follow.\n - `conviction`: The conviction that will be attached to the delegated votes. When the\n   account is undelegated, the funds will be locked for the corresponding period.\n - `balance`: The amount of the account's balance to be used in delegating. This must\n   not be more than the account's current balance.\n\n Emits `Delegated`.\n\n # <weight>\n - Complexity: `O(R)` where R is the number of referendums the voter delegating to has\n   voted on. Weight is charged as if maximum votes.\n - Db reads: 2*`VotingOf`, `balances locks`\n - Db writes: 2*`VotingOf`, `balances locks`\n - Db reads per votes: `ReferendumInfoOf`\n - Db writes per votes: `ReferendumInfoOf`\n - Base Weight: 65.78 + 8.229 * R \u00b5s\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "undelegate",
+        "call_args": [],
+        "documentation": " Undelegate the voting power of the sending account.\n\n Tokens may be unlocked following once an amount of time consistent with the lock period\n of the conviction with which the delegation was issued.\n\n The dispatch origin of this call must be _Signed_ and the signing account must be\n currently delegating.\n\n Emits `Undelegated`.\n\n # <weight>\n - Complexity: `O(R)` where R is the number of referendums the voter delegating to has\n   voted on. Weight is charged as if maximum votes.\n - Db reads: 2*`VotingOf`\n - Db writes: 2*`VotingOf`\n - Db reads per votes: `ReferendumInfoOf`\n - Db writes per votes: `ReferendumInfoOf`\n - Base Weight: 33.29 + 8.104 * R \u00b5s\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "clear_public_proposals",
+        "call_args": [],
+        "documentation": " Clears all public proposals.\n\n The dispatch origin of this call must be _Root_.\n\n # <weight>\n - `O(1)`.\n - Db writes: `PublicProps`\n - Base Weight: 2.505 \u00b5s\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "note_preimage",
+        "call_args": [
+            {
+                "name": "encoded_proposal",
+                "type": "Vec<u8>"
+            }
+        ],
+        "documentation": " Register the preimage for an upcoming proposal. This doesn't require the proposal to be\n in the dispatch queue but does require a deposit, returned once enacted.\n\n The dispatch origin of this call must be _Signed_.\n\n - `encoded_proposal`: The preimage of a proposal.\n\n Emits `PreimageNoted`.\n\n # <weight>\n see `weight_for::note_preimage`\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "note_preimage_operational",
+        "call_args": [
+            {
+                "name": "encoded_proposal",
+                "type": "Vec<u8>"
+            }
+        ],
+        "documentation": " Same as `note_preimage` but origin is `OperationalPreimageOrigin`.",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "note_imminent_preimage",
+        "call_args": [
+            {
+                "name": "encoded_proposal",
+                "type": "Vec<u8>"
+            }
+        ],
+        "documentation": " Register the preimage for an upcoming proposal. This requires the proposal to be\n in the dispatch queue. No deposit is needed.\n\n The dispatch origin of this call must be _Signed_.\n\n - `encoded_proposal`: The preimage of a proposal.\n\n Emits `PreimageNoted`.\n\n # <weight>\n see `weight_for::note_preimage`\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "note_imminent_preimage_operational",
+        "call_args": [
+            {
+                "name": "encoded_proposal",
+                "type": "Vec<u8>"
+            }
+        ],
+        "documentation": " Same as `note_imminent_preimage` but origin is `OperationalPreimageOrigin`.",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "reap_preimage",
+        "call_args": [
+            {
+                "name": "proposal_hash",
+                "type": "T::Hash"
+            },
+            {
+                "name": "proposal_len_upper_bound",
+                "type": "Compact<u32>"
+            }
+        ],
+        "documentation": " Remove an expired proposal preimage and collect the deposit.\n\n The dispatch origin of this call must be _Signed_.\n\n - `proposal_hash`: The preimage hash of a proposal.\n - `proposal_length_upper_bound`: an upper bound on length of the proposal.\n   Extrinsic is weighted according to this value with no refund.\n\n This will only work after `VotingPeriod` blocks from the time that the preimage was\n noted, if it's the same account doing it. If it's a different account, then it'll only\n work an additional `EnactmentPeriod` later.\n\n Emits `PreimageReaped`.\n\n # <weight>\n - Complexity: `O(D)` where D is length of proposal.\n - Db reads: `Preimages`\n - Db writes: `Preimages`\n - Base Weight: 39.31 + .003 * b \u00b5s\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "unlock",
+        "call_args": [
+            {
+                "name": "target",
+                "type": "T::AccountId"
+            }
+        ],
+        "documentation": " Unlock tokens that have an expired lock.\n\n The dispatch origin of this call must be _Signed_.\n\n - `target`: The account to remove the lock on.\n\n # <weight>\n - Complexity `O(R)` with R number of vote of target.\n - Db reads: `VotingOf`, `balances locks`, `target account`\n - Db writes: `VotingOf`, `balances locks`, `target account`\n - Base Weight:\n     - Unlock Remove: 42.96 + .048 * R\n     - Unlock Set: 37.63 + .327 * R\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "remove_vote",
+        "call_args": [
+            {
+                "name": "index",
+                "type": "ReferendumIndex"
+            }
+        ],
+        "documentation": " Remove a vote for a referendum.\n\n If:\n - the referendum was cancelled, or\n - the referendum is ongoing, or\n - the referendum has ended such that\n   - the vote of the account was in opposition to the result; or\n   - there was no conviction to the account's vote; or\n   - the account made a split vote\n ...then the vote is removed cleanly and a following call to `unlock` may result in more\n funds being available.\n\n If, however, the referendum has ended and:\n - it finished corresponding to the vote of the account, and\n - the account made a standard vote with conviction, and\n - the lock period of the conviction is not over\n ...then the lock will be aggregated into the overall account's lock, which may involve\n *overlocking* (where the two locks are combined into a single lock that is the maximum\n of both the amount locked and the time is it locked for).\n\n The dispatch origin of this call must be _Signed_, and the signer must have a vote\n registered for referendum `index`.\n\n - `index`: The index of referendum of the vote to be removed.\n\n # <weight>\n - `O(R + log R)` where R is the number of referenda that `target` has voted on.\n   Weight is calculated for the maximum number of vote.\n - Db reads: `ReferendumInfoOf`, `VotingOf`\n - Db writes: `ReferendumInfoOf`, `VotingOf`\n - Base Weight: 21.03 + .359 * R\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "remove_other_vote",
+        "call_args": [
+            {
+                "name": "target",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "index",
+                "type": "ReferendumIndex"
+            }
+        ],
+        "documentation": " Remove a vote for a referendum.\n\n If the `target` is equal to the signer, then this function is exactly equivalent to\n `remove_vote`. If not equal to the signer, then the vote must have expired,\n either because the referendum was cancelled, because the voter lost the referendum or\n because the conviction period is over.\n\n The dispatch origin of this call must be _Signed_.\n\n - `target`: The account of the vote to be removed; this account must have voted for\n   referendum `index`.\n - `index`: The index of referendum of the vote to be removed.\n\n # <weight>\n - `O(R + log R)` where R is the number of referenda that `target` has voted on.\n   Weight is calculated for the maximum number of vote.\n - Db reads: `ReferendumInfoOf`, `VotingOf`\n - Db writes: `ReferendumInfoOf`, `VotingOf`\n - Base Weight: 19.15 + .372 * R\n # </weight>",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "enact_proposal",
+        "call_args": [
+            {
+                "name": "proposal_hash",
+                "type": "T::Hash"
+            },
+            {
+                "name": "index",
+                "type": "ReferendumIndex"
+            }
+        ],
+        "documentation": " Enact a proposal from a referendum. For now we just make the weight be the maximum.",
+        "module_prefix": "Democracy",
+        "module_name": "Democracy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_members",
+        "call_args": [
+            {
+                "name": "new_members",
+                "type": "Vec<T::AccountId>"
+            },
+            {
+                "name": "prime",
+                "type": "Option<T::AccountId>"
+            },
+            {
+                "name": "old_count",
+                "type": "MemberCount"
+            }
+        ],
+        "documentation": " Set the collective's membership.\n\n - `new_members`: The new member list. Be nice to the chain and provide it sorted.\n - `prime`: The prime member whose vote sets the default.\n - `old_count`: The upper bound for the previous number of members in storage.\n                Used for weight estimation.\n\n Requires root origin.\n\n NOTE: Does not enforce the expected `MAX_MEMBERS` limit on the amount of members, but\n       the weight estimations rely on it to estimate dispatchable weight.\n\n # <weight>\n ## Weight\n - `O(MP + N)` where:\n   - `M` old-members-count (code- and governance-bounded)\n   - `N` new-members-count (code- and governance-bounded)\n   - `P` proposals-count (code-bounded)\n - DB:\n   - 1 storage mutation (codec `O(M)` read, `O(N)` write) for reading and writing the members\n   - 1 storage read (codec `O(P)`) for reading the proposals\n   - `P` storage mutations (codec `O(M)`) for updating the votes for each proposal\n   - 1 storage write (codec `O(1)`) for deleting the old `prime` and setting the new one\n # </weight>",
+        "module_prefix": "Instance1Collective",
+        "module_name": "Council",
+        "spec_version": 12
+    },
+    {
+        "call_name": "execute",
+        "call_args": [
+            {
+                "name": "proposal",
+                "type": "Box<<T as Trait<I>>::Proposal>"
+            },
+            {
+                "name": "length_bound",
+                "type": "Compact<u32>"
+            }
+        ],
+        "documentation": " Dispatch a proposal from a member using the `Member` origin.\n\n Origin must be a member of the collective.\n\n # <weight>\n ## Weight\n - `O(M + P)` where `M` members-count (code-bounded) and `P` complexity of dispatching `proposal`\n - DB: 1 read (codec `O(M)`) + DB access of `proposal`\n - 1 event\n # </weight>",
+        "module_prefix": "Instance1Collective",
+        "module_name": "Council",
+        "spec_version": 12
+    },
+    {
+        "call_name": "propose",
+        "call_args": [
+            {
+                "name": "threshold",
+                "type": "Compact<MemberCount>"
+            },
+            {
+                "name": "proposal",
+                "type": "Box<<T as Trait<I>>::Proposal>"
+            },
+            {
+                "name": "length_bound",
+                "type": "Compact<u32>"
+            }
+        ],
+        "documentation": " Add a new proposal to either be voted on or executed directly.\n\n Requires the sender to be member.\n\n `threshold` determines whether `proposal` is executed directly (`threshold < 2`)\n or put up for voting.\n\n # <weight>\n ## Weight\n - `O(B + M + P1)` or `O(B + M + P2)` where:\n   - `B` is `proposal` size in bytes (length-fee-bounded)\n   - `M` is members-count (code- and governance-bounded)\n   - branching is influenced by `threshold` where:\n     - `P1` is proposal execution complexity (`threshold < 2`)\n     - `P2` is proposals-count (code-bounded) (`threshold >= 2`)\n - DB:\n   - 1 storage read `is_member` (codec `O(M)`)\n   - 1 storage read `ProposalOf::contains_key` (codec `O(1)`)\n   - DB accesses influenced by `threshold`:\n     - EITHER storage accesses done by `proposal` (`threshold < 2`)\n     - OR proposal insertion (`threshold <= 2`)\n       - 1 storage mutation `Proposals` (codec `O(P2)`)\n       - 1 storage mutation `ProposalCount` (codec `O(1)`)\n       - 1 storage write `ProposalOf` (codec `O(B)`)\n       - 1 storage write `Voting` (codec `O(M)`)\n   - 1 event\n # </weight>",
+        "module_prefix": "Instance1Collective",
+        "module_name": "Council",
+        "spec_version": 12
+    },
+    {
+        "call_name": "vote",
+        "call_args": [
+            {
+                "name": "proposal",
+                "type": "T::Hash"
+            },
+            {
+                "name": "index",
+                "type": "Compact<ProposalIndex>"
+            },
+            {
+                "name": "approve",
+                "type": "bool"
+            }
+        ],
+        "documentation": " Add an aye or nay vote for the sender to the given proposal.\n\n Requires the sender to be a member.\n\n # <weight>\n ## Weight\n - `O(M)` where `M` is members-count (code- and governance-bounded)\n - DB:\n   - 1 storage read `Members` (codec `O(M)`)\n   - 1 storage mutation `Voting` (codec `O(M)`)\n - 1 event\n # </weight>",
+        "module_prefix": "Instance1Collective",
+        "module_name": "Council",
+        "spec_version": 12
+    },
+    {
+        "call_name": "close",
+        "call_args": [
+            {
+                "name": "proposal_hash",
+                "type": "T::Hash"
+            },
+            {
+                "name": "index",
+                "type": "Compact<ProposalIndex>"
+            },
+            {
+                "name": "proposal_weight_bound",
+                "type": "Compact<Weight>"
+            },
+            {
+                "name": "length_bound",
+                "type": "Compact<u32>"
+            }
+        ],
+        "documentation": " Close a vote that is either approved, disapproved or whose voting period has ended.\n\n May be called by any signed account in order to finish voting and close the proposal.\n\n If called before the end of the voting period it will only close the vote if it is\n has enough votes to be approved or disapproved.\n\n If called after the end of the voting period abstentions are counted as rejections\n unless there is a prime member set and the prime member cast an approval.\n\n + `proposal_weight_bound`: The maximum amount of weight consumed by executing the closed proposal.\n + `length_bound`: The upper bound for the length of the proposal in storage. Checked via\n                   `storage::read` so it is `size_of::<u32>() == 4` larger than the pure length.\n\n # <weight>\n ## Weight\n - `O(B + M + P1 + P2)` where:\n   - `B` is `proposal` size in bytes (length-fee-bounded)\n   - `M` is members-count (code- and governance-bounded)\n   - `P1` is the complexity of `proposal` preimage.\n   - `P2` is proposal-count (code-bounded)\n - DB:\n  - 2 storage reads (`Members`: codec `O(M)`, `Prime`: codec `O(1)`)\n  - 3 mutations (`Voting`: codec `O(M)`, `ProposalOf`: codec `O(B)`, `Proposals`: codec `O(P2)`)\n  - any mutations done while executing `proposal` (`P1`)\n - up to 3 events\n # </weight>",
+        "module_prefix": "Instance1Collective",
+        "module_name": "Council",
+        "spec_version": 12
+    },
+    {
+        "call_name": "disapprove_proposal",
+        "call_args": [
+            {
+                "name": "proposal_hash",
+                "type": "T::Hash"
+            }
+        ],
+        "documentation": " Disapprove a proposal, close, and remove it from the system, regardless of its current state.\n\n Must be called by the Root origin.\n\n Parameters:\n * `proposal_hash`: The hash of the proposal that should be disapproved.\n\n # <weight>\n Complexity: O(P) where P is the number of max proposals\n Base Weight: .49 * P\n DB Weight:\n * Reads: Proposals\n * Writes: Voting, Proposals, ProposalOf\n # </weight>",
+        "module_prefix": "Instance1Collective",
+        "module_name": "Council",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_members",
+        "call_args": [
+            {
+                "name": "new_members",
+                "type": "Vec<T::AccountId>"
+            },
+            {
+                "name": "prime",
+                "type": "Option<T::AccountId>"
+            },
+            {
+                "name": "old_count",
+                "type": "MemberCount"
+            }
+        ],
+        "documentation": " Set the collective's membership.\n\n - `new_members`: The new member list. Be nice to the chain and provide it sorted.\n - `prime`: The prime member whose vote sets the default.\n - `old_count`: The upper bound for the previous number of members in storage.\n                Used for weight estimation.\n\n Requires root origin.\n\n NOTE: Does not enforce the expected `MAX_MEMBERS` limit on the amount of members, but\n       the weight estimations rely on it to estimate dispatchable weight.\n\n # <weight>\n ## Weight\n - `O(MP + N)` where:\n   - `M` old-members-count (code- and governance-bounded)\n   - `N` new-members-count (code- and governance-bounded)\n   - `P` proposals-count (code-bounded)\n - DB:\n   - 1 storage mutation (codec `O(M)` read, `O(N)` write) for reading and writing the members\n   - 1 storage read (codec `O(P)`) for reading the proposals\n   - `P` storage mutations (codec `O(M)`) for updating the votes for each proposal\n   - 1 storage write (codec `O(1)`) for deleting the old `prime` and setting the new one\n # </weight>",
+        "module_prefix": "Instance2Collective",
+        "module_name": "TechnicalCommittee",
+        "spec_version": 12
+    },
+    {
+        "call_name": "execute",
+        "call_args": [
+            {
+                "name": "proposal",
+                "type": "Box<<T as Trait<I>>::Proposal>"
+            },
+            {
+                "name": "length_bound",
+                "type": "Compact<u32>"
+            }
+        ],
+        "documentation": " Dispatch a proposal from a member using the `Member` origin.\n\n Origin must be a member of the collective.\n\n # <weight>\n ## Weight\n - `O(M + P)` where `M` members-count (code-bounded) and `P` complexity of dispatching `proposal`\n - DB: 1 read (codec `O(M)`) + DB access of `proposal`\n - 1 event\n # </weight>",
+        "module_prefix": "Instance2Collective",
+        "module_name": "TechnicalCommittee",
+        "spec_version": 12
+    },
+    {
+        "call_name": "propose",
+        "call_args": [
+            {
+                "name": "threshold",
+                "type": "Compact<MemberCount>"
+            },
+            {
+                "name": "proposal",
+                "type": "Box<<T as Trait<I>>::Proposal>"
+            },
+            {
+                "name": "length_bound",
+                "type": "Compact<u32>"
+            }
+        ],
+        "documentation": " Add a new proposal to either be voted on or executed directly.\n\n Requires the sender to be member.\n\n `threshold` determines whether `proposal` is executed directly (`threshold < 2`)\n or put up for voting.\n\n # <weight>\n ## Weight\n - `O(B + M + P1)` or `O(B + M + P2)` where:\n   - `B` is `proposal` size in bytes (length-fee-bounded)\n   - `M` is members-count (code- and governance-bounded)\n   - branching is influenced by `threshold` where:\n     - `P1` is proposal execution complexity (`threshold < 2`)\n     - `P2` is proposals-count (code-bounded) (`threshold >= 2`)\n - DB:\n   - 1 storage read `is_member` (codec `O(M)`)\n   - 1 storage read `ProposalOf::contains_key` (codec `O(1)`)\n   - DB accesses influenced by `threshold`:\n     - EITHER storage accesses done by `proposal` (`threshold < 2`)\n     - OR proposal insertion (`threshold <= 2`)\n       - 1 storage mutation `Proposals` (codec `O(P2)`)\n       - 1 storage mutation `ProposalCount` (codec `O(1)`)\n       - 1 storage write `ProposalOf` (codec `O(B)`)\n       - 1 storage write `Voting` (codec `O(M)`)\n   - 1 event\n # </weight>",
+        "module_prefix": "Instance2Collective",
+        "module_name": "TechnicalCommittee",
+        "spec_version": 12
+    },
+    {
+        "call_name": "vote",
+        "call_args": [
+            {
+                "name": "proposal",
+                "type": "T::Hash"
+            },
+            {
+                "name": "index",
+                "type": "Compact<ProposalIndex>"
+            },
+            {
+                "name": "approve",
+                "type": "bool"
+            }
+        ],
+        "documentation": " Add an aye or nay vote for the sender to the given proposal.\n\n Requires the sender to be a member.\n\n # <weight>\n ## Weight\n - `O(M)` where `M` is members-count (code- and governance-bounded)\n - DB:\n   - 1 storage read `Members` (codec `O(M)`)\n   - 1 storage mutation `Voting` (codec `O(M)`)\n - 1 event\n # </weight>",
+        "module_prefix": "Instance2Collective",
+        "module_name": "TechnicalCommittee",
+        "spec_version": 12
+    },
+    {
+        "call_name": "close",
+        "call_args": [
+            {
+                "name": "proposal_hash",
+                "type": "T::Hash"
+            },
+            {
+                "name": "index",
+                "type": "Compact<ProposalIndex>"
+            },
+            {
+                "name": "proposal_weight_bound",
+                "type": "Compact<Weight>"
+            },
+            {
+                "name": "length_bound",
+                "type": "Compact<u32>"
+            }
+        ],
+        "documentation": " Close a vote that is either approved, disapproved or whose voting period has ended.\n\n May be called by any signed account in order to finish voting and close the proposal.\n\n If called before the end of the voting period it will only close the vote if it is\n has enough votes to be approved or disapproved.\n\n If called after the end of the voting period abstentions are counted as rejections\n unless there is a prime member set and the prime member cast an approval.\n\n + `proposal_weight_bound`: The maximum amount of weight consumed by executing the closed proposal.\n + `length_bound`: The upper bound for the length of the proposal in storage. Checked via\n                   `storage::read` so it is `size_of::<u32>() == 4` larger than the pure length.\n\n # <weight>\n ## Weight\n - `O(B + M + P1 + P2)` where:\n   - `B` is `proposal` size in bytes (length-fee-bounded)\n   - `M` is members-count (code- and governance-bounded)\n   - `P1` is the complexity of `proposal` preimage.\n   - `P2` is proposal-count (code-bounded)\n - DB:\n  - 2 storage reads (`Members`: codec `O(M)`, `Prime`: codec `O(1)`)\n  - 3 mutations (`Voting`: codec `O(M)`, `ProposalOf`: codec `O(B)`, `Proposals`: codec `O(P2)`)\n  - any mutations done while executing `proposal` (`P1`)\n - up to 3 events\n # </weight>",
+        "module_prefix": "Instance2Collective",
+        "module_name": "TechnicalCommittee",
+        "spec_version": 12
+    },
+    {
+        "call_name": "disapprove_proposal",
+        "call_args": [
+            {
+                "name": "proposal_hash",
+                "type": "T::Hash"
+            }
+        ],
+        "documentation": " Disapprove a proposal, close, and remove it from the system, regardless of its current state.\n\n Must be called by the Root origin.\n\n Parameters:\n * `proposal_hash`: The hash of the proposal that should be disapproved.\n\n # <weight>\n Complexity: O(P) where P is the number of max proposals\n Base Weight: .49 * P\n DB Weight:\n * Reads: Proposals\n * Writes: Voting, Proposals, ProposalOf\n # </weight>",
+        "module_prefix": "Instance2Collective",
+        "module_name": "TechnicalCommittee",
+        "spec_version": 12
+    },
+    {
+        "call_name": "vote",
+        "call_args": [
+            {
+                "name": "votes",
+                "type": "Vec<T::AccountId>"
+            },
+            {
+                "name": "value",
+                "type": "Compact<BalanceOf<T>>"
+            }
+        ],
+        "documentation": " Vote for a set of candidates for the upcoming round of election. This can be called to\n set the initial votes, or update already existing votes.\n\n Upon initial voting, `value` units of `who`'s balance is locked and a bond amount is\n reserved.\n\n The `votes` should:\n   - not be empty.\n   - be less than the number of possible candidates. Note that all current members and\n     runners-up are also automatically candidates for the next round.\n\n It is the responsibility of the caller to not place all of their balance into the lock\n and keep some for further transactions.\n\n # <weight>\n Base weight: 47.93 \u00b5s\n State reads:\n \t- Candidates.len() + Members.len() + RunnersUp.len()\n \t- Voting (is_voter)\n \t- [AccountBalance(who) (unreserve + total_balance)]\n State writes:\n \t- Voting\n \t- Lock\n \t- [AccountBalance(who) (unreserve -- only when creating a new voter)]\n # </weight>",
+        "module_prefix": "PhragmenElection",
+        "module_name": "ElectionsPhragmen",
+        "spec_version": 12
+    },
+    {
+        "call_name": "remove_voter",
+        "call_args": [],
+        "documentation": " Remove `origin` as a voter. This removes the lock and returns the bond.\n\n # <weight>\n Base weight: 36.8 \u00b5s\n All state access is from do_remove_voter.\n State reads:\n \t- Voting\n \t- [AccountData(who)]\n State writes:\n \t- Voting\n \t- Locks\n \t- [AccountData(who)]\n # </weight>",
+        "module_prefix": "PhragmenElection",
+        "module_name": "ElectionsPhragmen",
+        "spec_version": 12
+    },
+    {
+        "call_name": "report_defunct_voter",
+        "call_args": [
+            {
+                "name": "defunct",
+                "type": "DefunctVoter<<T::Lookup as StaticLookup>::Source>"
+            }
+        ],
+        "documentation": " Report `target` for being an defunct voter. In case of a valid report, the reporter is\n rewarded by the bond amount of `target`. Otherwise, the reporter itself is removed and\n their bond is slashed.\n\n A defunct voter is defined to be:\n   - a voter whose current submitted votes are all invalid. i.e. all of them are no\n     longer a candidate nor an active member or a runner-up.\n\n\n The origin must provide the number of current candidates and votes of the reported target\n for the purpose of accurate weight calculation.\n\n # <weight>\n No Base weight based on min square analysis.\n Complexity of candidate_count: 1.755 \u00b5s\n Complexity of vote_count: 18.51 \u00b5s\n State reads:\n  \t- Voting(reporter)\n  \t- Candidate.len()\n  \t- Voting(Target)\n  \t- Candidates, Members, RunnersUp (is_defunct_voter)\n State writes:\n \t- Lock(reporter || target)\n \t- [AccountBalance(reporter)] + AccountBalance(target)\n \t- Voting(reporter || target)\n Note: the db access is worse with respect to db, which is when the report is correct.\n # </weight>",
+        "module_prefix": "PhragmenElection",
+        "module_name": "ElectionsPhragmen",
+        "spec_version": 12
+    },
+    {
+        "call_name": "submit_candidacy",
+        "call_args": [
+            {
+                "name": "candidate_count",
+                "type": "Compact<u32>"
+            }
+        ],
+        "documentation": " Submit oneself for candidacy.\n\n A candidate will either:\n   - Lose at the end of the term and forfeit their deposit.\n   - Win and become a member. Members will eventually get their stash back.\n   - Become a runner-up. Runners-ups are reserved members in case one gets forcefully\n     removed.\n\n # <weight>\n Base weight = 33.33 \u00b5s\n Complexity of candidate_count: 0.375 \u00b5s\n State reads:\n \t- Candidates.len()\n \t- Candidates\n \t- Members\n \t- RunnersUp\n \t- [AccountBalance(who)]\n State writes:\n \t- [AccountBalance(who)]\n \t- Candidates\n # </weight>",
+        "module_prefix": "PhragmenElection",
+        "module_name": "ElectionsPhragmen",
+        "spec_version": 12
+    },
+    {
+        "call_name": "renounce_candidacy",
+        "call_args": [
+            {
+                "name": "renouncing",
+                "type": "Renouncing"
+            }
+        ],
+        "documentation": " Renounce one's intention to be a candidate for the next election round. 3 potential\n outcomes exist:\n - `origin` is a candidate and not elected in any set. In this case, the bond is\n   unreserved, returned and origin is removed as a candidate.\n - `origin` is a current runner-up. In this case, the bond is unreserved, returned and\n   origin is removed as a runner-up.\n - `origin` is a current member. In this case, the bond is unreserved and origin is\n   removed as a member, consequently not being a candidate for the next round anymore.\n   Similar to [`remove_voter`], if replacement runners exists, they are immediately used.\n <weight>\n If a candidate is renouncing:\n \tBase weight: 17.28 \u00b5s\n \tComplexity of candidate_count: 0.235 \u00b5s\n \tState reads:\n \t\t- Candidates\n \t\t- [AccountBalance(who) (unreserve)]\n \tState writes:\n \t\t- Candidates\n \t\t- [AccountBalance(who) (unreserve)]\n If member is renouncing:\n \tBase weight: 46.25 \u00b5s\n \tState reads:\n \t\t- Members, RunnersUp (remove_and_replace_member),\n \t\t- [AccountData(who) (unreserve)]\n \tState writes:\n \t\t- Members, RunnersUp (remove_and_replace_member),\n \t\t- [AccountData(who) (unreserve)]\n If runner is renouncing:\n \tBase weight: 46.25 \u00b5s\n \tState reads:\n \t\t- RunnersUp (remove_and_replace_member),\n \t\t- [AccountData(who) (unreserve)]\n \tState writes:\n \t\t- RunnersUp (remove_and_replace_member),\n \t\t- [AccountData(who) (unreserve)]\n\n Weight note: The call into changeMembers need to be accounted for.\n </weight>",
+        "module_prefix": "PhragmenElection",
+        "module_name": "ElectionsPhragmen",
+        "spec_version": 12
+    },
+    {
+        "call_name": "remove_member",
+        "call_args": [
+            {
+                "name": "who",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            },
+            {
+                "name": "has_replacement",
+                "type": "bool"
+            }
+        ],
+        "documentation": " Remove a particular member from the set. This is effective immediately and the bond of\n the outgoing member is slashed.\n\n If a runner-up is available, then the best runner-up will be removed and replaces the\n outgoing member. Otherwise, a new phragmen election is started.\n\n Note that this does not affect the designated block number of the next election.\n\n # <weight>\n If we have a replacement:\n \t- Base weight: 50.93 \u00b5s\n \t- State reads:\n \t\t- RunnersUp.len()\n \t\t- Members, RunnersUp (remove_and_replace_member)\n \t- State writes:\n \t\t- Members, RunnersUp (remove_and_replace_member)\n Else, since this is a root call and will go into phragmen, we assume full block for now.\n # </weight>",
+        "module_prefix": "PhragmenElection",
+        "module_name": "ElectionsPhragmen",
+        "spec_version": 12
+    },
+    {
+        "call_name": "add_member",
+        "call_args": [
+            {
+                "name": "who",
+                "type": "T::AccountId"
+            }
+        ],
+        "documentation": " Add a member `who` to the set.\n\n May only be called from `AddOrigin` or root.",
+        "module_prefix": "Instance1Membership",
+        "module_name": "TechnicalMembership",
+        "spec_version": 12
+    },
+    {
+        "call_name": "remove_member",
+        "call_args": [
+            {
+                "name": "who",
+                "type": "T::AccountId"
+            }
+        ],
+        "documentation": " Remove a member `who` from the set.\n\n May only be called from `RemoveOrigin` or root.",
+        "module_prefix": "Instance1Membership",
+        "module_name": "TechnicalMembership",
+        "spec_version": 12
+    },
+    {
+        "call_name": "swap_member",
+        "call_args": [
+            {
+                "name": "remove",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "add",
+                "type": "T::AccountId"
+            }
+        ],
+        "documentation": " Swap out one member `remove` for another `add`.\n\n May only be called from `SwapOrigin` or root.\n\n Prime membership is *not* passed from `remove` to `add`, if extant.",
+        "module_prefix": "Instance1Membership",
+        "module_name": "TechnicalMembership",
+        "spec_version": 12
+    },
+    {
+        "call_name": "reset_members",
+        "call_args": [
+            {
+                "name": "members",
+                "type": "Vec<T::AccountId>"
+            }
+        ],
+        "documentation": " Change the membership to a new set, disregarding the existing membership. Be nice and\n pass `members` pre-sorted.\n\n May only be called from `ResetOrigin` or root.",
+        "module_prefix": "Instance1Membership",
+        "module_name": "TechnicalMembership",
+        "spec_version": 12
+    },
+    {
+        "call_name": "change_key",
+        "call_args": [
+            {
+                "name": "new",
+                "type": "T::AccountId"
+            }
+        ],
+        "documentation": " Swap out the sending member for some other key `new`.\n\n May only be called from `Signed` origin of a current member.\n\n Prime membership is passed from the origin account to `new`, if extant.",
+        "module_prefix": "Instance1Membership",
+        "module_name": "TechnicalMembership",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_prime",
+        "call_args": [
+            {
+                "name": "who",
+                "type": "T::AccountId"
+            }
+        ],
+        "documentation": " Set the prime member. Must be a current member.",
+        "module_prefix": "Instance1Membership",
+        "module_name": "TechnicalMembership",
+        "spec_version": 12
+    },
+    {
+        "call_name": "clear_prime",
+        "call_args": [],
+        "documentation": " Remove the prime member if it exists.",
+        "module_prefix": "Instance1Membership",
+        "module_name": "TechnicalMembership",
+        "spec_version": 12
+    },
+    {
+        "call_name": "propose_spend",
+        "call_args": [
+            {
+                "name": "value",
+                "type": "Compact<BalanceOf<T>>"
+            },
+            {
+                "name": "beneficiary",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            }
+        ],
+        "documentation": " Put forward a suggestion for spending. A deposit proportional to the value\n is reserved and slashed if the proposal is rejected. It is returned once the\n proposal is awarded.\n\n # <weight>\n - Complexity: O(1)\n - DbReads: `ProposalCount`, `origin account`\n - DbWrites: `ProposalCount`, `Proposals`, `origin account`\n # </weight>",
+        "module_prefix": "Treasury",
+        "module_name": "Treasury",
+        "spec_version": 12
+    },
+    {
+        "call_name": "reject_proposal",
+        "call_args": [
+            {
+                "name": "proposal_id",
+                "type": "Compact<ProposalIndex>"
+            }
+        ],
+        "documentation": " Reject a proposed spend. The original deposit will be slashed.\n\n # <weight>\n - Complexity: O(1)\n - DbReads: `Proposals`, `rejected proposer account`\n - DbWrites: `Proposals`, `rejected proposer account`\n # </weight>",
+        "module_prefix": "Treasury",
+        "module_name": "Treasury",
+        "spec_version": 12
+    },
+    {
+        "call_name": "approve_proposal",
+        "call_args": [
+            {
+                "name": "proposal_id",
+                "type": "Compact<ProposalIndex>"
+            }
+        ],
+        "documentation": " Approve a proposal. At a later time, the proposal will be allocated to the beneficiary\n and the original deposit will be returned.\n\n # <weight>\n - Complexity: O(1).\n - DbReads: `Proposals`, `Approvals`\n - DbWrite: `Approvals`\n # </weight>",
+        "module_prefix": "Treasury",
+        "module_name": "Treasury",
+        "spec_version": 12
+    },
+    {
+        "call_name": "report_awesome",
+        "call_args": [
+            {
+                "name": "reason",
+                "type": "Vec<u8>"
+            },
+            {
+                "name": "who",
+                "type": "T::AccountId"
+            }
+        ],
+        "documentation": " Report something `reason` that deserves a tip and claim any eventual the finder's fee.\n\n The dispatch origin for this call must be _Signed_.\n\n Payment: `TipReportDepositBase` will be reserved from the origin account, as well as\n `TipReportDepositPerByte` for each byte in `reason`.\n\n - `reason`: The reason for, or the thing that deserves, the tip; generally this will be\n   a UTF-8-encoded URL.\n - `who`: The account which should be credited for the tip.\n\n Emits `NewTip` if successful.\n\n # <weight>\n - Complexity: `O(R)` where `R` length of `reason`.\n   - encoding and hashing of 'reason'\n - DbReads: `Reasons`, `Tips`, `who account data`\n - DbWrites: `Tips`, `who account data`\n # </weight>",
+        "module_prefix": "Treasury",
+        "module_name": "Treasury",
+        "spec_version": 12
+    },
+    {
+        "call_name": "retract_tip",
+        "call_args": [
+            {
+                "name": "hash",
+                "type": "T::Hash"
+            }
+        ],
+        "documentation": " Retract a prior tip-report from `report_awesome`, and cancel the process of tipping.\n\n If successful, the original deposit will be unreserved.\n\n The dispatch origin for this call must be _Signed_ and the tip identified by `hash`\n must have been reported by the signing account through `report_awesome` (and not\n through `tip_new`).\n\n - `hash`: The identity of the open tip for which a tip value is declared. This is formed\n   as the hash of the tuple of the original tip `reason` and the beneficiary account ID.\n\n Emits `TipRetracted` if successful.\n\n # <weight>\n - Complexity: `O(1)`\n   - Depends on the length of `T::Hash` which is fixed.\n - DbReads: `Tips`, `origin account`\n - DbWrites: `Reasons`, `Tips`, `origin account`\n # </weight>",
+        "module_prefix": "Treasury",
+        "module_name": "Treasury",
+        "spec_version": 12
+    },
+    {
+        "call_name": "tip_new",
+        "call_args": [
+            {
+                "name": "reason",
+                "type": "Vec<u8>"
+            },
+            {
+                "name": "who",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "tip_value",
+                "type": "BalanceOf<T>"
+            }
+        ],
+        "documentation": " Give a tip for something new; no finder's fee will be taken.\n\n The dispatch origin for this call must be _Signed_ and the signing account must be a\n member of the `Tippers` set.\n\n - `reason`: The reason for, or the thing that deserves, the tip; generally this will be\n   a UTF-8-encoded URL.\n - `who`: The account which should be credited for the tip.\n - `tip_value`: The amount of tip that the sender would like to give. The median tip\n   value of active tippers will be given to the `who`.\n\n Emits `NewTip` if successful.\n\n # <weight>\n - Complexity: `O(R + T)` where `R` length of `reason`, `T` is the number of tippers.\n   - `O(T)`: decoding `Tipper` vec of length `T`\n     `T` is charged as upper bound given by `ContainsLengthBound`.\n     The actual cost depends on the implementation of `T::Tippers`.\n   - `O(R)`: hashing and encoding of reason of length `R`\n - DbReads: `Tippers`, `Reasons`\n - DbWrites: `Reasons`, `Tips`\n # </weight>",
+        "module_prefix": "Treasury",
+        "module_name": "Treasury",
+        "spec_version": 12
+    },
+    {
+        "call_name": "tip",
+        "call_args": [
+            {
+                "name": "hash",
+                "type": "T::Hash"
+            },
+            {
+                "name": "tip_value",
+                "type": "BalanceOf<T>"
+            }
+        ],
+        "documentation": " Declare a tip value for an already-open tip.\n\n The dispatch origin for this call must be _Signed_ and the signing account must be a\n member of the `Tippers` set.\n\n - `hash`: The identity of the open tip for which a tip value is declared. This is formed\n   as the hash of the tuple of the hash of the original tip `reason` and the beneficiary\n   account ID.\n - `tip_value`: The amount of tip that the sender would like to give. The median tip\n   value of active tippers will be given to the `who`.\n\n Emits `TipClosing` if the threshold of tippers has been reached and the countdown period\n has started.\n\n # <weight>\n - Complexity: `O(T)` where `T` is the number of tippers.\n   decoding `Tipper` vec of length `T`, insert tip and check closing,\n   `T` is charged as upper bound given by `ContainsLengthBound`.\n   The actual cost depends on the implementation of `T::Tippers`.\n\n   Actually weight could be lower as it depends on how many tips are in `OpenTip` but it\n   is weighted as if almost full i.e of length `T-1`.\n - DbReads: `Tippers`, `Tips`\n - DbWrites: `Tips`\n # </weight>",
+        "module_prefix": "Treasury",
+        "module_name": "Treasury",
+        "spec_version": 12
+    },
+    {
+        "call_name": "close_tip",
+        "call_args": [
+            {
+                "name": "hash",
+                "type": "T::Hash"
+            }
+        ],
+        "documentation": " Close and payout a tip.\n\n The dispatch origin for this call must be _Signed_.\n\n The tip identified by `hash` must have finished its countdown period.\n\n - `hash`: The identity of the open tip for which a tip value is declared. This is formed\n   as the hash of the tuple of the original tip `reason` and the beneficiary account ID.\n\n # <weight>\n - Complexity: `O(T)` where `T` is the number of tippers.\n   decoding `Tipper` vec of length `T`.\n   `T` is charged as upper bound given by `ContainsLengthBound`.\n   The actual cost depends on the implementation of `T::Tippers`.\n - DbReads: `Tips`, `Tippers`, `tip finder`\n - DbWrites: `Reasons`, `Tips`, `Tippers`, `tip finder`\n # </weight>",
+        "module_prefix": "Treasury",
+        "module_name": "Treasury",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_heads",
+        "call_args": [
+            {
+                "name": "heads",
+                "type": "Vec<AttestedCandidate>"
+            }
+        ],
+        "documentation": " Provide candidate receipts for parachains, in ascending order by id.",
+        "module_prefix": "Parachains",
+        "module_name": "Parachains",
+        "spec_version": 12
+    },
+    {
+        "call_name": "report_double_vote",
+        "call_args": [
+            {
+                "name": "report",
+                "type": "DoubleVoteReport<<T::KeyOwnerProofSystem as\n                 KeyOwnerProofSystem<(KeyTypeId, ValidatorId)>>::Proof>"
+            }
+        ],
+        "documentation": " Provide a proof that some validator has commited a double-vote.\n\n The weight is 0; in order to avoid DoS a `SignedExtension` validation\n is implemented.",
+        "module_prefix": "Parachains",
+        "module_name": "Parachains",
+        "spec_version": 12
+    },
+    {
+        "call_name": "more_attestations",
+        "call_args": [
+            {
+                "name": "_more",
+                "type": "MoreAttestations"
+            }
+        ],
+        "documentation": " Provide candidate receipts for parachains, in ascending order by id.",
+        "module_prefix": "Attestations",
+        "module_name": "Attestations",
+        "spec_version": 12
+    },
+    {
+        "call_name": "new_auction",
+        "call_args": [
+            {
+                "name": "duration",
+                "type": "Compact<T::BlockNumber>"
+            },
+            {
+                "name": "lease_period_index",
+                "type": "Compact<LeasePeriodOf<T>>"
+            }
+        ],
+        "documentation": " Create a new auction.\n\n This can only happen when there isn't already an auction in progress and may only be\n called by the root origin. Accepts the `duration` of this auction and the\n `lease_period_index` of the initial lease period of the four that are to be auctioned.",
+        "module_prefix": "Slots",
+        "module_name": "Slots",
+        "spec_version": 12
+    },
+    {
+        "call_name": "bid",
+        "call_args": [
+            {
+                "name": "sub",
+                "type": "Compact<SubId>"
+            },
+            {
+                "name": "auction_index",
+                "type": "Compact<AuctionIndex>"
+            },
+            {
+                "name": "first_slot",
+                "type": "Compact<LeasePeriodOf<T>>"
+            },
+            {
+                "name": "last_slot",
+                "type": "Compact<LeasePeriodOf<T>>"
+            },
+            {
+                "name": "amount",
+                "type": "Compact<BalanceOf<T>>"
+            }
+        ],
+        "documentation": " Make a new bid from an account (including a parachain account) for deploying a new\n parachain.\n\n Multiple simultaneous bids from the same bidder are allowed only as long as all active\n bids overlap each other (i.e. are mutually exclusive). Bids cannot be redacted.\n\n - `sub` is the sub-bidder ID, allowing for multiple competing bids to be made by (and\n funded by) the same account.\n - `auction_index` is the index of the auction to bid on. Should just be the present\n value of `AuctionCounter`.\n - `first_slot` is the first lease period index of the range to bid on. This is the\n absolute lease period index value, not an auction-specific offset.\n - `last_slot` is the last lease period index of the range to bid on. This is the\n absolute lease period index value, not an auction-specific offset.\n - `amount` is the amount to bid to be held as deposit for the parachain should the\n bid win. This amount is held throughout the range.",
+        "module_prefix": "Slots",
+        "module_name": "Slots",
+        "spec_version": 12
+    },
+    {
+        "call_name": "bid_renew",
+        "call_args": [
+            {
+                "name": "auction_index",
+                "type": "Compact<AuctionIndex>"
+            },
+            {
+                "name": "first_slot",
+                "type": "Compact<LeasePeriodOf<T>>"
+            },
+            {
+                "name": "last_slot",
+                "type": "Compact<LeasePeriodOf<T>>"
+            },
+            {
+                "name": "amount",
+                "type": "Compact<BalanceOf<T>>"
+            }
+        ],
+        "documentation": " Make a new bid from a parachain account for renewing that (pre-existing) parachain.\n\n The origin *must* be a parachain account.\n\n Multiple simultaneous bids from the same bidder are allowed only as long as all active\n bids overlap each other (i.e. are mutually exclusive). Bids cannot be redacted.\n\n - `auction_index` is the index of the auction to bid on. Should just be the present\n value of `AuctionCounter`.\n - `first_slot` is the first lease period index of the range to bid on. This is the\n absolute lease period index value, not an auction-specific offset.\n - `last_slot` is the last lease period index of the range to bid on. This is the\n absolute lease period index value, not an auction-specific offset.\n - `amount` is the amount to bid to be held as deposit for the parachain should the\n bid win. This amount is held throughout the range.",
+        "module_prefix": "Slots",
+        "module_name": "Slots",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_offboarding",
+        "call_args": [
+            {
+                "name": "dest",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            }
+        ],
+        "documentation": " Set the off-boarding information for a parachain.\n\n The origin *must* be a parachain account.\n\n - `dest` is the destination account to receive the parachain's deposit.",
+        "module_prefix": "Slots",
+        "module_name": "Slots",
+        "spec_version": 12
+    },
+    {
+        "call_name": "fix_deploy_data",
+        "call_args": [
+            {
+                "name": "sub",
+                "type": "Compact<SubId>"
+            },
+            {
+                "name": "para_id",
+                "type": "Compact<ParaId>"
+            },
+            {
+                "name": "code_hash",
+                "type": "T::Hash"
+            },
+            {
+                "name": "code_size",
+                "type": "u32"
+            },
+            {
+                "name": "initial_head_data",
+                "type": "HeadData"
+            }
+        ],
+        "documentation": " Set the deploy information for a successful bid to deploy a new parachain.\n\n - `origin` must be the successful bidder account.\n - `sub` is the sub-bidder ID of the bidder.\n - `para_id` is the parachain ID allotted to the winning bidder.\n - `code_hash` is the hash of the parachain's Wasm validation function.\n - `initial_head_data` is the parachain's initial head data.",
+        "module_prefix": "Slots",
+        "module_name": "Slots",
+        "spec_version": 12
+    },
+    {
+        "call_name": "elaborate_deploy_data",
+        "call_args": [
+            {
+                "name": "para_id",
+                "type": "Compact<ParaId>"
+            },
+            {
+                "name": "code",
+                "type": "ValidationCode"
+            }
+        ],
+        "documentation": " Note a new parachain's code.\n\n This must be called after `fix_deploy_data` and `code` must be the preimage of the\n `code_hash` passed there for the same `para_id`.\n\n This may be called before or after the beginning of the parachain's first lease period.\n If called before then the parachain will become active at the first block of its\n starting lease period. If after, then it will become active immediately after this call.\n\n - `_origin` is irrelevant.\n - `para_id` is the parachain ID whose code will be elaborated.\n - `code` is the preimage of the registered `code_hash` of `para_id`.",
+        "module_prefix": "Slots",
+        "module_name": "Slots",
+        "spec_version": 12
+    },
+    {
+        "call_name": "register_para",
+        "call_args": [
+            {
+                "name": "id",
+                "type": "Compact<ParaId>"
+            },
+            {
+                "name": "info",
+                "type": "ParaInfo"
+            },
+            {
+                "name": "code",
+                "type": "ValidationCode"
+            },
+            {
+                "name": "initial_head_data",
+                "type": "HeadData"
+            }
+        ],
+        "documentation": " Register a parachain with given code. Must be called by root.\n Fails if given ID is already used.\n\n Unlike the `Registrar` trait function of the same name, this\n checks the code and head data against size limits.",
+        "module_prefix": "Registrar",
+        "module_name": "Registrar",
+        "spec_version": 12
+    },
+    {
+        "call_name": "deregister_para",
+        "call_args": [
+            {
+                "name": "id",
+                "type": "Compact<ParaId>"
+            }
+        ],
+        "documentation": " Deregister a parachain with given id",
+        "module_prefix": "Registrar",
+        "module_name": "Registrar",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_thread_count",
+        "call_args": [
+            {
+                "name": "count",
+                "type": "u32"
+            }
+        ],
+        "documentation": " Reset the number of parathreads that can pay to be scheduled in a single block.\n\n - `count`: The number of parathreads.\n\n Must be called from Root origin.",
+        "module_prefix": "Registrar",
+        "module_name": "Registrar",
+        "spec_version": 12
+    },
+    {
+        "call_name": "register_parathread",
+        "call_args": [
+            {
+                "name": "code",
+                "type": "ValidationCode"
+            },
+            {
+                "name": "initial_head_data",
+                "type": "HeadData"
+            }
+        ],
+        "documentation": " Register a parathread for immediate use.\n\n Must be sent from a Signed origin that is able to have ParathreadDeposit reserved.\n `code` and `initial_head_data` are used to initialize the parathread's state.\n\n Unlike `register_para`, this function does check that the maximum code size\n and head data size are respected, as parathread registration is an atomic\n action.",
+        "module_prefix": "Registrar",
+        "module_name": "Registrar",
+        "spec_version": 12
+    },
+    {
+        "call_name": "select_parathread",
+        "call_args": [
+            {
+                "name": "_id",
+                "type": "Compact<ParaId>"
+            },
+            {
+                "name": "_collator",
+                "type": "CollatorId"
+            },
+            {
+                "name": "_head_hash",
+                "type": "T::Hash"
+            }
+        ],
+        "documentation": " Place a bid for a parathread to be progressed in the next block.\n\n This is a kind of special transaction that should be heavily prioritized in the\n transaction pool according to the `value`; only `ThreadCount` of them may be presented\n in any single block.",
+        "module_prefix": "Registrar",
+        "module_name": "Registrar",
+        "spec_version": 12
+    },
+    {
+        "call_name": "deregister_parathread",
+        "call_args": [],
+        "documentation": " Deregister a parathread and retrieve the deposit.\n\n Must be sent from a `Parachain` origin which is currently a parathread.\n\n Ensure that before calling this that any funds you want emptied from the parathread's\n account is moved out; after this it will be impossible to retrieve them (without\n governance intervention).",
+        "module_prefix": "Registrar",
+        "module_name": "Registrar",
+        "spec_version": 12
+    },
+    {
+        "call_name": "swap",
+        "call_args": [
+            {
+                "name": "other",
+                "type": "Compact<ParaId>"
+            }
+        ],
+        "documentation": " Swap a parachain with another parachain or parathread. The origin must be a `Parachain`.\n The swap will happen only if there is already an opposite swap pending. If there is not,\n the swap will be stored in the pending swaps map, ready for a later confirmatory swap.\n\n The `ParaId`s remain mapped to the same head data and code so external code can rely on\n `ParaId` to be a long-term identifier of a notional \"parachain\". However, their\n scheduling info (i.e. whether they're a parathread or parachain), auction information\n and the auction deposit are switched.",
+        "module_prefix": "Registrar",
+        "module_name": "Registrar",
+        "spec_version": 12
+    },
+    {
+        "call_name": "claim",
+        "call_args": [
+            {
+                "name": "dest",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "ethereum_signature",
+                "type": "EcdsaSignature"
+            }
+        ],
+        "documentation": " Make a claim to collect your DOTs.\n\n The dispatch origin for this call must be _None_.\n\n Unsigned Validation:\n A call to claim is deemed valid if the signature provided matches\n the expected signed message of:\n\n > Ethereum Signed Message:\n > (configured prefix string)(address)\n\n and `address` matches the `dest` account.\n\n Parameters:\n - `dest`: The destination account to payout the claim.\n - `ethereum_signature`: The signature of an ethereum signed message\n    matching the format described above.\n\n <weight>\n The weight of this call is invariant over the input parameters.\n - One `eth_recover` operation which involves a keccak hash and a\n   ecdsa recover.\n - Three storage reads to check if a claim exists for the user, to\n   get the current pot size, to see if there exists a vesting schedule.\n - Up to one storage write for adding a new vesting schedule.\n - One `deposit_creating` Currency call.\n - One storage write to update the total.\n - Two storage removals for vesting and claims information.\n - One deposit event.\n\n Total Complexity: O(1)\n ----------------------------\n Base Weight: 269.7 \u00b5s\n DB Weight:\n - Read: Signing, Claims, Total, Claims Vesting, Vesting Vesting, Balance Lock, Account\n - Write: Vesting Vesting, Account, Balance Lock, Total, Claim, Claims Vesting, Signing\n Validate Unsigned: +188.7 \u00b5s\n </weight>",
+        "module_prefix": "Claims",
+        "module_name": "Claims",
+        "spec_version": 12
+    },
+    {
+        "call_name": "mint_claim",
+        "call_args": [
+            {
+                "name": "who",
+                "type": "EthereumAddress"
+            },
+            {
+                "name": "value",
+                "type": "BalanceOf<T>"
+            },
+            {
+                "name": "vesting_schedule",
+                "type": "Option<(BalanceOf<T>, BalanceOf<T>, T::BlockNumber)>"
+            },
+            {
+                "name": "statement",
+                "type": "Option<StatementKind>"
+            }
+        ],
+        "documentation": " Mint a new claim to collect DOTs.\n\n The dispatch origin for this call must be _Root_.\n\n Parameters:\n - `who`: The Ethereum address allowed to collect this claim.\n - `value`: The number of DOTs that will be claimed.\n - `vesting_schedule`: An optional vesting schedule for these DOTs.\n\n <weight>\n The weight of this call is invariant over the input parameters.\n - One storage mutate to increase the total claims available.\n - One storage write to add a new claim.\n - Up to one storage write to add a new vesting schedule.\n\n Total Complexity: O(1)\n ---------------------\n Base Weight: 10.46 \u00b5s\n DB Weight:\n - Reads: Total\n - Writes: Total, Claims\n - Maybe Write: Vesting, Statement\n </weight>",
+        "module_prefix": "Claims",
+        "module_name": "Claims",
+        "spec_version": 12
+    },
+    {
+        "call_name": "claim_attest",
+        "call_args": [
+            {
+                "name": "dest",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "ethereum_signature",
+                "type": "EcdsaSignature"
+            },
+            {
+                "name": "statement",
+                "type": "Vec<u8>"
+            }
+        ],
+        "documentation": " Make a claim to collect your DOTs by signing a statement.\n\n The dispatch origin for this call must be _None_.\n\n Unsigned Validation:\n A call to `claim_attest` is deemed valid if the signature provided matches\n the expected signed message of:\n\n > Ethereum Signed Message:\n > (configured prefix string)(address)(statement)\n\n and `address` matches the `dest` account; the `statement` must match that which is\n expected according to your purchase arrangement.\n\n Parameters:\n - `dest`: The destination account to payout the claim.\n - `ethereum_signature`: The signature of an ethereum signed message\n    matching the format described above.\n - `statement`: The identity of the statement which is being attested to in the signature.\n\n <weight>\n The weight of this call is invariant over the input parameters.\n - One `eth_recover` operation which involves a keccak hash and a\n   ecdsa recover.\n - Four storage reads to check if a claim exists for the user, to\n   get the current pot size, to see if there exists a vesting schedule, to get the\n   required statement.\n - Up to one storage write for adding a new vesting schedule.\n - One `deposit_creating` Currency call.\n - One storage write to update the total.\n - Two storage removals for vesting and claims information.\n - One deposit event.\n\n Total Complexity: O(1)\n ----------------------------\n Base Weight: 270.2 \u00b5s\n DB Weight:\n - Read: Signing, Claims, Total, Claims Vesting, Vesting Vesting, Balance Lock, Account\n - Write: Vesting Vesting, Account, Balance Lock, Total, Claim, Claims Vesting, Signing\n Validate Unsigned: +190.1 \u00b5s\n </weight>",
+        "module_prefix": "Claims",
+        "module_name": "Claims",
+        "spec_version": 12
+    },
+    {
+        "call_name": "attest",
+        "call_args": [
+            {
+                "name": "statement",
+                "type": "Vec<u8>"
+            }
+        ],
+        "documentation": " Attest to a statement, needed to finalize the claims process.\n\n WARNING: Insecure unless your chain includes `PrevalidateAttests` as a `SignedExtension`.\n\n Unsigned Validation:\n A call to attest is deemed valid if the sender has a `Preclaim` registered\n and provides a `statement` which is expected for the account.\n\n Parameters:\n - `statement`: The identity of the statement which is being attested to in the signature.\n\n <weight>\n Total Complexity: O(1)\n ----------------------------\n Base Weight: 93.3 \u00b5s\n DB Weight:\n - Read: Preclaims, Signing, Claims, Total, Claims Vesting, Vesting Vesting, Balance Lock, Account\n - Write: Vesting Vesting, Account, Balance Lock, Total, Claim, Claims Vesting, Signing, Preclaims\n Validate PreValidateAttests: +8.631 \u00b5s\n </weight>",
+        "module_prefix": "Claims",
+        "module_name": "Claims",
+        "spec_version": 12
+    },
+    {
+        "call_name": "move_claim",
+        "call_args": [
+            {
+                "name": "old",
+                "type": "EthereumAddress"
+            },
+            {
+                "name": "new",
+                "type": "EthereumAddress"
+            },
+            {
+                "name": "maybe_preclaim",
+                "type": "Option<T::AccountId>"
+            }
+        ],
+        "documentation": "",
+        "module_prefix": "Claims",
+        "module_name": "Claims",
+        "spec_version": 12
+    },
+    {
+        "call_name": "vest",
+        "call_args": [],
+        "documentation": " Unlock any vested funds of the sender account.\n\n The dispatch origin for this call must be _Signed_ and the sender must have funds still\n locked under this module.\n\n Emits either `VestingCompleted` or `VestingUpdated`.\n\n # <weight>\n - `O(1)`.\n - DbWeight: 2 Reads, 2 Writes\n     - Reads: Vesting Storage, Balances Locks, [Sender Account]\n     - Writes: Vesting Storage, Balances Locks, [Sender Account]\n - Benchmark:\n     - Unlocked: 48.76 + .048 * l \u00b5s (min square analysis)\n     - Locked: 44.43 + .284 * l \u00b5s (min square analysis)\n - Using 50 \u00b5s fixed. Assuming less than 50 locks on any user, else we may want factor in number of locks.\n # </weight>",
+        "module_prefix": "Vesting",
+        "module_name": "Vesting",
+        "spec_version": 12
+    },
+    {
+        "call_name": "vest_other",
+        "call_args": [
+            {
+                "name": "target",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            }
+        ],
+        "documentation": " Unlock any vested funds of a `target` account.\n\n The dispatch origin for this call must be _Signed_.\n\n - `target`: The account whose vested funds should be unlocked. Must have funds still\n locked under this module.\n\n Emits either `VestingCompleted` or `VestingUpdated`.\n\n # <weight>\n - `O(1)`.\n - DbWeight: 3 Reads, 3 Writes\n     - Reads: Vesting Storage, Balances Locks, Target Account\n     - Writes: Vesting Storage, Balances Locks, Target Account\n - Benchmark:\n     - Unlocked: 44.3 + .294 * l \u00b5s (min square analysis)\n     - Locked: 48.16 + .103 * l \u00b5s (min square analysis)\n - Using 50 \u00b5s fixed. Assuming less than 50 locks on any user, else we may want factor in number of locks.\n # </weight>",
+        "module_prefix": "Vesting",
+        "module_name": "Vesting",
+        "spec_version": 12
+    },
+    {
+        "call_name": "vested_transfer",
+        "call_args": [
+            {
+                "name": "target",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            },
+            {
+                "name": "schedule",
+                "type": "VestingInfo<BalanceOf<T>, T::BlockNumber>"
+            }
+        ],
+        "documentation": " Create a vested transfer.\n\n The dispatch origin for this call must be _Signed_.\n\n - `target`: The account that should be transferred the vested funds.\n - `amount`: The amount of funds to transfer and will be vested.\n - `schedule`: The vesting schedule attached to the transfer.\n\n Emits `VestingCreated`.\n\n # <weight>\n - `O(1)`.\n - DbWeight: 3 Reads, 3 Writes\n     - Reads: Vesting Storage, Balances Locks, Target Account, [Sender Account]\n     - Writes: Vesting Storage, Balances Locks, Target Account, [Sender Account]\n - Benchmark: 100.3 + .365 * l \u00b5s (min square analysis)\n - Using 100 \u00b5s fixed. Assuming less than 50 locks on any user, else we may want factor in number of locks.\n # </weight>",
+        "module_prefix": "Vesting",
+        "module_name": "Vesting",
+        "spec_version": 12
+    },
+    {
+        "call_name": "force_vested_transfer",
+        "call_args": [
+            {
+                "name": "source",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            },
+            {
+                "name": "target",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            },
+            {
+                "name": "schedule",
+                "type": "VestingInfo<BalanceOf<T>, T::BlockNumber>"
+            }
+        ],
+        "documentation": " Force a vested transfer.\n\n The dispatch origin for this call must be _Root_.\n\n - `source`: The account whose funds should be transferred.\n - `target`: The account that should be transferred the vested funds.\n - `amount`: The amount of funds to transfer and will be vested.\n - `schedule`: The vesting schedule attached to the transfer.\n\n Emits `VestingCreated`.\n\n # <weight>\n - `O(1)`.\n - DbWeight: 4 Reads, 4 Writes\n     - Reads: Vesting Storage, Balances Locks, Target Account, Source Account\n     - Writes: Vesting Storage, Balances Locks, Target Account, Source Account\n - Benchmark: 100.3 + .365 * l \u00b5s (min square analysis)\n - Using 100 \u00b5s fixed. Assuming less than 50 locks on any user, else we may want factor in number of locks.\n # </weight>",
+        "module_prefix": "Vesting",
+        "module_name": "Vesting",
+        "spec_version": 12
+    },
+    {
+        "call_name": "batch",
+        "call_args": [
+            {
+                "name": "calls",
+                "type": "Vec<<T as Trait>::Call>"
+            }
+        ],
+        "documentation": " Send a batch of dispatch calls.\n\n May be called from any origin.\n\n - `calls`: The calls to be dispatched from the same origin.\n\n If origin is root then call are dispatch without checking origin filter. (This includes\n bypassing `frame_system::Trait::BaseCallFilter`).\n\n # <weight>\n - Base weight: 14.39 + .987 * c \u00b5s\n - Plus the sum of the weights of the `calls`.\n - Plus one additional event. (repeat read/write)\n # </weight>\n\n This will return `Ok` in all circumstances. To determine the success of the batch, an\n event is deposited. If a call failed and the batch was interrupted, then the\n `BatchInterrupted` event is deposited, along with the number of successful calls made\n and the error of the failed call. If all were successful, then the `BatchCompleted`\n event is deposited.",
+        "module_prefix": null,
+        "module_name": "Utility",
+        "spec_version": 12
+    },
+    {
+        "call_name": "as_sub",
+        "call_args": [
+            {
+                "name": "index",
+                "type": "u16"
+            },
+            {
+                "name": "call",
+                "type": "Box<<T as Trait>::Call>"
+            }
+        ],
+        "documentation": " Send a call through an indexed pseudonym of the sender.\n\n NOTE: If you need to ensure that any account-based filtering is honored (i.e. because\n you expect `proxy` to have been used prior in the call stack and you want it to apply to\n any sub-accounts), then use `as_limited_sub` instead.\n\n The dispatch origin for this call must be _Signed_.\n\n # <weight>\n - Base weight: 2.861 \u00b5s\n - Plus the weight of the `call`\n # </weight>",
+        "module_prefix": null,
+        "module_name": "Utility",
+        "spec_version": 12
+    },
+    {
+        "call_name": "as_limited_sub",
+        "call_args": [
+            {
+                "name": "index",
+                "type": "u16"
+            },
+            {
+                "name": "call",
+                "type": "Box<<T as Trait>::Call>"
+            }
+        ],
+        "documentation": " Send a call through an indexed pseudonym of the sender.\n\n Filter from origin are passed along. The call will be dispatched with an origin which\n use the same filter as the origin of this call.\n\n NOTE: If you need to ensure that any account-based filtering is not honored (i.e.\n because you expect `proxy` to have been used prior in the call stack and you do not want\n the call restrictions to apply to any sub-accounts), then use `as_sub` instead.\n\n The dispatch origin for this call must be _Signed_.\n\n # <weight>\n - Base weight: 2.861 \u00b5s\n - Plus the weight of the `call`\n # </weight>",
+        "module_prefix": null,
+        "module_name": "Utility",
+        "spec_version": 12
+    },
+    {
+        "call_name": "sudo",
+        "call_args": [
+            {
+                "name": "call",
+                "type": "Box<<T as Trait>::Call>"
+            }
+        ],
+        "documentation": " Authenticates the sudo key and dispatches a function call with `Root` origin.\n\n The dispatch origin for this call must be _Signed_.\n\n # <weight>\n - O(1).\n - Limited storage reads.\n - One DB write (event).\n - Weight of derivative `call` execution + 10,000.\n # </weight>",
+        "module_prefix": "Sudo",
+        "module_name": "Sudo",
+        "spec_version": 12
+    },
+    {
+        "call_name": "sudo_unchecked_weight",
+        "call_args": [
+            {
+                "name": "call",
+                "type": "Box<<T as Trait>::Call>"
+            },
+            {
+                "name": "_weight",
+                "type": "Weight"
+            }
+        ],
+        "documentation": " Authenticates the sudo key and dispatches a function call with `Root` origin.\n This function does not check the weight of the call, and instead allows the\n Sudo user to specify the weight of the call.\n\n The dispatch origin for this call must be _Signed_.\n\n # <weight>\n - O(1).\n - The weight of this call is defined by the caller.\n # </weight>",
+        "module_prefix": "Sudo",
+        "module_name": "Sudo",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_key",
+        "call_args": [
+            {
+                "name": "new",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            }
+        ],
+        "documentation": " Authenticates the current sudo key and sets the given AccountId (`new`) as the new sudo key.\n\n The dispatch origin for this call must be _Signed_.\n\n # <weight>\n - O(1).\n - Limited storage reads.\n - One DB change.\n # </weight>",
+        "module_prefix": "Sudo",
+        "module_name": "Sudo",
+        "spec_version": 12
+    },
+    {
+        "call_name": "sudo_as",
+        "call_args": [
+            {
+                "name": "who",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            },
+            {
+                "name": "call",
+                "type": "Box<<T as Trait>::Call>"
+            }
+        ],
+        "documentation": " Authenticates the sudo key and dispatches a function call with `Signed` origin from\n a given account.\n\n The dispatch origin for this call must be _Signed_.\n\n # <weight>\n - O(1).\n - Limited storage reads.\n - One DB write (event).\n - Weight of derivative `call` execution + 10,000.\n # </weight>",
+        "module_prefix": "Sudo",
+        "module_name": "Sudo",
+        "spec_version": 12
+    },
+    {
+        "call_name": "add_registrar",
+        "call_args": [
+            {
+                "name": "account",
+                "type": "T::AccountId"
+            }
+        ],
+        "documentation": " Add a registrar to the system.\n\n The dispatch origin for this call must be `RegistrarOrigin` or `Root`.\n\n - `account`: the account of the registrar.\n\n Emits `RegistrarAdded` if successful.\n\n # <weight>\n - `O(R)` where `R` registrar-count (governance-bounded and code-bounded).\n - One storage mutation (codec `O(R)`).\n - One event.\n # </weight>",
+        "module_prefix": "Identity",
+        "module_name": "Identity",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_identity",
+        "call_args": [
+            {
+                "name": "info",
+                "type": "IdentityInfo"
+            }
+        ],
+        "documentation": " Set an account's identity information and reserve the appropriate deposit.\n\n If the account already has identity information, the deposit is taken as part payment\n for the new deposit.\n\n The dispatch origin for this call must be _Signed_.\n\n - `info`: The identity information.\n\n Emits `IdentitySet` if successful.\n\n # <weight>\n - `O(X + X' + R)`\n   - where `X` additional-field-count (deposit-bounded and code-bounded)\n   - where `R` judgements-count (registrar-count-bounded)\n - One balance reserve operation.\n - One storage mutation (codec-read `O(X' + R)`, codec-write `O(X + R)`).\n - One event.\n # </weight>",
+        "module_prefix": "Identity",
+        "module_name": "Identity",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_subs",
+        "call_args": [
+            {
+                "name": "subs",
+                "type": "Vec<(T::AccountId, Data)>"
+            }
+        ],
+        "documentation": " Set the sub-accounts of the sender.\n\n Payment: Any aggregate balance reserved by previous `set_subs` calls will be returned\n and an amount `SubAccountDeposit` will be reserved for each item in `subs`.\n\n The dispatch origin for this call must be _Signed_ and the sender must have a registered\n identity.\n\n - `subs`: The identity's (new) sub-accounts.\n\n # <weight>\n - `O(P + S)`\n   - where `P` old-subs-count (hard- and deposit-bounded).\n   - where `S` subs-count (hard- and deposit-bounded).\n - At most one balance operations.\n - DB:\n   - `P + S` storage mutations (codec complexity `O(1)`)\n   - One storage read (codec complexity `O(P)`).\n   - One storage write (codec complexity `O(S)`).\n   - One storage-exists (`IdentityOf::contains_key`).\n # </weight>",
+        "module_prefix": "Identity",
+        "module_name": "Identity",
+        "spec_version": 12
+    },
+    {
+        "call_name": "clear_identity",
+        "call_args": [],
+        "documentation": " Clear an account's identity info and all sub-accounts and return all deposits.\n\n Payment: All reserved balances on the account are returned.\n\n The dispatch origin for this call must be _Signed_ and the sender must have a registered\n identity.\n\n Emits `IdentityCleared` if successful.\n\n # <weight>\n - `O(R + S + X)`\n   - where `R` registrar-count (governance-bounded).\n   - where `S` subs-count (hard- and deposit-bounded).\n   - where `X` additional-field-count (deposit-bounded and code-bounded).\n - One balance-unreserve operation.\n - `2` storage reads and `S + 2` storage deletions.\n - One event.\n # </weight>",
+        "module_prefix": "Identity",
+        "module_name": "Identity",
+        "spec_version": 12
+    },
+    {
+        "call_name": "request_judgement",
+        "call_args": [
+            {
+                "name": "reg_index",
+                "type": "Compact<RegistrarIndex>"
+            },
+            {
+                "name": "max_fee",
+                "type": "Compact<BalanceOf<T>>"
+            }
+        ],
+        "documentation": " Request a judgement from a registrar.\n\n Payment: At most `max_fee` will be reserved for payment to the registrar if judgement\n given.\n\n The dispatch origin for this call must be _Signed_ and the sender must have a\n registered identity.\n\n - `reg_index`: The index of the registrar whose judgement is requested.\n - `max_fee`: The maximum fee that may be paid. This should just be auto-populated as:\n\n ```nocompile\n Self::registrars().get(reg_index).unwrap().fee\n ```\n\n Emits `JudgementRequested` if successful.\n\n # <weight>\n - `O(R + X)`.\n - One balance-reserve operation.\n - Storage: 1 read `O(R)`, 1 mutate `O(X + R)`.\n - One event.\n # </weight>",
+        "module_prefix": "Identity",
+        "module_name": "Identity",
+        "spec_version": 12
+    },
+    {
+        "call_name": "cancel_request",
+        "call_args": [
+            {
+                "name": "reg_index",
+                "type": "RegistrarIndex"
+            }
+        ],
+        "documentation": " Cancel a previous request.\n\n Payment: A previously reserved deposit is returned on success.\n\n The dispatch origin for this call must be _Signed_ and the sender must have a\n registered identity.\n\n - `reg_index`: The index of the registrar whose judgement is no longer requested.\n\n Emits `JudgementUnrequested` if successful.\n\n # <weight>\n - `O(R + X)`.\n - One balance-reserve operation.\n - One storage mutation `O(R + X)`.\n - One event\n # </weight>",
+        "module_prefix": "Identity",
+        "module_name": "Identity",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_fee",
+        "call_args": [
+            {
+                "name": "index",
+                "type": "Compact<RegistrarIndex>"
+            },
+            {
+                "name": "fee",
+                "type": "Compact<BalanceOf<T>>"
+            }
+        ],
+        "documentation": " Set the fee required for a judgement to be requested from a registrar.\n\n The dispatch origin for this call must be _Signed_ and the sender must be the account\n of the registrar whose index is `index`.\n\n - `index`: the index of the registrar whose fee is to be set.\n - `fee`: the new fee.\n\n # <weight>\n - `O(R)`.\n - One storage mutation `O(R)`.\n - Benchmark: 7.315 + R * 0.329 \u00b5s (min squares analysis)\n # </weight>",
+        "module_prefix": "Identity",
+        "module_name": "Identity",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_account_id",
+        "call_args": [
+            {
+                "name": "index",
+                "type": "Compact<RegistrarIndex>"
+            },
+            {
+                "name": "new",
+                "type": "T::AccountId"
+            }
+        ],
+        "documentation": " Change the account associated with a registrar.\n\n The dispatch origin for this call must be _Signed_ and the sender must be the account\n of the registrar whose index is `index`.\n\n - `index`: the index of the registrar whose fee is to be set.\n - `new`: the new account ID.\n\n # <weight>\n - `O(R)`.\n - One storage mutation `O(R)`.\n - Benchmark: 8.823 + R * 0.32 \u00b5s (min squares analysis)\n # </weight>",
+        "module_prefix": "Identity",
+        "module_name": "Identity",
+        "spec_version": 12
+    },
+    {
+        "call_name": "set_fields",
+        "call_args": [
+            {
+                "name": "index",
+                "type": "Compact<RegistrarIndex>"
+            },
+            {
+                "name": "fields",
+                "type": "IdentityFields"
+            }
+        ],
+        "documentation": " Set the field information for a registrar.\n\n The dispatch origin for this call must be _Signed_ and the sender must be the account\n of the registrar whose index is `index`.\n\n - `index`: the index of the registrar whose fee is to be set.\n - `fields`: the fields that the registrar concerns themselves with.\n\n # <weight>\n - `O(R)`.\n - One storage mutation `O(R)`.\n - Benchmark: 7.464 + R * 0.325 \u00b5s (min squares analysis)\n # </weight>",
+        "module_prefix": "Identity",
+        "module_name": "Identity",
+        "spec_version": 12
+    },
+    {
+        "call_name": "provide_judgement",
+        "call_args": [
+            {
+                "name": "reg_index",
+                "type": "Compact<RegistrarIndex>"
+            },
+            {
+                "name": "target",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            },
+            {
+                "name": "judgement",
+                "type": "Judgement<BalanceOf<T>>"
+            }
+        ],
+        "documentation": " Provide a judgement for an account's identity.\n\n The dispatch origin for this call must be _Signed_ and the sender must be the account\n of the registrar whose index is `reg_index`.\n\n - `reg_index`: the index of the registrar whose judgement is being made.\n - `target`: the account whose identity the judgement is upon. This must be an account\n   with a registered identity.\n - `judgement`: the judgement of the registrar of index `reg_index` about `target`.\n\n Emits `JudgementGiven` if successful.\n\n # <weight>\n - `O(R + X)`.\n - One balance-transfer operation.\n - Up to one account-lookup operation.\n - Storage: 1 read `O(R)`, 1 mutate `O(R + X)`.\n - One event.\n # </weight>",
+        "module_prefix": "Identity",
+        "module_name": "Identity",
+        "spec_version": 12
+    },
+    {
+        "call_name": "kill_identity",
+        "call_args": [
+            {
+                "name": "target",
+                "type": "<T::Lookup as StaticLookup>::Source"
+            }
+        ],
+        "documentation": " Remove an account's identity and sub-account information and slash the deposits.\n\n Payment: Reserved balances from `set_subs` and `set_identity` are slashed and handled by\n `Slash`. Verification request deposits are not returned; they should be cancelled\n manually using `cancel_request`.\n\n The dispatch origin for this call must be _Root_ or match `T::ForceOrigin`.\n\n - `target`: the account whose identity the judgement is upon. This must be an account\n   with a registered identity.\n\n Emits `IdentityKilled` if successful.\n\n # <weight>\n - `O(R + S + X)`.\n - One balance-reserve operation.\n - `S + 2` storage mutations.\n - One event.\n # </weight>",
+        "module_prefix": "Identity",
+        "module_name": "Identity",
+        "spec_version": 12
+    },
+    {
+        "call_name": "proxy",
+        "call_args": [
+            {
+                "name": "real",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "force_proxy_type",
+                "type": "Option<T::ProxyType>"
+            },
+            {
+                "name": "call",
+                "type": "Box<<T as Trait>::Call>"
+            }
+        ],
+        "documentation": " Dispatch the given `call` from an account that the sender is authorised for through\n `add_proxy`.\n\n The dispatch origin for this call must be _Signed_.\n\n Parameters:\n - `real`: The account that the proxy will make a call on behalf of.\n - `force_proxy_type`: Specify the exact proxy type to be used and checked for this call.\n - `call`: The call to be made by the `real` account.\n\n # <weight>\n P is the number of proxies the user has\n - Base weight: 19.87 + .141 * P \u00b5s\n - DB weight: 1 storage read.\n - Plus the weight of the `call`\n # </weight>",
+        "module_prefix": "Proxy",
+        "module_name": "Proxy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "add_proxy",
+        "call_args": [
+            {
+                "name": "proxy",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "proxy_type",
+                "type": "T::ProxyType"
+            }
+        ],
+        "documentation": " Register a proxy account for the sender that is able to make calls on its behalf.\n\n The dispatch origin for this call must be _Signed_.\n\n Parameters:\n - `proxy`: The account that the `caller` would like to make a proxy.\n - `proxy_type`: The permissions allowed for this proxy account.\n\n # <weight>\n P is the number of proxies the user has\n - Base weight: 17.48 + .176 * P \u00b5s\n - DB weight: 1 storage read and write.\n # </weight>",
+        "module_prefix": "Proxy",
+        "module_name": "Proxy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "remove_proxy",
+        "call_args": [
+            {
+                "name": "proxy",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "proxy_type",
+                "type": "T::ProxyType"
+            }
+        ],
+        "documentation": " Unregister a proxy account for the sender.\n\n The dispatch origin for this call must be _Signed_.\n\n Parameters:\n - `proxy`: The account that the `caller` would like to remove as a proxy.\n - `proxy_type`: The permissions currently enabled for the removed proxy account.\n\n # <weight>\n P is the number of proxies the user has\n - Base weight: 14.37 + .164 * P \u00b5s\n - DB weight: 1 storage read and write.\n # </weight>",
+        "module_prefix": "Proxy",
+        "module_name": "Proxy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "remove_proxies",
+        "call_args": [],
+        "documentation": " Unregister all proxy accounts for the sender.\n\n The dispatch origin for this call must be _Signed_.\n\n WARNING: This may be called on accounts created by `anonymous`, however if done, then\n the unreserved fees will be inaccessible. **All access to this account will be lost.**\n\n # <weight>\n P is the number of proxies the user has\n - Base weight: 13.73 + .129 * P \u00b5s\n - DB weight: 1 storage read and write.\n # </weight>",
+        "module_prefix": "Proxy",
+        "module_name": "Proxy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "anonymous",
+        "call_args": [
+            {
+                "name": "proxy_type",
+                "type": "T::ProxyType"
+            },
+            {
+                "name": "index",
+                "type": "u16"
+            }
+        ],
+        "documentation": " Spawn a fresh new account that is guaranteed to be otherwise inaccessible, and\n initialize it with a proxy of `proxy_type` for `origin` sender.\n\n Requires a `Signed` origin.\n\n - `proxy_type`: The type of the proxy that the sender will be registered as over the\n new account. This will almost always be the most permissive `ProxyType` possible to\n allow for maximum flexibility.\n - `index`: A disambiguation index, in case this is called multiple times in the same\n transaction (e.g. with `utility::batch`). Unless you're using `batch` you probably just\n want to use `0`.\n\n Fails with `Duplicate` if this has already been called in this transaction, from the\n same sender, with the same parameters.\n\n Fails if there are insufficient funds to pay for deposit.\n\n # <weight>\n P is the number of proxies the user has\n - Base weight: 36.48 + .039 * P \u00b5s\n - DB weight: 1 storage read and write.\n # </weight>",
+        "module_prefix": "Proxy",
+        "module_name": "Proxy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "kill_anonymous",
+        "call_args": [
+            {
+                "name": "spawner",
+                "type": "T::AccountId"
+            },
+            {
+                "name": "proxy_type",
+                "type": "T::ProxyType"
+            },
+            {
+                "name": "index",
+                "type": "u16"
+            },
+            {
+                "name": "height",
+                "type": "Compact<T::BlockNumber>"
+            },
+            {
+                "name": "ext_index",
+                "type": "Compact<u32>"
+            }
+        ],
+        "documentation": " Removes a previously spawned anonymous proxy.\n\n WARNING: **All access to this account will be lost.** Any funds held in it will be\n inaccessible.\n\n Requires a `Signed` origin, and the sender account must have been created by a call to\n `anonymous` with corresponding parameters.\n\n - `spawner`: The account that originally called `anonymous` to create this account.\n - `index`: The disambiguation index originally passed to `anonymous`. Probably `0`.\n - `proxy_type`: The proxy type originally passed to `anonymous`.\n - `height`: The height of the chain when the call to `anonymous` was processed.\n - `ext_index`: The extrinsic index in which the call to `anonymous` was processed.\n\n Fails with `NoPermission` in case the caller is not a previously created anonymous\n account whose `anonymous` call has corresponding parameters.\n\n # <weight>\n P is the number of proxies the user has\n - Base weight: 15.65 + .137 * P \u00b5s\n - DB weight: 1 storage read and write.\n # </weight>",
+        "module_prefix": "Proxy",
+        "module_name": "Proxy",
+        "spec_version": 12
+    },
+    {
+        "call_name": "as_multi_threshold_1",
+        "call_args": [
+            {
+                "name": "other_signatories",
+                "type": "Vec<T::AccountId>"
+            },
+            {
+                "name": "call",
+                "type": "Box<<T as Trait>::Call>"
+            }
+        ],
+        "documentation": " Immediately dispatch a multi-signature call using a single approval from the caller.\n\n The dispatch origin for this call must be _Signed_.\n\n - `other_signatories`: The accounts (other than the sender) who are part of the\n multi-signature, but do not participate in the approval process.\n - `call`: The call to be executed.\n\n Result is equivalent to the dispatched result.\n\n # <weight>\n O(Z + C) where Z is the length of the call and C its execution weight.\n -------------------------------\n - Base Weight: 33.72 + 0.002 * Z \u00b5s\n - DB Weight: None\n - Plus Call Weight\n # </weight>",
+        "module_prefix": "Multisig",
+        "module_name": "Multisig",
+        "spec_version": 12
+    },
+    {
+        "call_name": "as_multi",
+        "call_args": [
+            {
+                "name": "threshold",
+                "type": "u16"
+            },
+            {
+                "name": "other_signatories",
+                "type": "Vec<T::AccountId>"
+            },
+            {
+                "name": "maybe_timepoint",
+                "type": "Option<Timepoint<T::BlockNumber>>"
+            },
+            {
+                "name": "call",
+                "type": "Vec<u8>"
+            },
+            {
+                "name": "store_call",
+                "type": "bool"
+            },
+            {
+                "name": "max_weight",
+                "type": "Weight"
+            }
+        ],
+        "documentation": " Register approval for a dispatch to be made from a deterministic composite account if\n approved by a total of `threshold - 1` of `other_signatories`.\n\n If there are enough, then dispatch the call.\n\n Payment: `DepositBase` will be reserved if this is the first approval, plus\n `threshold` times `DepositFactor`. It is returned once this dispatch happens or\n is cancelled.\n\n The dispatch origin for this call must be _Signed_.\n\n - `threshold`: The total number of approvals for this dispatch before it is executed.\n - `other_signatories`: The accounts (other than the sender) who can approve this\n dispatch. May not be empty.\n - `maybe_timepoint`: If this is the first approval, then this must be `None`. If it is\n not the first approval, then it must be `Some`, with the timepoint (block number and\n transaction index) of the first approval transaction.\n - `call`: The call to be executed.\n\n NOTE: Unless this is the final approval, you will generally want to use\n `approve_as_multi` instead, since it only requires a hash of the call.\n\n Result is equivalent to the dispatched result if `threshold` is exactly `1`. Otherwise\n on success, result is `Ok` and the result from the interior call, if it was executed,\n may be found in the deposited `MultisigExecuted` event.\n\n # <weight>\n - `O(S + Z + Call)`.\n - Up to one balance-reserve or unreserve operation.\n - One passthrough operation, one insert, both `O(S)` where `S` is the number of\n   signatories. `S` is capped by `MaxSignatories`, with weight being proportional.\n - One call encode & hash, both of complexity `O(Z)` where `Z` is tx-len.\n - One encode & hash, both of complexity `O(S)`.\n - Up to one binary search and insert (`O(logS + S)`).\n - I/O: 1 read `O(S)`, up to 1 mutate `O(S)`. Up to one remove.\n - One event.\n - The weight of the `call`.\n - Storage: inserts one item, value size bounded by `MaxSignatories`, with a\n   deposit taken for its lifetime of\n   `DepositBase + threshold * DepositFactor`.\n -------------------------------\n - Base Weight:\n     - Create:          41.89 + 0.118 * S + .002 * Z \u00b5s\n     - Create w/ Store: 53.57 + 0.119 * S + .003 * Z \u00b5s\n     - Approve:         31.39 + 0.136 * S + .002 * Z \u00b5s\n     - Complete:        39.94 + 0.26  * S + .002 * Z \u00b5s\n - DB Weight:\n     - Reads: Multisig Storage, [Caller Account], Calls (if `store_call`)\n     - Writes: Multisig Storage, [Caller Account], Calls (if `store_call`)\n - Plus Call Weight\n # </weight>",
+        "module_prefix": "Multisig",
+        "module_name": "Multisig",
+        "spec_version": 12
+    },
+    {
+        "call_name": "approve_as_multi",
+        "call_args": [
+            {
+                "name": "threshold",
+                "type": "u16"
+            },
+            {
+                "name": "other_signatories",
+                "type": "Vec<T::AccountId>"
+            },
+            {
+                "name": "maybe_timepoint",
+                "type": "Option<Timepoint<T::BlockNumber>>"
+            },
+            {
+                "name": "call_hash",
+                "type": "[u8; 32]"
+            },
+            {
+                "name": "max_weight",
+                "type": "Weight"
+            }
+        ],
+        "documentation": " Register approval for a dispatch to be made from a deterministic composite account if\n approved by a total of `threshold - 1` of `other_signatories`.\n\n Payment: `DepositBase` will be reserved if this is the first approval, plus\n `threshold` times `DepositFactor`. It is returned once this dispatch happens or\n is cancelled.\n\n The dispatch origin for this call must be _Signed_.\n\n - `threshold`: The total number of approvals for this dispatch before it is executed.\n - `other_signatories`: The accounts (other than the sender) who can approve this\n dispatch. May not be empty.\n - `maybe_timepoint`: If this is the first approval, then this must be `None`. If it is\n not the first approval, then it must be `Some`, with the timepoint (block number and\n transaction index) of the first approval transaction.\n - `call_hash`: The hash of the call to be executed.\n\n NOTE: If this is the final approval, you will want to use `as_multi` instead.\n\n # <weight>\n - `O(S)`.\n - Up to one balance-reserve or unreserve operation.\n - One passthrough operation, one insert, both `O(S)` where `S` is the number of\n   signatories. `S` is capped by `MaxSignatories`, with weight being proportional.\n - One encode & hash, both of complexity `O(S)`.\n - Up to one binary search and insert (`O(logS + S)`).\n - I/O: 1 read `O(S)`, up to 1 mutate `O(S)`. Up to one remove.\n - One event.\n - Storage: inserts one item, value size bounded by `MaxSignatories`, with a\n   deposit taken for its lifetime of\n   `DepositBase + threshold * DepositFactor`.\n ----------------------------------\n - Base Weight:\n     - Create: 44.71 + 0.088 * S\n     - Approve: 31.48 + 0.116 * S\n - DB Weight:\n     - Read: Multisig Storage, [Caller Account]\n     - Write: Multisig Storage, [Caller Account]\n # </weight>",
+        "module_prefix": "Multisig",
+        "module_name": "Multisig",
+        "spec_version": 12
+    },
+    {
+        "call_name": "cancel_as_multi",
+        "call_args": [
+            {
+                "name": "threshold",
+                "type": "u16"
+            },
+            {
+                "name": "other_signatories",
+                "type": "Vec<T::AccountId>"
+            },
+            {
+                "name": "timepoint",
+                "type": "Timepoint<T::BlockNumber>"
+            },
+            {
+                "name": "call_hash",
+                "type": "[u8; 32]"
+            }
+        ],
+        "documentation": " Cancel a pre-existing, on-going multisig transaction. Any deposit reserved previously\n for this operation will be unreserved on success.\n\n The dispatch origin for this call must be _Signed_.\n\n - `threshold`: The total number of approvals for this dispatch before it is executed.\n - `other_signatories`: The accounts (other than the sender) who can approve this\n dispatch. May not be empty.\n - `timepoint`: The timepoint (block number and transaction index) of the first approval\n transaction for this dispatch.\n - `call_hash`: The hash of the call to be executed.\n\n # <weight>\n - `O(S)`.\n - Up to one balance-reserve or unreserve operation.\n - One passthrough operation, one insert, both `O(S)` where `S` is the number of\n   signatories. `S` is capped by `MaxSignatories`, with weight being proportional.\n - One encode & hash, both of complexity `O(S)`.\n - One event.\n - I/O: 1 read `O(S)`, one remove.\n - Storage: removes one item.\n ----------------------------------\n - Base Weight: 36.07 + 0.124 * S\n - DB Weight:\n     - Read: Multisig Storage, [Caller Account], Refund Account, Calls\n     - Write: Multisig Storage, [Caller Account], Refund Account, Calls\n # </weight>",
+        "module_prefix": "Multisig",
+        "module_name": "Multisig",
+        "spec_version": 12
+    }
+]
