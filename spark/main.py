@@ -14,8 +14,74 @@ queries_postgres = {
     "get_blocks_all": "select * from block",
     "get_transfers_and_accounts": "select * from transfer t inner join account a1 on a1.address = t.from_address inner join account a2  on a2.address = t.to_address",
     "get_last_balances": "Select b2.* from balance b2 inner join (select b.account, max(b.block_number) as block_number from balance b group by b.account) as b1 on b1.account=b2.account and b1.block_number=b2.block_number",
-    "get_nominator_rewards": "select an.address as nominator, av.address as validator,n.reward as reward,an.reward_destination as reward_destination,n.era as era from nominator n inner join validator v on v.id = n.validator inner join account an on an.id = n.account inner join account av on av.id = v.account",
-    "get_validator_pool_at_era": "select * from validator_pool where era=REPL and block_number=REPL"
+
+    "get_nominator_rewards": "select an.address as nominator, av.address as validator,n.reward as reward,an.reward_destination as reward_destination,n.era as era,n.stake as stake from nominator n inner join validator v on v.id = n.validator inner join account an on an.id = n.account inner join account av on av.id = v.account ORDER by era, validator, nominator",
+    "get_nominator_rewards_address": "select an.address as nominator, av.address as validator,n.reward as reward,an.reward_destination as reward_destination,n.era as era,n.stake as stake from nominator n inner join validator v on v.id = n.validator inner join account an on an.id = n.account inner join account av on av.id = v.account WHERE an.address='REPL' ORDER by era, validator, nominator limit 10",
+    "get_validator_pools": "select * from validator_pool",
+
+    "get_validator_pool_at_era": "select * from validator_pool where era=REPL0",
+    "get_balances_at_block": """
+        SELECT DISTINCT ON (address)
+            address,
+            transferable, 
+            reserved,
+            bonded,
+            unbonding,
+            b.block_number
+        FROM balance b
+            INNER JOIN account a
+                on a.id = b.account
+        WHERE b.block_number < REPL0
+        ORDER BY address, b.block_number DESC
+    """,
+    "get_balances_for_address": """
+        SELECT
+            a.address,
+            b.transferable, 
+            b.reserved,
+            b.bonded,
+            b.unbonding,
+            b.block_number
+        FROM balance b
+            INNER JOIN account a
+                ON a.id = b.account
+        WHERE a.address = 'REPL0'
+        ORDER BY b.block_number
+    """,
+    "get_aggregators": """
+        SELECT * 
+        FROM aggregator
+        ORDER BY block_number DESC
+    """,
+    "get_aggregator_at_block": """
+        SELECT * 
+        FROM aggregator
+        WHERE block_number=REPL0
+    """,
+    "get_aggregator_diff": """
+        select block_number, 
+            total_extrinsics - lead(total_extrinsics) over (order by block_number DESC) as delta_extrinsics,
+            total_events - lead(total_events) over (order by block_number DESC) as delta_events,
+            total_accounts - lead(total_accounts) over (order by block_number DESC) as delta_accounts,
+            total_transfers - lead(total_transfers) over (order by block_number DESC) as delta_transfers,
+            total_staked - lead(total_staked) over (order by block_number DESC) as delta_staked
+        
+        from aggregator
+        where block_number in (REPL0, REPL1)
+        limit 1
+    """,
+    "get_transfer_network_for_account": """
+    SELECT 
+        af.address as from_address, 
+        at.address as to_address
+    FROM transfer t
+        INNER JOIN account af
+            ON af.id = t.from_account
+        INNER JOIN account at
+            ON at.id = t.to_account
+    WHERE af.address = 'REPL0'
+    OR at.address = 'REPL0'
+    """
 }
 
 queries_neo4j = {
@@ -37,6 +103,7 @@ def init_sparksession(query: str, db: str):
         return \
             SparkSession \
             .builder \
+            .config("spark.driver.memory", "15g") \
             .appName("Polkadot Pyspark Postgres") \
             .config("spark.jars", "./postgresql-42.2.6.jar") \
             .getOrCreate() \
@@ -87,7 +154,7 @@ def main(args):
             query = queries_neo4j[args.preset]
     if args.args:
         for i, val in enumerate(args.args):
-            query = query.replace(f"REPL", val,1)
+            query = query.replace(f"REPL{i}", val)
 
     spark = init_sparksession(query, db=args.database)
     spark.show(
@@ -98,8 +165,8 @@ def main(args):
         else:
             name = args.name
         spark.write.parquet(path=f"./results/{name}.parquet")
-        end = time.perf_counter()
-        print(end - start)
+    end = time.perf_counter()
+    print(f"Took {end - start}")
 
 
 def argparser():
