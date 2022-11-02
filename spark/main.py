@@ -5,18 +5,46 @@ from pyspark.sql import SparkSession
 
 
 queries_postgres = {
-    "get_balances_all": "select * from balance",
-    "get_balances_year": "select * from balance b where b.block_number > (select greatest(max(b.block_number) - 5256000 , 0) from balance b)",
-    "get_balances_month": "select * from balance b where b.block_number > (select greatest(max(b.block_number) - 432000 , 0) from balance b)",
-    "get_balances_day": "select * from balance b where b.block_number > (select greatest(max(b.block_number) - 14400 , 0) from balance b)",
-    "get_transfers_all": "select * from transfer",
-    "get_accounts_all": "select * from account",
-    "get_blocks_all": "select * from block",
-    "get_transfers_and_accounts": "select * from transfer t inner join account a1 on a1.address = t.from_address inner join account a2  on a2.address = t.to_address",
-    "get_last_balances": "Select b2.* from balance b2 inner join (select b.account, max(b.block_number) as block_number from balance b group by b.account) as b1 on b1.account=b2.account and b1.block_number=b2.block_number",
-
-    "get_nominator_rewards": "select an.address as nominator, av.address as validator,n.reward as reward,an.reward_destination as reward_destination,n.era as era,n.stake as stake from nominator n inner join validator v on v.id = n.validator inner join account an on an.id = n.account inner join account av on av.id = v.account ORDER by era, validator, nominator",
-    "get_nominator_rewards_address": "select an.address as nominator, av.address as validator,n.reward as reward,an.reward_destination as reward_destination,n.era as era,n.stake as stake from nominator n inner join validator v on v.id = n.validator inner join account an on an.id = n.account inner join account av on av.id = v.account WHERE an.address='REPL' ORDER by era, validator, nominator limit 10",
+    "get_nominator_rewards": """
+        select 
+            an.address as nominator,
+            av.address as validator,
+            n.reward as reward,
+            an.reward_destination as reward_destination,
+            n.era as era,n.stake as stake,
+            v.total_stake as validator_total_stake,
+            v.own_stake as validator_self_stake,
+            v.commission as validator_commission
+        from nominator n
+            inner join validator v
+                on v.id = n.validator
+            inner join account an
+                on an.id = n.account
+            inner join account av
+                on av.id = v.account
+        ORDER by era, validator, nominator
+    """,
+    "get_nominator_rewards_address": """
+        select
+            an.address as nominator, 
+            av.address as validator,
+            n.reward as reward,
+            an.reward_destination as reward_destination,
+            n.era as era,
+            n.stake as stake,
+            v.total_stake as validator_total_stake,
+            v.own_stake as validator_self_stake,
+            v.commission as validator_commission
+        from nominator n 
+            inner join validator v 
+                on v.id = n.validator 
+            inner join account an 
+                on an.id = n.account 
+            inner join account av 
+                on av.id = v.account
+        WHERE an.address='REPL0' 
+        ORDER by era, validator, nominator
+    """,
     "get_validator_pools": "select * from validator_pool",
 
     "get_validator_pool_at_era": "select * from validator_pool where era=REPL0",
@@ -160,11 +188,8 @@ def main(args):
     spark.show(
     )
     if args.save:
-        if args.name is None:
-            name = "untitled"
-        else:
-            name = args.name
-        spark.write.parquet(path=f"./results/{name}.parquet")
+
+        spark.write.csv(path=f"./results/{args.save}.csv")
     end = time.perf_counter()
     print(f"Took {end - start}")
 
@@ -175,7 +200,7 @@ def argparser():
     parser.add_argument("-u",   "--url",                          help="default: localhost",        type=str)
     parser.add_argument("-n",   "--name",                               help="name for file results",     type=str)
     parser.add_argument("-p", "--preset",                           help="choose predefined query",   type=str)
-    parser.add_argument("-s",   "--save",    action='store_true',       help="Save to /results")
+    parser.add_argument("-s",   "--save",          help="Save to /results. Add a filename as an argument", type=str)
     parser.add_argument("-d",  "--database",                           help="p=postgres or n=neo4j")
     parser.add_argument("-a", "--args",nargs='+')
     return parser.parse_args()
@@ -186,7 +211,7 @@ def argparser():
 
 if __name__ == "__main__":
     arguments = argparser()
-    print(arguments)
+
     if arguments.query is None and arguments.preset is None:
         raise UserWarning("A predefined or userdefined query via flags {-q, -pre} is required")
         exit()
