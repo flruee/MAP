@@ -8,13 +8,16 @@ All Aggregators DONE
 Aggregator at block. DONE
 Diff Aggregators DONE
 
-Transfer network
+Transfer network DONE
 Transfer network for account(address) DONE
 
 All Validator pools DONE
 Validator pool for era (block) DONE
 
-All Controllers
-Controller/Controllees for account(address)
+All Controllers DONE
+Controller/Controllees for account(address) DONE
 
-Extrinsics for account (address)
+All Validators DONE
+All validators for address DONE
+
+Extrinsics for account (address) DONE

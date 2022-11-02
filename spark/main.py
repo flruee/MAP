@@ -98,17 +98,85 @@ queries_postgres = {
         where block_number in (REPL0, REPL1)
         limit 1
     """,
+    "get_transfer_network": """
+        SELECT 
+            af.address as from_address, 
+            at.address as to_address
+        FROM transfer t
+            INNER JOIN account af
+                ON af.id = t.from_account
+            INNER JOIN account at
+                ON at.id = t.to_account
+    """,
     "get_transfer_network_for_account": """
-    SELECT 
-        af.address as from_address, 
-        at.address as to_address
-    FROM transfer t
-        INNER JOIN account af
-            ON af.id = t.from_account
-        INNER JOIN account at
-            ON at.id = t.to_account
-    WHERE af.address = 'REPL0'
-    OR at.address = 'REPL0'
+        SELECT 
+            af.address as from_address, 
+            at.address as to_address
+        FROM transfer t
+            INNER JOIN account af
+                ON af.id = t.from_account
+            INNER JOIN account at
+                ON at.id = t.to_account
+        WHERE af.address = 'REPL0'
+        OR at.address = 'REPL0'
+    """,
+    "get_validators": """
+        SELECT
+            v.id as validator_id,
+            a.address as validator_address,
+            v.era as era,
+            v.total_stake as total_stake,
+            v.own_stake as self_stake,
+            v.reward_points as reward_points,
+            v.commission as validator_commission
+        FROM validator v
+            INNER JOIN account a
+                on v.account = a.id
+        ORDER BY era
+    """,
+    "get_validator_by_address": """
+        SELECT
+            v.id as validator_id,
+            a.address as validator_address,
+            v.era as era,
+            v.total_stake as total_stake,
+            v.own_stake as self_stake,
+            v.reward_points as reward_points,
+            v.commission as validator_commission
+        FROM validator v
+            INNER JOIN account a
+                on v.account = a.id
+        WHERE a.address = 'REPL0'
+        ORDER BY era
+    """,
+    "get_controllers": """
+        SELECT
+            a1.address as controller_address,
+            a2.address as controlled_address
+        FROM controller c
+            INNER JOIN account a1
+                ON a1.id = c.controller_account
+            INNER JOIN account a2 
+                ON a2.id = c.controlled_account
+    """,
+     "get_controllers_by_address": """
+        SELECT
+            a1.address as controller_address,
+            a2.address as controlled_address
+        FROM controller c
+            INNER JOIN account a1
+                ON a1.id = c.controller_account
+            INNER JOIN account a2 
+                ON a2.id = c.controlled_account
+        WHERE a1.address = 'REPL0'
+            OR a2.address = 'REPL0'
+    """,
+    "get_extrinsics_for_account": """
+        SELECT e.*
+        FROM extrinsic e
+            INNER JOIN account a
+                ON e.account = a.id
+        WHERE a.address = 'REPL0'
     """
 }
 
