@@ -27,6 +27,8 @@ from src.node_connection import handle_one_block
 from substrateinterface import SubstrateInterface
 import ssl
 import src.utils as utils
+from websocket._exceptions import WebSocketConnectionClosedException
+import time
 class PGBlockHandler:
     def __init__(self, session):
         self.session = session
@@ -352,12 +354,13 @@ class PGBlockHandler:
             
             substrate = self.__create_substrate_connection()
             # Get all validators of era
-            validator_reward_points= substrate.query(
+            validator_reward_points = self.__retry_query(
+                substrate=substrate,
                 module='Staking',
                 storage_function='ErasRewardPoints',
                 params=[validator_pool.era],
                 block_hash=block.hash
-            ).value
+            )
             staking_sum = 0
             for validator_address,reward_points in validator_reward_points["individual"]:
 
@@ -366,18 +369,20 @@ class PGBlockHandler:
                     validator_account = Account.create(validator_address)
                     self.accounts+=1
 
-                validator_staking= substrate.query(
+                validator_staking= self.__retry_query(
+                    substrate,
                     module='Staking',
                     storage_function='ErasStakers',
                     params=[validator_pool.era,validator_address],
                     block_hash=block.hash
-                ).value
-                commission = substrate.query(
+                )
+                commission = self.__retry_query(
+                    substrate,
                     module='Staking',
                     storage_function='ErasValidatorPrefs',
                     params=[validator_pool.era,validator_address],
                     block_hash=block.hash
-                ).value
+                )
                 validator = Validator.create(validator_account, validator_pool.era, reward_points,validator_staking["total"], validator_staking["own"], commission["commission"])
                 # We create the validator also as a nominator to catch the reward
                 Nominator.create(validator_account,validator, validator_staking["own"],validator_pool.era)
@@ -396,6 +401,26 @@ class PGBlockHandler:
 
             validator_pool.total_stake = staking_sum
             ValidatorPool.save(validator_pool)
+
+    def __retry_query(self,substrate,module, storage_function, params, block_hash, n=5):
+        """
+        Sometimes a websocket connection closes, possibly due to overload.
+        This function tries the query, if a websocket connection occurs it tries to reconnect n times and
+        repeat the query, if all else fails it throws
+        """
+        for i in range(n):
+            try:
+                return substrate.query(
+                    module=module,
+                    storage_function=storage_function,
+                    params=params,
+                    block_hash=block_hash
+                ).value
+            except WebSocketConnectionClosedException:
+                substrate = self.__create_substrate_connection()
+                time.sleep(5)
+        
+        raise WebSocketConnectionClosedException()
 
 
     def __handle_payout_stakers(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
