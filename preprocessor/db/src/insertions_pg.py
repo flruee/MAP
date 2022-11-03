@@ -410,6 +410,12 @@ class PGBlockHandler:
         """
         for i in range(n):
             try:
+                print(f"{substrate}: {type(substrate)}")
+                print(f"{module}: {type(module)}")
+                print(f"{storage_function}: {type(storage_function)}")
+                for p in params:
+                    print(f"{p}: {type(p)}")
+                print(f"{block_hash}: {type(block_hash)}")
                 return substrate.query(
                     module=module,
                     storage_function=storage_function,
@@ -417,8 +423,9 @@ class PGBlockHandler:
                     block_hash=block_hash
                 ).value
             except WebSocketConnectionClosedException:
-                substrate = self.__create_substrate_connection()
+                print("ERROR: WEBSOCKETCONNECTION CLOSED. Retrying...")
                 time.sleep(5)
+                substrate = self.__create_substrate_connection()
         
         raise WebSocketConnectionClosedException()
 
