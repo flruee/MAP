@@ -29,6 +29,7 @@ import ssl
 import src.utils as utils
 from websocket._exceptions import WebSocketConnectionClosedException
 import time
+import copy
 class PGBlockHandler:
     def __init__(self, session):
         self.session = session
@@ -410,16 +411,20 @@ class PGBlockHandler:
         """
         for i in range(n):
             try:
+                # The query function modifies params in place
+                # If we repeat the query the params list will be modified
+                # and the function will fail -> deepcopy the params
+                params2 = copy.deepcopy(params)
                 print(f"{substrate}: {type(substrate)}")
                 print(f"{module}: {type(module)}")
                 print(f"{storage_function}: {type(storage_function)}")
-                for p in params:
+                for p in params2:
                     print(f"{p}: {type(p)}")
                 print(f"{block_hash}: {type(block_hash)}")
                 return substrate.query(
                     module=module,
                     storage_function=storage_function,
-                    params=params,
+                    params=params2,
                     block_hash=block_hash
                 ).value
             except WebSocketConnectionClosedException:
