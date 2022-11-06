@@ -444,8 +444,8 @@ class PGBlockHandler:
 
         for event in events:
             if event.event_name in ["Reward","Rewarded"]:
-                nominator_reward = event.attributes[1]['value']
-                nominator_address = event.attributes[0]['value']
+                nominator_reward = utils.extract_event_attributes_from_object(event, 1)
+                nominator_address = utils.extract_event_attributes_from_object(event, 0)
                 
                 nominator_account = Account.get_from_address(nominator_address)
                 if nominator_account is None:
