@@ -1,13 +1,17 @@
 import json
 import logging
 import ssl
+import time
 from typing import List
 import datetime
 from src.models import Block, Transaction, Account, Transaction, Validator, ValidatorPool, Nominator, Utils
 from src.driver_singleton import Driver
+from src.clean_block import CleanBlock
 from py2neo.ogm import Repository
 from py2neo import Subgraph, Relationship
 from substrateinterface import SubstrateInterface
+from websocket._exceptions import WebSocketConnectionClosedException
+import copy
 
 
 class Neo4jBlockHandler:
@@ -15,73 +19,9 @@ class Neo4jBlockHandler:
         self.driver = driver
         self.current_era = None
         self.block_author = None
-        self.schema = {
-            "type": "object",
-            "properties": {
-                "number": {
-                    "type": "number"
-                },
-                "hash": {
-                    "type": "string"
-                },
-                "header": {
-                    "type": "object",
-                    "author":{
-                        "type": "string"
-                    }
-                },
-                "extrinsics": {
-                    "type": "array",
-                    "extrinsic": {
-                        "type": "object",
-                        "extrinsic_hash": {
-                            "type": "string"
-                        },
-                        "call":{
-                            "type": "object",
-                            "call_function": {
-                                "type": "string"
-                            },
-                            "call_module": {
-                                "type": "string"
-                            },
-                            "call_args": {
-                                "type": "array",
-                                "name": {
-                                    "type": "string"
-                                },
-                                "value": {
-                                    "type": "number"
-                                }
-                            }
-                        }
-                    }
-                },
-                "events": {
-                    "type": "array",
-                    "event": {
-                        "type": "object",
-                        "event_id": {
-                            "type": "string"
-                        },
-                        "module_id": {
-                            "type": "string"
-                        },
-                        "attributes": {
-                            "type": "array",
-                            "value": {
-                                "type": "number"
-                            }
-                        }
-                    }
-                }
-                }
-            }
 
-
-
-    def handle_full_block(self, data):
-        #clean_block = Utils.restructure_block(data)
+    def handle_full_block(self, data, specification):
+        #clean_block = CleanBlock(data, specification).clean()
         block, subgraph = self.__handle_block_data(data)
         subgraphs = self.__handle_transaction_data(data, block, subgraph)
         if not len(subgraphs):
@@ -108,7 +48,7 @@ class Neo4jBlockHandler:
         block = Block.match(Driver().get_driver(), data["number"]).first()
         if block is not None:
             block = block.__node__
-        if block is None:
+        else:
             block = Block.create(data, timestamp)
         author_address = data["header"]["author"]
         subgraph = Subgraph()
@@ -190,9 +130,39 @@ class Neo4jBlockHandler:
         )
         return substrate
 
+    def __retry_query(self, substrate, module, storage_function, params, block_hash, n=5):
+        """
+        Sometimes a websocket connection closes, possibly due to overload.
+        This function tries the query, if a websocket connection occurs it tries to reconnect n times and
+        repeat the query, if all else fails it throws
+        """
+        for i in range(n):
+            try:
+                # The query function modifies params in place
+                # If we repeat the query the params list will be modified
+                # and the function will fail -> deepcopy the params
+                params2 = copy.deepcopy(params)
+                print(f"{substrate}: {type(substrate)}")
+                print(f"{module}: {type(module)}")
+                print(f"{storage_function}: {type(storage_function)}")
+                for p in params2:
+                    print(f"{p}: {type(p)}")
+                print(f"{block_hash}: {type(block_hash)}")
+                return substrate.query(
+                    module=module,
+                    storage_function=storage_function,
+                    params=params2,
+                    block_hash=block_hash
+                ).value
+            except WebSocketConnectionClosedException:
+                print("ERROR: WEBSOCKETCONNECTION CLOSED. Retrying...")
+                time.sleep(5)
+                substrate = self.__create_substrate_connection()
 
-    @staticmethod
-    def handle_validatorpool(event, subgraph, block):
+        raise WebSocketConnectionClosedException()
+
+
+    def handle_validatorpool(self, event, subgraph, block):
 
 
 
@@ -207,12 +177,14 @@ class Neo4jBlockHandler:
             subgraph = Utils.merge_subgraph(subgraph, current_previous_relationship)
         substrate = Neo4jBlockHandler.__create_substrate_connection()
         # Get all validators of era
-        validator_reward_points = substrate.query(
+        validator_reward_points = self.__retry_query(
+            substrate=substrate,
             module='Staking',
             storage_function='ErasRewardPoints',
             params=[current_validatorpool['era']],
             block_hash=block['hash']
-        ).value
+        )
+
         staking_sum = 0
         for validator_address, reward_points in validator_reward_points["individual"]:
 

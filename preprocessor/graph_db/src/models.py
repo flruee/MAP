@@ -376,8 +376,7 @@ class Transaction(GraphObject):
         """
         Here we handle the different function calls that shift balance between accounts.
         """
-        if extrinsic_function['name'] in ["transfer", "transfer_all", "transfer_keep_alive"]:
-
+        if extrinsic_function['name'] in ["transfer", "transfer_all", "transfer_keep_alive"]: #todo: handle force_transfer
             return Transaction.handle_transfer(transaction_data=transaction_data,
                                                event_data=event_data,
                                                block=block,
@@ -793,7 +792,7 @@ class ValidatorPool(GraphObject):
         return result
 
     @staticmethod
-    def create(event,block:"Block"):
+    def create(event,block:"Block"): # todo: get rid of try/except
         try:
             validator_pool =\
                                 Node("ValidatorPool",
