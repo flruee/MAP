@@ -232,12 +232,12 @@ class PGBlockHandler:
         # another sudo edge case. The sudo module can send money from an unowned account to another
         # sometimes it sends from account a to account a which doesn't make any sense.
         if extrinsic.function_name == "force_transfer":
-            to_address = extrinsic.call_args[1]["value"].replace("0x","")
-            #sending itself money, no need to handle that
-            if to_address == extrinsic.call_args[0]["value"]:
+            to_address = utils.extract_address_from_extrinsic(extrinsic,1)
+            from_address = utils.extract_address_from_extrinsic(extrinsic,0)
+            if to_address == from_address:
                 return
-        else:
-            to_address = extrinsic.call_args[0]["value"].replace("0x","")
+        else:               
+            to_address = utils.extract_address_from_extrinsic(extrinsic,0)
         
 
         to_account = Account.get_from_address(to_address)
