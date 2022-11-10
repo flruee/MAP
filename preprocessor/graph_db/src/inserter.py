@@ -164,7 +164,7 @@ class Neo4jBlockHandler:
 
     def handle_validatorpool(self, event, subgraph, block):
 
-
+        base_subgraph = subgraph
 
         current_validatorpool = ValidatorPool.create(
                                                     event=event,
@@ -226,7 +226,9 @@ class Neo4jBlockHandler:
             tx = Driver().get_driver().graph.begin()
             tx.create(subgraph)
             Driver().get_driver().graph.commit(tx)
+
             subgraph = Subgraph()
+            subgraph = Utils.merge_subgraph(subgraph, base_subgraph)
         current_validatorpool['total_stake'] = staking_sum
         return Utils.merge_subgraph(subgraph, current_validatorpool)
 
