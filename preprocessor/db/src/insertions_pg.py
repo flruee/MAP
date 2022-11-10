@@ -229,15 +229,19 @@ class PGBlockHandler:
     def __handle_transfer(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
         from_account = Account.get(extrinsic.account)
 
+        # Occurs at least once where a account uses transfer_all twice
+        if len(events) == 1:
+            if events[0].event_name == "ItemCompleted":
+                return
         # another sudo edge case. The sudo module can send money from an unowned account to another
         # sometimes it sends from account a to account a which doesn't make any sense.
         if extrinsic.function_name == "force_transfer":
-            to_address = extrinsic.call_args[1]["value"].replace("0x","")
-            #sending itself money, no need to handle that
-            if to_address == extrinsic.call_args[0]["value"]:
+            to_address = utils.extract_address_from_extrinsic(extrinsic,1)
+            from_address = utils.extract_address_from_extrinsic(extrinsic,0)
+            if to_address == from_address:
                 return
-        else:
-            to_address = extrinsic.call_args[0]["value"].replace("0x","")
+        else:               
+            to_address = utils.extract_address_from_extrinsic(extrinsic,0)
         
 
         to_account = Account.get_from_address(to_address)
@@ -265,6 +269,7 @@ class PGBlockHandler:
             amount_transferred = 0
         if amount_transferred is None:
             amount_transferred = extrinsic.call_args[1]["value"]
+
         from_balance = from_account.update_balance(extrinsic, transferable=-(amount_transferred))
         to_balance = to_account.update_balance(extrinsic,transferable=amount_transferred)
         
@@ -513,7 +518,11 @@ class PGBlockHandler:
 
         event_start = 0
         event_end = len(events)
-        
+        new_spec = False
+        # Check if new spec events appear in events
+        for event in events:
+            if event.event_name in ["ItemCompleted", "ItemFailed"]:
+                new_spec = True
         for j in range(len(extrinsic.call_args[0]["value"])):
             sub_extrinsic_data = extrinsic.call_args[0]["value"][j]
 
@@ -548,10 +557,10 @@ class PGBlockHandler:
             
             for i in range(event_start, event_end):
                 if events[i].module_name == "Utility":
-                    if events[i].event_name == "ItemCompleted":
+                    if events[i].event_name == "ItemCompleted" and new_spec:
                         was_successful = True
                         break
-                    elif events[i].event_name == "ItemFailed":
+                    elif events[i].event_name == "ItemFailed" and new_spec:
                         was_successful = False
                         break
                     elif events[i].event_name == "BatchInterrupted":
@@ -571,10 +580,10 @@ class PGBlockHandler:
                     was_successful=True
                     i=i+2 #take 3 events
                     break
-                elif events[i].module_name == "Sudo" and events[i].event_name == "SudoAsDone":
+                elif events[i].module_name == "Sudo" and events[i].event_name == "SudoAsDone" and not new_spec:
                     was_successful = utils.extract_event_attributes_from_object(events[i],0)
                     break
-                elif payout_staker_flag and events[i].module_name == "Staking" and events[i].event_name == "Reward":
+                elif payout_staker_flag and events[i].module_name == "Staking" and events[i].event_name == "Reward" and not new_spec:
                     reward_account = utils.convert_public_key_to_polkadot_address(utils.extract_event_attributes_from_object(events[i],0))
                     if next_validator == reward_account and i != event_start:
                         i = i-1
@@ -583,12 +592,13 @@ class PGBlockHandler:
                 
                 
                 elif events[i].event_name == "Transfer" and events[i].module_name == "Balances" \
-                    and sub_extrinsic_data["call_function"] in ["transfer", "transfer_keep_alive","transfer_all","force_transfer"]:
+                    and sub_extrinsic_data["call_function"] in ["transfer", "transfer_keep_alive","transfer_all","force_transfer"] and not new_spec:
                     
                     was_successful = True
                     break
             
             sub_events = events[event_start:i+1]
+   
             event_start = i+1
             sub_extrinsic = Extrinsic.create_from_batch(block, sub_extrinsic_data, events, extrinsic, was_successful)
 

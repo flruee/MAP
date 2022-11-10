@@ -54,3 +54,14 @@ def extract_event_attributes_from_object(event: Event, index:int):
         except TypeError:
             result = event.attributes
     return result
+
+def extract_address_from_extrinsic(extrinsic,index):
+    address = extrinsic.call_args[index]["value"]
+    try:
+        address = address.replace("0x","")
+    except AttributeError:
+        print(type(address))
+        print(address)
+        address = address["Address32"].replace("0x","")
+    
+    return address
