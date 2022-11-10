@@ -184,7 +184,7 @@ class Neo4jBlockHandler:
             params=[current_validatorpool['era']],
             block_hash=block['hash']
         )
-
+        counter = 0
         staking_sum = 0
         for validator_address, reward_points in validator_reward_points["individual"]:
 
@@ -211,6 +211,8 @@ class Neo4jBlockHandler:
             staking_sum += validator['total_stake']
 
             for element in validator_staking["others"]:
+                counter +=1
+                print(counter)
                 nominator_address = element["who"]
                 nominator_stake = element["value"]
                 nominator_account = Account.get(subgraph, nominator_address)
@@ -221,6 +223,10 @@ class Neo4jBlockHandler:
                 validator_nominator_relationship = Relationship(validator, ':HAS_NOMINATOR', nominator)
                 subgraph = Utils.merge_subgraph(subgraph, nominator, nominator_account, validator_nominator_relationship, nominator_account_relationship)
 
+            tx = Driver().get_driver().graph.begin()
+            tx.create(subgraph)
+            Driver().get_driver().graph.commit(tx)
+            subgraph = Subgraph()
         current_validatorpool['total_stake'] = staking_sum
         return Utils.merge_subgraph(subgraph, current_validatorpool)
 
