@@ -23,7 +23,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-    <img src="images/bdlt.png" alt="Logo" width="80" height="80">
+    <img src="images/bdlt.png" alt="Logo" width="160" height="80">
   </a>
 
   <p align="center">
