@@ -19,6 +19,7 @@
 *** https://www.markdownguide.org/basic-syntax/#reference-style-links
 -->
 
+# Master's project Ben Murphy & Florian Rüeggsegger
 
 <!-- PROJECT LOGO -->
 <br />
