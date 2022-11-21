@@ -125,7 +125,7 @@ polkadot_config = config["node"]
 kafka_config = config["kafka"]
 producer_config = config["producer"]
 
-logging.basicConfig(filename='block_data.log', level=producer_config["logLevel"])
+#logging.basicConfig(filename='block_data.log', level=producer_config["logLevel"])
 #logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 #needed for self signed certificate
