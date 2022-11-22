@@ -71,8 +71,12 @@ def jsonize_header(obj):
     for i in range(len(logs)):
         mod_log = str(logs[i])
         mod_log = string_replacer(mod_log)
-        
-        obj["header"]["digest"]["logs"][i] = json.loads(mod_log)
+        try:
+            obj["header"]["digest"]["logs"][i] = json.loads(mod_log)
+        except json.JSONDecodeError:
+            mod_log = '{"' + mod_log + '": null}'
+            obj["header"]["digest"]["logs"][i] = json.loads(mod_log)
+
     return obj
 
 def jsonize_extrinsic(block_hash):
