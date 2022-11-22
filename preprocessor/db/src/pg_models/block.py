@@ -67,6 +67,7 @@ class Block(Base):
             timestamp = data["extrinsics"][0]["call"]["call_args"][0]["value"]
 
         except IndexError:
+            # Genesis block has no timestamp
             timestamp = 1590507378000 - 6
 
         return datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=timestamp)

@@ -44,5 +44,8 @@ Read topic
 
 
 
-## Setup producer module
-See README in it's folder.
+## Setup producer/preprocessor/spark module
+See README in their respective folders.
+
+## Service files
+The `service_files` folder contains files which can be used to daemonize the processes.

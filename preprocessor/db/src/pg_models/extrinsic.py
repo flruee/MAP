@@ -27,10 +27,7 @@ class Extrinsic(Base):
     module_name = Column(String)
     function_name = Column(String)
     call_args = Column(JSON)
-    block_number = Column(Integer, ForeignKey(Block.block_number,ondelete="CASCADE"),index=True)
-    #treasury_balance = Column(Integer, ForeignKey("balance.id"))
-    #validator_balance = Column(Integer, ForeignKey("balance.id"))
-    
+    block_number = Column(Integer, ForeignKey(Block.block_number,ondelete="CASCADE"),index=True)    
     was_successful = Column(Boolean)
     fee = Column(BigInteger)
 

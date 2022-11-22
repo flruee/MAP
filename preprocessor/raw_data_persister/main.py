@@ -66,15 +66,17 @@ if __name__ == "__main__":
             kafka_config = config["kafka"]
             preprocessor_config = config["preprocessor"]
             with open("missing_data.csv") as f:
-                missing = int(f.readline())
-                stmt = select(RawData).where(RawData.block_number==missing)
-                db_data = session.execute(stmt).fetchone()
+                lines = f.readlines()
+                for missing in lines: 
+                    missing = int(missing)
+                    stmt = select(RawData).where(RawData.block_number==missing)
+                    db_data = session.execute(stmt).fetchone()
 
-                if db_data is None:
-                    data = handle_one_block(missing)
-                    raw_data = RawData(
-                        block_number=missing,
-                        data=data
-                    )
-                    session.add(raw_data)
-                    #session.commit()
+                    if db_data is None:
+                        data = handle_one_block(missing)
+                        raw_data = RawData(
+                            block_number=missing,
+                            data=data
+                        )
+                        session.add(raw_data)
+                        session.commit()
