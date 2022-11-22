@@ -11,6 +11,7 @@ from src.pg_models.nominator import Nominator
 from src.pg_models.validator import Validator
 from sqlalchemy import Index
 
+############ Note: Not needed anymore ####################
 class ValidatorToNominator(Base):
     __tablename__ = "validator_to_nominator"
     nominator = Column(Integer, ForeignKey("nominator.id",ondelete="CASCADE"), primary_key=True,index=True)

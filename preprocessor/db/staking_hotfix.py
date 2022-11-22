@@ -11,11 +11,8 @@ from sqlalchemy.orm import Session
 from src.driver_singleton import Driver
 from src.pg_models.block import Block
 DB = "postgres"
-if DB == "postgres":
-    from src.insertions_pg import PGBlockHandler
-else:
-	from src.insertions import handle_blocks
-from src.queries.schema import schema
+
+from src.insertions_pg import PGBlockHandler
 import logging
 import traceback
 from src.pg_models.raw_data import RawData

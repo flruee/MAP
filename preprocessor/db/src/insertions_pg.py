@@ -31,55 +31,41 @@ from websocket._exceptions import WebSocketConnectionClosedException
 import time
 import copy
 class PGBlockHandler:
-    def __init__(self, session):
-        self.session = session
-
-
-    def handle_blocks(self,start, end):
-        for i in range(start, end+1):
-            with open(f"small_block_dataset/{i}.json", "r") as f:
-                data = json.loads(f.read())  
-            self.handle_full_block(data)
-            #self.session.commit()
-
-    def handle_node_connection_index(self,start,end):
-        for i in range(start, end+1):
-            print(i)
-            block = handle_one_block(i)
-            print(i)
-            with open(f"small_block_dataset/{i}.json", "w+") as f:
-                f.write(json.dumps(block, indent=4))
-            with Driver().get_driver().begin():
-                self.handle_full_block(block)
-            #Driver().get_driver().commit()
 
     def handle_node_connection_blocks(self,blocks):
+        """
+        Gets blocks from node connection
+        """
+
         for block_number in blocks:
             print(block_number)
             block = handle_one_block(block_number)
-            print(block_number)
-            with open(f"small_block_dataset/{block_number}.json", "w+") as f:
-                f.write(json.dumps(block, indent=4))
             with Driver().get_driver().begin():
                 self.handle_full_block(block)
+                exit()
 
     def handle_full_block(self,data):
+        """
+        The 'main' function of this class. It receives valid JSON block data and processes it   
+        """
         # counts all accounts created this block, to be used by aggregator
         self.accounts = 0
 
-        block = self.insert_block(data)
-        extrinsics= self.handle_extrinsics_and_events(block,data)
+        block = self.__insert_block(data)
+        extrinsics= self.__handle_extrinsics_and_events(block,data)
         
 
-    def insert_block(self,data):
+    def __insert_block(self,data):
         return Block.create(data)
 
-    def handle_extrinsics_and_events(self,block,data) -> List[Extrinsic]:
+    def __handle_extrinsics_and_events(self,block,data) -> List[Extrinsic]:
+        
         events_data = data["events"]
 
         extrinsics = []
         events = []
         self.staked_this_block = 0
+
         if len(data['extrinsics']) == 1 and len(events_data) > 2: # Todo: handle differently,
             """
             This was done because some blocks contain 0 extrinsics, 
@@ -89,48 +75,33 @@ class PGBlockHandler:
             logging.warning(f"strange block {data['number']}")
         else:
             start = 1
-            current_events_data = self.handle_events(events_data, 0)
+            current_events_data = self.__handle_events(events_data, 0)
             events = []
             for event_data in current_events_data:
                 event = Event.create(event_data, None, block.block_number)
-                self.handle_special_events(block,event)
+                self.__handle_special_events(block,event)
+
+        # Iterate through the extrinsic data
         for i in range(start, len(data["extrinsics"])):
-            """
-            #index 0 is reserved for the timestamp transaction in extrinsics.
             
-            if i in 0:
-                timestamp = extrinsic_data["call"]["call_args"][0]["value"]
-                print(timestamp)
-                continue
-            
-            #index 1 is for paraInherents which probably have to be handled differently
-            if i == 1:
-                continue
-            """
-            #TODO make a parainherent check here
             extrinsic_data = data["extrinsics"][i]
-            # an extrinsic_hash of None indicates ParaInherent transactions or Timestamp transactions
-            # timestamp is already handled above
-            current_events_data = self.handle_events(events_data, i)
-            #last event denotes if ectrinsic was successfull
-            #was_successful = current_events[-1].event_name == "ExtrinsicSuccess"
+            
+            # Extract event data for current extrinsic
+            current_events_data = self.__handle_events(events_data, i)
+
             extrinsic, additional_accounts = Extrinsic.create(block, extrinsic_data,current_events_data)
             self.accounts+=additional_accounts
-            #events = [Event.create(event_data,extrinsic.id,block.block_number) for event_data in current_events_data]
+
             current_events = []
             for event_data in current_events_data:
                 current_event = Event.create(event_data, extrinsic.id, block.block_number)
-                self.handle_special_events(block,current_event)
+                self.__handle_special_events(block,current_event)
                 current_events.append(current_event)
 
             events.append(current_events)
-            #if event['event_id'] in ['EraPayout', 'EraPaid'] and event['module_id'] == 'Staking':
             
-            self.handle_special_extrinsics(block, extrinsic, current_events)
+            self.__handle_special_extrinsics(block, extrinsic, current_events)
          
-            
-            #self.special_event(block, extrinsic, current_events)
-
             extrinsics.append(extrinsic)
             
 
@@ -141,7 +112,7 @@ class PGBlockHandler:
         return extrinsics
 
 
-    def handle_events(self,events, extrinsic_idx) -> List[Event]:
+    def __handle_events(self,events, extrinsic_idx) -> List[Event]:
         """
             Iterates through events, selects those that have the same extrinsic_idx as the given one
             stores them in the db and returns all found events
@@ -186,14 +157,11 @@ class PGBlockHandler:
         return event
 
 
-    def handle_special_extrinsics(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
+    def __handle_special_extrinsics(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
         """
-        Each event has some implications on the overall data model. This function here differentiates between
-        the different modules and then uses a event handler class to handle the specific event.
-        e.g. the event "NewAccount" of the "Systems" module means that we have to create a new Account entry.
-
-        Since not all data relevant for us is contained in the event data (sometimes we additionally need to know the blocknumber or time)
-        we use the whole block.
+        Certain extrinsics such as Balance(transfer) have implications on our data model and can not be solved directly
+        in their respective classes. This function checks the module and extrinsic name and calls the relevant function
+        to handle their case.
         """
 
         print(f"{extrinsic.module_name}({extrinsic.function_name})")
@@ -227,14 +195,19 @@ class PGBlockHandler:
 
         
     def __handle_transfer(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
+        """
+        Handles all transfer extrinsics
+        """
         from_account = Account.get(extrinsic.account)
 
         # Occurs at least once where a account uses transfer_all twice
         if len(events) == 1:
             if events[0].event_name == "ItemCompleted":
                 return
+
         # another sudo edge case. The sudo module can send money from an unowned account to another
-        # sometimes it sends from account a to account a which doesn't make any sense.
+        # sometimes it sends from account 'x' to account 'x' which will emit no relevant event and which we
+        # will ignore.
         if extrinsic.function_name == "force_transfer":
             to_address = utils.extract_address_from_extrinsic(extrinsic,1)
             from_address = utils.extract_address_from_extrinsic(extrinsic,0)
@@ -248,10 +221,10 @@ class PGBlockHandler:
         if not to_account:
             to_account = Account.create(to_address)
             self.accounts+=1
+
         # Get amount transferred from 'Transfer' event
         amount_transferred = None
         for event in events:
-  
             if event.event_name == 'Transfer':
                 from_address = utils.extract_event_attributes_from_object(event,0)
                 #In case of a proxy or sudo call the sender of dot is not the creator of the extrinsic
@@ -285,6 +258,9 @@ class PGBlockHandler:
         )
     
     def __handle_bond(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
+        """
+        Handles the case that a account stakes.
+        """
         from_account = Account.get(extrinsic.account)
         
         if extrinsic.function_name == "bond":
@@ -304,7 +280,6 @@ class PGBlockHandler:
                 self.accounts+=1
             Controller.create(controller_account, from_account)
         elif extrinsic.function_name == "bond_extra":
-            #amount_transferred = extrinsic.call_args[0]["value"]
             for event in events:
                 if event.module_name == "Staking" and event.event_name == "Bonded":
                     amount_transferred = utils.extract_event_attributes_from_object(event,1)
@@ -347,7 +322,7 @@ class PGBlockHandler:
         
         Account.save(from_account)
 
-    def handle_special_events(self,block: Block,event: Event):
+    def __handle_special_events(self,block: Block,event: Event):
         """
         Certain features, like an era change, are only captured in events.
         """
@@ -358,6 +333,7 @@ class PGBlockHandler:
         if event.event_name in ['EraPayout', 'EraPaid'] and event.module_name == 'Staking':
             validator_pool = ValidatorPool.create(event,block)
             
+            # Create a node connection
             substrate = self.__create_substrate_connection()
             # Get all validators of era
             validator_reward_points = self.__retry_query(
@@ -374,7 +350,7 @@ class PGBlockHandler:
                 if validator_account is None:
                     validator_account = Account.create(validator_address)
                     self.accounts+=1
-
+                # Get nominators and stakes
                 validator_staking= self.__retry_query(
                     substrate,
                     module='Staking',
@@ -382,6 +358,7 @@ class PGBlockHandler:
                     params=[validator_pool.era,validator_address],
                     block_hash=block.hash
                 )
+                # get validator commission
                 commission = self.__retry_query(
                     substrate,
                     module='Staking',
@@ -468,15 +445,6 @@ class PGBlockHandler:
                         to_balance = validator_account.update_balance(extrinsic,transferable=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
                         from_balance = to_balance
-                    """
-                    else:
-                        external_account = Account.get_from_address(nominator_account.reward_destination)
-                        if external_account is None:
-                            external_account = Account.create(nominator_account.reward_destination)
-                            self.accounts+=1
-                        to_balance = external_account.update_balance(extrinsic, transferable=nominator_reward)
-                        transfer = Transfer.create(block.block_number, None,external_account,None,to_balance,nominator_reward,extrinsic,"Reward")
-                    """
                 else:
                     if nominator_account.reward_destination in ['Staked']:
                         from_balance = validator_account.update_balance(extrinsic, transferable=-nominator_reward)
@@ -487,22 +455,13 @@ class PGBlockHandler:
                         from_balance = validator_account.update_balance(extrinsic, transferable=-nominator_reward)
                         to_balance = nominator_account.update_balance(extrinsic, transferable=nominator_reward)
                         transfer = Transfer.create(block.block_number, None,nominator_account,None,to_balance,nominator_reward,extrinsic,"Reward")
-                    """
-                    else:
-                        external_account = Account.get_from_address(nominator_account.reward_destination)
-                        if external_account is None:
-                            external_account = Account.create(nominator_account.reward_destination)
-                            self.accounts+=1
-                        to_balance = external_account.update_balance(extrinsic, transferable=nominator_reward)
-                        transfer = Transfer.create(block.block_number, None,external_account,None,to_balance,nominator_reward,extrinsic,"Reward")
-
-                    """
+                   
                 nominator = Nominator.get(era, validator, nominator_account)
                 if nominator is None:
                     nominator = Nominator.create(nominator_account, validator,None,era)
                 nominator.update_rewards(nominator_reward, transfer)    
                 Account.save(nominator_account)
-                #Nominator.save(nominator)
+
                 Validator.save(validator)
                 vtn = ValidatorToNominator.get(validator,nominator,era)
                 if vtn is None:
@@ -513,7 +472,9 @@ class PGBlockHandler:
         """
         Some extrinsic are of type batch, meaning they execute multiple function calls in one extrinsic.
         This function iterates through those function calls,creates an extrinsic entry for them and calls
-        the handle_special_extrinsics function in case one is special. 
+        the __handle_special_extrinsics function in case one is special. 
+        Note that because of the nature of utility(batch) this function has to handle (too) many edge cases
+        and is therefore not easy to read
         """
 
         event_start = 0
@@ -523,6 +484,8 @@ class PGBlockHandler:
         for event in events:
             if event.event_name in ["ItemCompleted", "ItemFailed"]:
                 new_spec = True
+        
+        # Iterate through sub extrinsics
         for j in range(len(extrinsic.call_args[0]["value"])):
             sub_extrinsic_data = extrinsic.call_args[0]["value"][j]
 
@@ -597,12 +560,13 @@ class PGBlockHandler:
                     was_successful = True
                     break
             
+            # get the relevant events for the sub extrinsic
             sub_events = events[event_start:i+1]
    
             event_start = i+1
             sub_extrinsic = Extrinsic.create_from_batch(block, sub_extrinsic_data, events, extrinsic, was_successful)
 
-            self.handle_special_extrinsics(block, sub_extrinsic, sub_events)
+            self.__handle_special_extrinsics(block, sub_extrinsic, sub_events)
             
     def __handle_proxy(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
         """
@@ -614,7 +578,7 @@ class PGBlockHandler:
         
         proxied_extrinsic, additional_accounts = Extrinsic.create_from_proxy(block, extrinsic,events)
         self.accounts += additional_accounts
-        self.handle_special_extrinsics(block, proxied_extrinsic, events)
+        self.__handle_special_extrinsics(block, proxied_extrinsic, events)
 
     def __handle_claim(self, block: Block, extrinsic: Extrinsic, events: List[Event]):
         """
@@ -654,11 +618,11 @@ class PGBlockHandler:
     def __handle_sudo(self,block: Block, extrinsic: Extrinsic, events: List[Event]):
         """
         A sudo call wraps around another call. We extract the call inside the sudo call and create a new extrinsic
-        object out of it. Then we also execute handle_special_extrinsics if needed.
+        object out of it. Then we also execute __handle_special_extrinsics if needed.
         """
         proxied_extrinsic, additional_accounts = Extrinsic.create_from_sudo(block, extrinsic,events)
         self.accounts += additional_accounts
-        self.handle_special_extrinsics(block, proxied_extrinsic, events)
+        self.__handle_special_extrinsics(block, proxied_extrinsic, events)
 
 
     def __handle_add_proxy(self, block: Block, extrinsic: Extrinsic, events: List[Event]):

@@ -6,7 +6,7 @@ from src.pg_models.account import Account
 
 from src.pg_models.base import Base
 
-
+######### Note: Not needed anymore ############
 
 class ValidatorConfig(Base):
     __tablename__ = "validator_config"

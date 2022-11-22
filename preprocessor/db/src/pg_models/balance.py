@@ -50,15 +50,13 @@ class Balance(Base):
     
     @staticmethod
     def get_last_balance(account: "Account") -> "Balance":
+        """
+        Returns current balance of Account.
+        If Account has no current balance (meaning the account is freshly created)
+        an empty balance object is returned
+        """
         session = Driver().get_driver()
-        """
-        #stmt = select(Balance).where(account=account.id).order_by(Balance.id.desc())
-        #balance = session.query(Balance).filter(Balance.account==account.id).order_by(Balance.id.desc()).order_by(Balance.transferable).first()
-        with_query = session.query(Balance).filter(Balance.account==account.id)
-        with_query = with_query.cte("last_balance_selection")
-        balance = session.query(with_query).order_by(with_query.c.id.desc()).first()
-        #balance = session.query(Balance).filter(Balance.account==account.id).order_by(Balance.id.desc()).all()
-        """
+       
         balance = session.query(Balance).filter(Balance.id==account.current_balance).first()
         if balance is None:
             return Balance(
@@ -67,8 +65,5 @@ class Balance(Base):
                 bonded=0,
                 unbonding=0,
             )
-        #balance = Balance(
-        #        balance
-        #        )
         
         return balance
