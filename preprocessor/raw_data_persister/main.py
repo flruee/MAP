@@ -9,7 +9,7 @@ from src import RawData
 from src.node_connection import handle_one_block
 import logging
 
-mode="kafk"
+mode="kafka"
 
 
 if __name__ == "__main__":
@@ -71,7 +71,7 @@ if __name__ == "__main__":
                     missing = int(missing)
                     stmt = select(RawData).where(RawData.block_number==missing)
                     db_data = session.execute(stmt).fetchone()
-                    db_data = None
+
                     if db_data is None:
                         data = handle_one_block(missing)
                         raw_data = RawData(
