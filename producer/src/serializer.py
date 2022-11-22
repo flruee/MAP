@@ -42,8 +42,11 @@ class Serializer:
             print(i)
             mod_log = str(logs[i])
             mod_log = self.string_replacer(mod_log)
-            mod_log = json.dumps(mod_log)
-            obj["header"]["digest"]["logs"][i] = json.loads(mod_log)
+            try:
+                obj["header"]["digest"]["logs"][i] = json.loads(mod_log)
+            except json.JSONDecodeError:
+                mod_log = '{"' + mod_log + '": null}'
+                obj["header"]["digest"]["logs"][i] = json.loads(mod_log)
         return obj
 
     def jsonize_extrinsic(self,block_hash):
