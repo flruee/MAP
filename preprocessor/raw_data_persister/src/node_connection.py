@@ -26,6 +26,7 @@ def handle_block(block):
     #logging.info(f"New block #{block['header']['number']} produced by {block['author']}")
     
     block_number = block["header"]["number"]
+    print(block_number)
     block_hash = substrate.get_block_hash(block_number)
     header = jsonize_header(block)
     extrinsics = jsonize_extrinsic(block_hash)
