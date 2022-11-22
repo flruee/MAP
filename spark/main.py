@@ -1,8 +1,10 @@
 import argparse
+import ast
+import os
 from sys import set_coroutine_origin_tracking_depth
 import time
 from pyspark.sql import SparkSession
-
+from dotenv import load_dotenv, find_dotenv
 
 queries_postgres = {
     "get_nominator_rewards": """
@@ -187,12 +189,36 @@ queries_neo4j = {
 }
 
 
+def env(key, default=None, required=True):
+    """
+    Retrieves environment variables and returns Python natives. The (optional)
+    default will be returned if the environment variable does not exist.
+    """
+    try:
+        value = os.environ[key]
+        return ast.literal_eval(value)
+    except (SyntaxError, ValueError):
+        return value
+    except KeyError:
+        if default or not required:
+            return default
+        raise RuntimeError("Missing required environment variable '%s'" % key)
+
+
+
+"""
+Set config
+"""
+load_dotenv(find_dotenv())
+DATABASE_USERNAME = env('DATABASE_USERNAME')
+DATABASE_PASSWORD = env('DATABASE_PASSWORD')
+DATABASE_URL = env('DATABASE_URL', default='localhost')
+
 def init_sparksession(query: str, db: str):
     print(query)
     print(db)
+
     if db == "p":
-        print('postgres_job')
-        url = "jdbc:postgresql://172.23.149.214:5432/map3"
         return \
             SparkSession \
             .builder \
@@ -202,33 +228,30 @@ def init_sparksession(query: str, db: str):
             .getOrCreate() \
             .read \
             .format("jdbc") \
-            .option("url", url) \
-            .option("user", "mapUser") \
-            .option("password", "mapmap") \
+            .option("url", DATABASE_URL) \
+            .option("user", DATABASE_USERNAME) \
+            .option("password", DATABASE_PASSWORD) \
             .option("driver", "org.postgresql.Driver") \
             .option("query", query) \
             .load()
     else:
         print('graph_job')
-        url = 'bolt://172.23.149.214:7687'
-        user = "neo4j"
-        password = "mapmap"
         return \
             SparkSession \
             .builder \
             .config("spark.driver.memory", "15g") \
             .appName("Polkadot Pyspark neo4j") \
             .config("spark.jars", "./neo4j-connector-apache-spark_2.12-4.1.2_for_spark_3.jar") \
-            .config("neo4j.url", url) \
+            .config("neo4j.url", DATABASE_URL) \
             .config("neo4j.authentication.type", "basic") \
-            .config("neo4j.authentication.basic.username", user) \
-            .config("neo4j.authentication.basic.password", password) \
+            .config("neo4j.authentication.basic.username", DATABASE_USERNAME) \
+            .config("neo4j.authentication.basic.password", DATABASE_PASSWORD) \
             .getOrCreate()\
             .read \
             .format("org.neo4j.spark.DataSource") \
-            .option("url", url) \
-            .option("user", user) \
-            .option("password", password) \
+            .option("url", DATABASE_URL) \
+            .option("user", DATABASE_USERNAME) \
+            .option("password", DATABASE_PASSWORD) \
             .option("query", query)\
             .load()
 
@@ -262,7 +285,6 @@ def main(args):
 def argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-q",   "--query",                              help="enter SQL/cypher query",           type=str)
-    parser.add_argument("-u",   "--url",                          help="default: localhost",        type=str)
     parser.add_argument("-p", "--preset",                           help="choose predefined query",   type=str)
     parser.add_argument("-s",   "--save",          help="Save to /results. Add a filename as an argument", type=str)
     parser.add_argument("-d",  "--database",                           help="p=postgres or n=neo4j")
