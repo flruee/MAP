@@ -44,5 +44,5 @@ Read topic
 
 
 
-## Setup producer module
-See README in it's folder.
+## Setup producer/preprocessor/spark module
+See README in their respective folders.
