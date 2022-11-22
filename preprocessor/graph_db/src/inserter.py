@@ -6,7 +6,6 @@ from typing import List
 import datetime
 from src.models import Block, Transaction, Account, Transaction, Validator, ValidatorPool, Nominator, Utils
 from src.driver_singleton import Driver
-from src.clean_block import CleanBlock
 from py2neo.ogm import Repository
 from py2neo import Subgraph, Relationship
 from substrateinterface import SubstrateInterface
@@ -20,8 +19,7 @@ class Neo4jBlockHandler:
         self.current_era = None
         self.block_author = None
 
-    def handle_full_block(self, data, specification):
-        #clean_block = CleanBlock(data, specification).clean()
+    def handle_full_block(self, data):
         block, subgraph = self.__handle_block_data(data)
         subgraphs = self.__handle_transaction_data(data, block, subgraph)
         if not len(subgraphs):
@@ -206,7 +204,7 @@ class Neo4jBlockHandler:
             ).value
             validator, account_validator_relationship = Validator.create(validator_account, current_validatorpool, reward_points,
                                          validator_staking, commission)
-            validatorpool_validator_relationship = Relationship(current_validatorpool, ":HAS_VALIDATOR", validator)
+            validatorpool_validator_relationship = Relationship(current_validatorpool, "HAS_VALIDATOR", validator)
             subgraph = Utils.merge_subgraph(subgraph, validator, account_validator_relationship, validatorpool_validator_relationship)
             staking_sum += validator['total_stake']
 
@@ -220,7 +218,7 @@ class Neo4jBlockHandler:
                     nominator_account = Account.create(nominator_address)
 
                 nominator, nominator_account_relationship = Nominator.create(nominator_account, nominator_stake)
-                validator_nominator_relationship = Relationship(validator, ':HAS_NOMINATOR', nominator)
+                validator_nominator_relationship = Relationship(validator, 'HAS_NOMINATOR', nominator)
                 subgraph = Utils.merge_subgraph(subgraph, nominator, nominator_account, validator_nominator_relationship, nominator_account_relationship)
 
             tx = Driver().get_driver().graph.begin()
@@ -232,42 +230,6 @@ class Neo4jBlockHandler:
         current_validatorpool['total_stake'] = staking_sum
         return Utils.merge_subgraph(subgraph, current_validatorpool)
 
-
-
-        """last_validator_pool_node = None
-        if block['block_number'] == 328745:
-            era = 0
-        else:
-            last_validator_pool = ValidatorPool.get()
-            last_validator_pool_node = last_validator_pool.__node__
-            era = last_validator_pool.era + 1
-        current_validatorpool = ValidatorPool.create(era=era,
-                                                     total_staked=0,
-                                                     total_reward=0)
-        if last_validator_pool_node is not None:
-            current_previous_relationship = Relationship(current_validatorpool,
-                                                         "PREVIOUS_POOL",
-                                                         last_validator_pool_node)
-            subgraph = Utils.merge_subgraph(subgraph, current_previous_relationship)
-        currentpool_block_relationship = Relationship(current_validatorpool, "FROM_BLOCK", block)
-        for validator in event['attributes'][0]['value']:
-            validator_address = Utils.convert_public_key_to_polkadot_address(validator['authority_id'])
-            validator_account = Account.get(subgraph, validator_address)
-            if validator_account is None:
-                validator_account = Account.create(validator_address)
-            validator_node = Validator.get_from_account(validator_account)
-            if validator_node is None:
-                validator_node, account_validator_relationship = Validator.create(amount_staked=0, self_staked=0, nominator_staked=0,
-                                                  account=validator_account)
-                subgraph = Utils.merge_subgraph(subgraph, account_validator_relationship)
-
-            account_validator_relationship = Relationship(validator_account, "IS_VALIDATOR", validator_node)
-            validatorpool_validatornode_relationship = Relationship(current_validatorpool,
-                                                                    "HAS_VALIDATOR",
-                                                                    validator_node)
-            subgraph = Utils.merge_subgraph(subgraph, validator_node, validator_account,
-                                            validatorpool_validatornode_relationship, account_validator_relationship)
-        return Utils.merge_subgraph(subgraph, current_validatorpool, currentpool_block_relationship)"""
 
     @staticmethod
     def handle_events(events, extrinsic_idx) -> List:

@@ -71,24 +71,10 @@ def plot_scatter(xs, ys, title: str):
     plt.show()
 """
 if __name__ == "__main__":
-    """    df = pd.read_parquet("../results/transfer_all.parquet")
-    graph = nx.from_pandas_edgelist(df, source="from_address", target="to_address", edge_attr=["value", "type"], create_using = nx.DiGraph)
-    df2 = pd.read_parquet("../results/transfernetwork.parquet")
-    account_series = df2['account']
-    to_series = df2['b']
-    relation_series = df2['transfer_to']
-    for index, row in enumerate(account_series.values):
-        print(index)
-        account_series.values[index] = row['address']
-    for index, row in enumerate(to_series.values):
-        print(index)
-        to_series.values[index] = row['address']
-    df2['account'] = account_series
-    df2['b'] = to_series
-    graph = nx.from_pandas_edgelist(df2, source="account",target="b", create_using = nx.DiGraph)
-    """
-    #nx.write_gml(graph, "transfer_network.gml", )
-    graph = nx.read_gml("transfer_network.gml")
+    df = pd.read_csv("../results/full_validator_network_neo.csv/part-00000-a2d01f7d-d9c9-4e55-a9df-838aa1c6a5f9-c000.csv")
+    df = df.rename(columns={'31': 'era', '15yyudqwLHT6VcKdEug98wt1rCbyg5TBvr6ikakL4rNVAYXf': 'validator','14UpRGUeAfsSZHFN63t4ojJrLNupPApUiLgovXtm7ZiAHUDA':'nominator'})
+
+    graph = nx.from_pandas_edgelist(df, source='validator', target='nominator')
     print("graph loaded")
     fig, ax = plt.subplots(figsize=(30, 16))
     print("subplots created")

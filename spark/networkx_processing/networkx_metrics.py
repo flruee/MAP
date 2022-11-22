@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import networkx.readwrite.gml as graph_reader
+import pandas as pd
 from networkx.algorithms.smallworld import random_reference
 from networkx.algorithms.assortativity import average_degree_connectivity, degree_pearson_correlation_coefficient
 from networkx.algorithms.cluster import clustering
@@ -193,15 +194,15 @@ def solve_A02_1(graph):
     print(f"Pearson Correlation coefficient Random: {degree_pearson_correlation_coefficient(graph_random)}")
 
 if __name__=="__main__":
-    graph = nx.read_gml("transfer.gml")
+    """ graph = nx.read_gml("transfer.gml")
     graphs = {}
     graphs['transfer'] = graph
 
     #solve_A02_1(graph)
     print(np.max(degree_centrality(graph)))
-    print(np.max(closeness_centrality(graph)))
+    print(np.max(closeness_centrality(graph)))"""
 
-"""    print(f"n nodes: {len(graph.nodes())}")
+    """    print(f"n nodes: {len(graph.nodes())}")
     print(f"n edges: {len(graph.edges())}")
     print(f"graph is directed: {nx.is_directed(graph)}")
     print(f"graph weakly connected: {nx.is_weakly_connected(graph)}") # Treat edges as undirected
@@ -216,3 +217,37 @@ if __name__=="__main__":
 
     #plot_centralities(graphs)
 
+    df = pd.read_csv("../results/full_validator_network_neo.csv/part-00000-a2d01f7d-d9c9-4e55-a9df-838aa1c6a5f9-c000.csv")
+    df = df.rename(columns={'31': 'era', '15yyudqwLHT6VcKdEug98wt1rCbyg5TBvr6ikakL4rNVAYXf': 'validator','14UpRGUeAfsSZHFN63t4ojJrLNupPApUiLgovXtm7ZiAHUDA':'nominator'})
+    eras = df['era'].unique()
+    average_degrees = []
+    network_densities = []
+    centrality_degrees = []
+    number_nodes = []
+    number_edges = []
+    for era in eras:
+        print(era)
+        subdf = df.loc[df['era'] == era]
+        graph = nx.from_pandas_edgelist(subdf, source='validator', target='nominator')
+        average_degree = calculate_average_degree(graph)
+        average_degrees.append(average_degree)
+        print(f"average degree of network: {average_degree}")
+        network_density = calculate_network_density(graph)
+        network_densities.append(network_density)
+        print(f"network density is: {network_density}")
+        centrality_degree = max(degree_centrality(graph).values())
+        centrality_degrees.append(centrality_degree)
+        print(f"degree centrality {centrality_degree}")
+        number_nodes.append(len(graph.nodes()))
+        number_edges.append(len(graph.edges()))
+
+    #plt.plot(eras,average_degrees, label='average degree')
+    #plt.plot(eras,network_densities, label='average network density')
+    plt.plot(eras,centrality_degrees, label='centrality degree')
+    #plt.plot(era, number_nodes, label='number of nodes')
+    #plt.plot(era, number_edges, label='number of edges')
+    plt.xlabel('Era')
+    plt.legend()
+    plt.title('Centrality degree over eras')
+    plt.show()
+    plt.savefig('./edges')

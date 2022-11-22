@@ -181,12 +181,9 @@ queries_postgres = {
 }
 
 queries_neo4j = {
-    "get_transactions_all": "match(t:Transaction) return t",
-    "get_blocks_and_validators": "match(b:Block)-[:HAS_AUTHOR]-(v:Validator)-[:IS_VALIDATOR]-(a:Account) return b,v,a",
-    "get_validatorpools_validators_nominators": "match(v:ValidatorPool)-[:HAS_VALIDATOR]->(n:Validator)-[:HAS_NOMINATOR]->(g:Nominator) return v,n,g",
-    "get_all_on_block": "match(b:Block)-[*1]-() return b",
-    "get": "match(v:ValidatorPool)-[:HAS_VALIDATOR]->(n:Validator) return v,n",
-    "get_transfernetwork": "match(account:Account)-[transfer_to:TRANSFER_TO]->(b:Account) return account,b,transfer_to"
+    "get_blocks_and_validators": "match(block:Block)-[:HAS_AUTHOR]-(validator:Validator)-[:IS_VALIDATOR]-(account:Account) return block.block_number, account.address",
+    "get_full_validator_network": "MATCH(validatorpool:ValidatorPool)-[`:HAS_VALIDATOR`]->(validator:Validator)-[`:HAS_NOMINATOR`]->(nominator:Nominator), (validator_account:Account)-[:IS_VALIDATOR]->(validator), (nominator_account:Account)-[:IS_NOMINATOR]->(nominator) RETURN validatorpool.era, validator_account.address, nominator_account.address",
+    "get_transfernetwork": "match(from_account:Account)-[transfer_to:TRANSFER_TO]->(to_account:Account) return from_account.address,to_account.address"
 }
 
 
@@ -246,6 +243,7 @@ def main(args):
     else:
         if args.database == "p":
             query = queries_postgres[args.preset]
+
         else:
             query = queries_neo4j[args.preset]
     if args.args:
@@ -256,7 +254,6 @@ def main(args):
     spark.show(
     )
     if args.save:
-
         spark.write.csv(path=f"./results/{args.save}.csv")
     end = time.perf_counter()
     print(f"Took {end - start}")
@@ -266,11 +263,10 @@ def argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-q",   "--query",                              help="enter SQL/cypher query",           type=str)
     parser.add_argument("-u",   "--url",                          help="default: localhost",        type=str)
-    parser.add_argument("-n",   "--name",                               help="name for file results",     type=str)
     parser.add_argument("-p", "--preset",                           help="choose predefined query",   type=str)
     parser.add_argument("-s",   "--save",          help="Save to /results. Add a filename as an argument", type=str)
     parser.add_argument("-d",  "--database",                           help="p=postgres or n=neo4j")
-    parser.add_argument("-a", "--args",nargs='+')
+    parser.add_argument("-a", "--args", nargs='+', help="custom arguments such as blocknumber")
     return parser.parse_args()
 
 
