@@ -48,12 +48,6 @@ class Aggregator(Base):
         Aggregator.save(aggregator)
         return aggregator
     
-
-    """
-    @staticmethod
-    def __handle_total_staked(extrinsics: List[Extrinsic]):
-        for extrinsic in extrinsics:
-    """
             
             
     @staticmethod
